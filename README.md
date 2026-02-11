@@ -14,7 +14,7 @@ claude install-skill hota911/agent-skills/<skill-name>
 
 | Skill | Description |
 |-------|-------------|
-| *Coming soon* | |
+| [stacked-prs](skills/stacked-prs/) | Manage stacked PR branches - split large changes into small, reviewable PRs, update branches after base merge, and cascade changes downstream. |
 
 ## License
 
