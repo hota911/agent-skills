@@ -4,7 +4,18 @@ A collection of custom Agent Skills for [Claude Code](https://docs.anthropic.com
 
 ## Install
 
-Install any skill with a single command:
+### As a Marketplace
+
+Register the marketplace, then install individual plugins:
+
+```bash
+/plugin marketplace add hota911/agent-skills
+/plugin install stacked-prs@hota911-agent-skills
+```
+
+### Individual Skill
+
+Install a single skill directly:
 
 ```bash
 claude install-skill hota911/agent-skills/<skill-name>
