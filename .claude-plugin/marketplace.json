@@ -17,6 +17,24 @@
       "skills": [
         "./skills/stacked-prs"
       ]
+    },
+    {
+      "name": "session-retrospective",
+      "description": "Run a structured Keep/Problem/Try retrospective at session end, cross-reference past retrospectives for recurring patterns, then propose memory entries, doc updates, and skill candidates.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/session-retrospective"
+      ]
+    },
+    {
+      "name": "japanese-tech-writing",
+      "description": "日本語の技術文書・書籍原稿の文章規範（整形・パラグラフライティング・論証の厳密さ・冗長の排除など）。日本語で技術書や記事を書く/推敲するときに使用。Derived from k16shikano's gist (used with permission).",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/japanese-tech-writing"
+      ]
     }
   ]
 }
