@@ -60,6 +60,21 @@ digraph triage {
 
 In practice, items often map to **multiple** outputs. That's fine.
 
+#### Promotion threshold for durable actions
+
+Do not turn every first occurrence into a new memory, documentation rule, regression
+checklist, or skill. Use the recurring-pattern threshold from Step 1 as the default:
+
+- On the first or second occurrence, record the Problem and Try with a stable tag. Make a
+  narrow correction to an existing workflow when needed, but defer additional durable rules.
+- At about the third occurrence, propose the appropriate memory, documentation update,
+  regression check, or skill.
+- Act sooner when the issue creates a material security, privacy, data-loss, destructive-action,
+  or external-impact risk, or when the user explicitly requests immediate durable action.
+
+State the observed occurrence count and any exception used in the retrospective. Do not claim
+recurrence merely because several symptoms appeared in one session.
+
 ### Step 4: Determine scope (memory only)
 
 For each memory candidate, **explicitly tag scope** before saving. Use the user's CLAUDE.md rule:
@@ -118,7 +133,8 @@ Body: human-readable sections per Keep / Problem / Try, with the *why* and *lear
 
 ### Step 6: Execute the actions
 
-For each output category, **ask the user to confirm before writing**, then:
+Only propose durable actions that meet the promotion threshold above. For each output category,
+**ask the user to confirm before writing**, then:
 
 - **Memory (global)**: append to `~/.claude/CLAUDE.md` under the appropriate `##` section
 - **Memory (project)**: write to `/Users/hiroyukiota/.claude/projects/<encoded-project-path>/memory/<slug>.md` with frontmatter, and add a pointer to `MEMORY.md` in the same directory
