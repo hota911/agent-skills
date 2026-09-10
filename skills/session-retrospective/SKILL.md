@@ -27,6 +27,17 @@ Do NOT trigger on simple `/save-memory` invocations — that's a narrower skill 
 
 ## Workflow
 
+### Step 0: Check for unfinished work
+
+Before starting the retrospective, review the current conversation and task state for work
+that was requested but is not complete. Include failed or unrun verification, unresolved
+questions, pending edits, and external actions required to satisfy the request.
+
+- If no work remains, continue to Step 1.
+- If work remains, tell the user exactly what is unfinished and ask whether to complete it now
+  or proceed with the retrospective while treating it as unfinished. **Wait for the user's
+  answer before starting Step 1.**
+
 ### Step 1: Load past retrospectives (pattern detection)
 
 Read the **frontmatter only** of the most recent ~20 files in `~/.claude/retrospectives/`. Use `ls -t ~/.claude/retrospectives/*.md | head -20` then read each.
