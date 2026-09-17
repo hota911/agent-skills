@@ -1,15 +1,24 @@
 # Agent Skills
 
-A collection of custom Agent Skills for [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
+A collection of custom Agent Skills. See each skill for its environment requirements.
+Session Retrospective supports agents that can read the current conversation and local files,
+using the user's configured guidance and memory workflow.
 
 ## Install
 
-Register the marketplace, then install plugins:
+For Claude Code, register the marketplace, then install plugins:
 
 ```bash
 /plugin marketplace add hota911/agent-skills
 /plugin install stacked-prs@hota911-agent-skills
 ```
+
+For other agents, install the desired directory under `skills/` using that agent's
+skill installer. Session Retrospective preserves configured storage and existing
+Codex (`~/.codex/retrospectives/`) or Claude Code (`~/.claude/retrospectives/`)
+history. New setups without existing history default to
+`~/.local/share/session-retrospective/`. It normally proposes new durable rules
+around the third occurrence, with exceptions for material risks or explicit requests.
 
 ## Available Skills
 
