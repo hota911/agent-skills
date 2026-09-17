@@ -14,9 +14,11 @@ For Claude Code, register the marketplace, then install plugins:
 ```
 
 For other agents, install the desired directory under `skills/` using that agent's
-skill installer. Session Retrospective reuses a configured retrospective directory
-or an existing `~/.claude/retrospectives/` directory; otherwise it defaults to
-`~/.local/share/session-retrospective/`.
+skill installer. Session Retrospective preserves configured storage and existing
+Codex (`~/.codex/retrospectives/`) or Claude Code (`~/.claude/retrospectives/`)
+history. New setups without existing history default to
+`~/.local/share/session-retrospective/`. It normally proposes new durable rules
+around the third occurrence, with exceptions for material risks or explicit requests.
 
 ## Available Skills
 

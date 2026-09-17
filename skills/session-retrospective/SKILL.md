@@ -24,9 +24,12 @@ Follow the active environment's user and repository instructions for durable gui
 memory, and skill authoring; no Claude-specific tool or memory layout is required.
 
 Resolve `<retrospective-dir>` once and use it for both reading and writing. Use the
-user's configured directory first. If none is configured and the legacy
-`~/.claude/retrospectives/` directory exists, reuse it regardless of the current agent.
-Otherwise use the agent-neutral default `~/.local/share/session-retrospective/`.
+user's configured directory first. Otherwise preserve the current agent's existing
+history: for Codex, reuse `~/.codex/retrospectives/` if it exists; for Claude Code,
+reuse `~/.claude/retrospectives/` if it exists. If neither rule selects a directory,
+check those two paths and `~/.local/share/session-retrospective/`: reuse the only
+existing directory, or ask which to use when several exist. If none exists, use
+the agent-neutral default `~/.local/share/session-retrospective/`.
 Do not move existing history as part of a retrospective.
 
 ## When to Use
@@ -54,7 +57,8 @@ questions, pending edits, and external actions required to satisfy the request.
 ### Step 1: Load past retrospectives (pattern detection)
 
 Read the **frontmatter only** of the most recent ~20 Markdown files in
-`<retrospective-dir>`, ordered by modification time. If the directory is missing or
+`<retrospective-dir>`, ordered by the timestamp in their filenames (newest first).
+If the directory is missing or
 empty, report that no past retrospectives are available and continue. If reading
 fails, report the failure rather than treating it as no history.
 
@@ -82,6 +86,21 @@ For each Try item, ask: **memory / doc / skill — which?**
 
 In practice, items often map to **multiple** outputs. That's fine.
 
+#### Promotion threshold for durable actions
+
+Do not turn every first occurrence into a new memory, documentation rule, regression
+checklist, or skill. Use the recurring-pattern threshold from Step 1 as the default:
+
+- On the first or second occurrence, record the Problem and Try with a stable tag. Make a
+  narrow correction to an existing workflow when needed, but defer additional durable rules.
+- At about the third occurrence, propose the appropriate memory, documentation update,
+  regression check, or skill.
+- Act sooner when the issue creates a material security, privacy, data-loss, destructive-action,
+  or external-impact risk, or when the user explicitly requests immediate durable action.
+
+State the observed occurrence count and any exception used in the retrospective. Do not claim
+recurrence merely because several symptoms appeared in one session.
+
 ### Step 4: Determine scope (memory only)
 
 For each memory candidate, **explicitly tag scope** before saving. Follow the user's
@@ -89,6 +108,12 @@ scope rules and choose the narrowest scope that covers the lesson. Identify the
 actual durable destination from the active environment's instructions (for example,
 `AGENTS.md`, `CLAUDE.md`, or a configured memory system). Do not invent an agent's
 memory path. If no destination is established, propose one for confirmation.
+
+When continuing an existing Codex setup, preserve its established use of
+`~/.codex/AGENTS.md` for global guidance and the project's `AGENTS.md` for project
+instructions. Keep detailed project context in durable project documents and link
+them from `AGENTS.md` when automatic discovery is needed. Follow any configured
+source-repository or symlink rules when editing these files.
 
 Examples:
 - "Confirm save location before writing files" → **global** (universal behavior)
@@ -142,7 +167,8 @@ Body: human-readable sections per Keep / Problem / Try, with the *why* and *lear
 
 ### Step 6: Execute the actions
 
-For each output category, **ask the user to confirm before writing** unless the
+Only propose durable actions that meet the promotion threshold above. For each
+output category, **ask the user to confirm before writing** unless the
 current session already authorizes that action, then:
 
 - **Memory (global)**: update the established user-wide guidance or memory destination
