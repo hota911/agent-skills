@@ -10,12 +10,12 @@
   },
   "plugins": [
     {
-      "name": "open-in-vscode",
-      "description": "Open a file in the Visual Studio Code window associated with the current Codex Worktree.",
+      "name": "open-editor",
+      "description": "Open a file from the current Git worktree in the user's chosen editor: VS Code or Cursor.",
       "source": "./",
       "strict": false,
       "skills": [
-        "./skills/open-in-vscode"
+        "./skills/open-editor"
       ]
     },
     {

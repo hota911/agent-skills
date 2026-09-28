@@ -20,17 +20,17 @@ history. New setups without existing history default to
 `~/.local/share/session-retrospective/`. It normally proposes new durable rules
 around the third occurrence, with exceptions for material risks or explicit requests.
 
-For Codex, install Open in VSCode with GitHub CLI's skill command:
+For Codex, install Open Editor with GitHub CLI's skill command:
 
 ```bash
-gh skill install hota911/agent-skills skills/open-in-vscode --agent codex --scope user
+gh skill install hota911/agent-skills skills/open-editor --agent codex --scope user
 ```
 
 ## Available Skills
 
 | Skill | Description |
 |-------|-------------|
-| [open-in-vscode](skills/open-in-vscode/) | Open a file in the Visual Studio Code window associated with the current Codex Worktree. Requires the `code` command. |
+| [open-editor](skills/open-editor/) | Open a file from the current Git worktree in the user's chosen editor: VS Code (`code`) or Cursor (`cursor`). |
 | [stacked-prs](skills/stacked-prs/) | Manage stacked PR branches - split large changes into small, reviewable PRs, update branches after base merge, and cascade changes downstream. |
 | [session-retrospective](skills/session-retrospective/) | Run a structured Keep/Problem/Try retrospective at session end, cross-reference past retrospectives for recurring patterns, and propose memory entries, doc updates, and skill candidates. |
 | [japanese-tech-writing](skills/japanese-tech-writing/) | 日本語の技術文書・書籍原稿の文章規範（整形・パラグラフライティング・論証の厳密さ・冗長の排除など）。日本語で技術書や記事を書く/推敲するときに使用。Derived from k16shikano's gist (used with permission). |
