@@ -10,12 +10,12 @@
   },
   "plugins": [
     {
-      "name": "open-editor",
+      "name": "open-in-editor",
       "description": "Open a file from the current Git worktree in the user's chosen editor: VS Code or Cursor.",
       "source": "./",
       "strict": false,
       "skills": [
-        "./skills/open-editor"
+        "./skills/open-in-editor"
       ]
     },
     {

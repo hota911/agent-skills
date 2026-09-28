@@ -1,9 +1,9 @@
 ---
-name: open-editor
+name: open-in-editor
 description: Use when the user asks to open a file from the current Git worktree in an editor, including Visual Studio Code (VS Code) or Cursor, or with the code or cursor command.
 ---
 
-# Open Editor
+# Open in Editor
 
 Open the requested file in the user's chosen editor window for the current Git worktree.
 
