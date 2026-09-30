@@ -165,6 +165,12 @@ Tags in `keep:` / `problem:` / `try:` MUST be short kebab-case so they aggregate
 
 Body: human-readable sections per Keep / Problem / Try, with the *why* and *learning* for each.
 
+If the session already has a work log and the retrospective makes no corrections to
+repository content, saving this retrospective is sufficient. Do not add another work-log
+entry or create a pull request solely to record that the retrospective ran. If the
+retrospective results in repository corrections or authorized memory, documentation, or
+skill changes, follow the repository's normal delivery requirements for those changes.
+
 ### Step 6: Execute the actions
 
 Only propose durable actions that meet the promotion threshold above. For each
