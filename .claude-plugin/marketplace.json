@@ -44,6 +44,15 @@
       "skills": [
         "./skills/japanese-tech-writing"
       ]
+    },
+    {
+      "name": "delegated-work",
+      "description": "Own substantial tasks through early clarification, bounded parallel preparation, independent execution, and verified delivery.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/delegated-work"
+      ]
     }
   ]
 }
