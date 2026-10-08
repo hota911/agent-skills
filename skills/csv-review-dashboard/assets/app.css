@@ -91,6 +91,8 @@ button, select, input, textarea { font: inherit; color: inherit; }
   border-radius: 6px; background: var(--surface); }
 .filters input[type=search] { min-width: 200px; }
 .filters .count { font-size: 12px; color: var(--text-secondary); align-self: center; }
+.filters[hidden] { display: none; }
+.filters[hidden] + .banner { margin-top: 12px; }
 @media (max-width: 480px) {
   .filters label { flex: 1 1 140px; }
   .filters select, .filters input[type=search] { min-width: 0; width: 100%; }
@@ -216,3 +218,10 @@ textarea.note { width: 100%; min-height: 72px; border: 1px solid var(--axis); bo
 .drop-overlay { position: fixed; inset: 0; z-index: 60; background: rgba(42, 120, 214, 0.12); border: 3px dashed var(--accent);
   display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; }
 .drop-overlay[hidden] { display: none; }
+
+/* Load mode empty state */
+.load-panel { margin-top: 12px; border-style: dashed; border-width: 2px; }
+.load-side { border-top: 1px solid var(--grid); padding-top: 12px; margin-top: 12px; }
+.load-side h3 { overflow-wrap: anywhere; }
+.load-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.load-actions label.btn input[type=file] { width: 0; height: 0; opacity: 0; position: absolute; }

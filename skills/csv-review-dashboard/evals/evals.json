@@ -40,6 +40,19 @@
         "Runs the build script and reports the output path; does not claim it rendered without checking",
         "Explains that the file works offline with no server and that the table can be filtered and downloaded"
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "feedback.csv（examples/ にあります）は毎週更新されます。チームに HTML を配りたいのですが、データ自体は HTML に入れたくありません。更新のたびに読み込み直せる形にしてください。",
+      "expected_output": "data.mode を load にした設定（または --mode load）で HTML を生成し、行データが入っていないこと、開いたときに feedback.csv を選ぶこと、更新時は読み込み直すことを説明する。",
+      "files": ["examples/feedback.csv"],
+      "assertions": [
+        "ビルド前に embed と load のどちらにするかを、それぞれの利点と注意点を添えて確認するか、依頼文から load と判断した根拠を述べる",
+        "config の data.mode を \"load\" にするか、build_dashboard.py に --mode load を渡している",
+        "生成した HTML に CSV の行が含まれていないことを確認するか、含まれないと説明する",
+        "開いたら feedback.csv を選ぶかドロップする必要があり、データ更新後は「読み込み直す」で反映できることを説明する",
+        "受け取った人も同じ CSV を手元に持っている必要があることを伝える"
+      ]
     }
   ]
 }

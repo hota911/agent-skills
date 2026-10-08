@@ -30,7 +30,13 @@
       dupId: "id {id} が重複しています（データ {r1} 行目と {r2} 行目）", emptyId: "データ {r} 行目の id が空です",
       badValue: "データ {r} 行目: {col}={v} は{kind}ではありません", number: "数値", boolean: "真偽値 (true/false)",
       parseErr: "データ {r} 行目: {msg}", reserved: "列 {cols} はレビューの書き出し用に予約されています",
-      noData: "データがありません"
+      noData: "データがありません",
+      loadTitle: "CSV を選択 / ドロップ",
+      loadIntro: "この HTML にはデータが入っていません。CSV を選ぶかページにドロップすると表示します。データを更新したら「読み込み直す」で反映できます。",
+      expectedFile: "想定するファイル: {name}", requiredCols: "必須の列: {cols}",
+      chooseFile: "ファイルを選ぶ", notLoaded: "未読み込み", reload: "読み込み直す",
+      lastFile: "前回のファイルを読み込む ({name})", loadedAt: "{time} に読み込み",
+      dropHintLoad: "ドロップした CSV を読み込みます"
     },
     en: {
       tabs: { overview: "Overview", compare: "Compare", review: "Review", table: "Table" },
@@ -59,7 +65,13 @@
       dupId: "duplicate id {id} (data rows {r1} and {r2})", emptyId: "data row {r}: empty id",
       badValue: "data row {r}: {col}={v} is not a {kind}", number: "number", boolean: "boolean (true/false)",
       parseErr: "data row {r}: {msg}", reserved: "column(s) {cols} are reserved for review export",
-      noData: "No data"
+      noData: "No data",
+      loadTitle: "Choose or drop CSV",
+      loadIntro: "This HTML contains no data. Choose a CSV or drop it on the page to show it. When the data changes, use Reload to pick it up.",
+      expectedFile: "Expected file: {name}", requiredCols: "Required columns: {cols}",
+      chooseFile: "Choose file", notLoaded: "Not loaded", reload: "Reload",
+      lastFile: "Load previous file ({name})", loadedAt: "loaded {time}",
+      dropHintLoad: "Drop to load the CSV"
     }
   };
 
@@ -76,12 +88,21 @@
   const cols = cfg.columns;
   const metrics = cols.metrics;
   const hasB = Boolean(cfg.data.csv_b);
+  const SIDES = hasB ? ["a", "b"] : ["a"];
+  // "load" mode: the HTML carries no rows; the user picks the CSV(s) every time it opens.
+  const loadMode = cfg.data.mode === "load";
+  const expectedName = { a: cfg.data.csv, b: cfg.data.csv_b };
   const sideLabel = { a: cfg.data.label_a || "A", b: cfg.data.label_b || "B" };
   const stackCol = cols.status || cols.verdict || null;
   const numFmtCache = {};
+  const canPick = typeof window.showOpenFilePicker === "function";
 
   const state = {
-    data: { a: withOrigin(payload.a, "embedded"), b: payload.b ? withOrigin(payload.b, "embedded") : null },
+    data: { a: payload.a ? withOrigin(payload.a, "embedded") : null, b: payload.b ? withOrigin(payload.b, "embedded") : null },
+    // File handles from showOpenFilePicker: `handles` were picked or granted in this page
+    // session, `saved` were restored from IndexedDB and still need a permission prompt.
+    handles: { a: null, b: null },
+    saved: { a: null, b: null },
     tab: cfg.tabs[0],
     side: "a",
     filters: { category: "", status: "", verdict: "", q: "" },
@@ -101,7 +122,12 @@
   // ---------- small helpers ----------
 
   function withOrigin(table, origin) {
-    return { name: table.name, headers: table.headers, rows: table.rows, origin: origin };
+    return { name: table.name, headers: table.headers, rows: table.rows, origin: origin, loadedAt: null };
+  }
+
+  // True while load mode still waits for a CSV on some side.
+  function needsLoad() {
+    return loadMode && SIDES.some((s) => !state.data[s]);
   }
 
   function fmt(template, vars) {
@@ -376,11 +402,16 @@
     };
   }
 
-  function validateTable(headers, rows) {
-    const errors = [];
+  // Must match configured_columns() in build_dashboard.py.
+  function requiredColumns() {
     const needed = [cols.id, ...cols.text, ...metrics.map((m) => m.column)];
     for (const k of ["category", "status", "verdict"]) if (cols[k]) needed.push(cols[k]);
-    const missing = [...new Set(needed)].filter((c) => !headers.includes(c));
+    return [...new Set(needed)];
+  }
+
+  function validateTable(headers, rows) {
+    const errors = [];
+    const missing = requiredColumns().filter((c) => !headers.includes(c));
     if (missing.length) errors.push(fmt(T.missingCols, { cols: JSON.stringify(missing) }));
     if (cfg.tabs.includes("review")) {
       const clash = REVIEW_EXPORT_COLUMNS.filter((c) => headers.includes(c));
@@ -409,7 +440,12 @@
     state.review = {};
     state.reviewCursor = null;
     const a = state.data.a;
-    state.storageKey = STORAGE_PREFIX + fnv1a(JSON.stringify([cfg.title, a.headers, a.rows]));
+    if (!a) { state.storageKey = null; state.storageOk = false; return; }
+    // Embed mode keys by the full data, so a different snapshot starts empty. Load mode
+    // keys by title + id set, so labels survive reloading updated data with the same ids.
+    state.storageKey = loadMode
+      ? STORAGE_PREFIX + "ids:" + fnv1a(JSON.stringify([cfg.title, a.rows.map((r) => r[cols.id]).sort()]))
+      : STORAGE_PREFIX + fnv1a(JSON.stringify([cfg.title, a.headers, a.rows]));
     try {
       const raw = window.localStorage.getItem(state.storageKey);
       if (raw) state.review = JSON.parse(raw) || {};
@@ -604,19 +640,28 @@
   function renderHeader() {
     document.getElementById("page-title").textContent = cfg.title;
     const parts = [];
-    for (const side of hasB ? ["a", "b"] : ["a"]) {
+    for (const side of SIDES) {
       const d = state.data[side];
       if (!d) continue;
-      parts.push((hasB ? sideLabel[side] + ": " : "") + d.name + " (" + fmt(T.rows, { n: d.rows.length }) + ", " +
-        (d.origin === "embedded" ? T.embedded : T.loaded) + ")");
+      parts.push((hasB ? sideLabel[side] + ": " : "") + sourceText(d));
     }
     document.getElementById("source-line").textContent = parts.join(" · ");
     const loader = document.getElementById("loader");
     loader.replaceChildren();
-    for (const side of hasB ? ["a", "b"] : ["a"]) {
+    if (loadMode) {
+      if (SIDES.some((s) => state.data[s])) loader.appendChild(el("button", { class: "btn", type: "button", text: T.reload, onclick: reload }));
+      return;
+    }
+    for (const side of SIDES) {
       const input = el("input", { type: "file", accept: ".csv,text/csv", onchange: (e) => { if (e.target.files[0]) loadFile(e.target.files[0], side); e.target.value = ""; } });
       loader.appendChild(el("label", null, [hasB ? fmt(T.loadSide, { label: sideLabel[side] }) : T.loadA, input]));
     }
+  }
+
+  function sourceText(d) {
+    const when = d.origin === "embedded" ? T.embedded
+      : loadMode ? fmt(T.loadedAt, { time: d.loadedAt.toLocaleString(cfg.lang) }) : T.loaded;
+    return d.name + " (" + fmt(T.rows, { n: d.rows.length }) + ", " + when + ")";
   }
 
   function renderTabs() {
@@ -1093,7 +1138,9 @@
     const root = document.getElementById("content");
     root.replaceChildren();
     renderBanner();
-    if (!rowsOf("a").length) root.appendChild(el("div", { class: "card empty", text: T.noData }));
+    document.getElementById("filters").hidden = needsLoad();
+    if (needsLoad()) renderLoadPanel(root);
+    else if (!rowsOf("a").length) root.appendChild(el("div", { class: "card empty", text: T.noData }));
     else if (state.tab === "overview") renderOverview(root);
     else if (state.tab === "compare") renderCompare(root);
     else if (state.tab === "review") renderReview(root);
@@ -1111,7 +1158,8 @@
 
   // ---------- loading CSV in the browser ----------
 
-  function loadFile(file, side) {
+  // `handle` is the FileSystemFileHandle the file came from, if any; it enables Reload.
+  function loadFile(file, side, handle) {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: "greedy",
@@ -1131,7 +1179,12 @@
           return o;
         });
         state.errors = [];
-        state.data[side] = { name: file.name, headers: headers, rows: rows, origin: "loaded" };
+        state.data[side] = { name: file.name, headers: headers, rows: rows, origin: "loaded", loadedAt: new Date() };
+        state.handles[side] = handle || null;
+        if (handle) {
+          state.saved[side] = handle;
+          rememberHandle(side, handle);
+        }
         state.selectedId = null;
         if (side === "a") initReview();
         renderAll();
@@ -1143,8 +1196,124 @@
     });
   }
 
+  // ---------- load mode: empty state, picker, remembered files ----------
+
+  function renderLoadPanel(root) {
+    const card = el("div", { class: "card load-panel" }, [
+      el("h2", { text: T.loadTitle }),
+      el("p", { class: "muted", text: T.loadIntro }),
+      el("p", { class: "small", text: fmt(T.requiredCols, { cols: requiredColumns().join(", ") }) })
+    ]);
+    for (const side of SIDES) {
+      const d = state.data[side];
+      const saved = state.saved[side];
+      card.appendChild(el("div", { class: "load-side" }, [
+        el("h3", { text: (hasB ? sideLabel[side] + " — " : "") + fmt(T.expectedFile, { name: expectedName[side] }) }),
+        el("p", { class: "small" + (d ? "" : " muted"), text: d ? "✓ " + sourceText(d) : T.notLoaded }),
+        el("div", { class: "load-actions" }, [
+          canPick
+            ? el("button", { class: "btn", type: "button", text: T.chooseFile, onclick: () => pickFile(side) })
+            : el("label", { class: "btn" }, [T.chooseFile, el("input", { type: "file", accept: ".csv,text/csv",
+                onchange: (e) => { if (e.target.files[0]) loadFile(e.target.files[0], side); e.target.value = ""; } })]),
+          saved && !d ? el("button", { class: "btn", type: "button", text: fmt(T.lastFile, { name: saved.name }), onclick: () => readHandle(side, saved) }) : null
+        ])
+      ]));
+    }
+    root.appendChild(card);
+  }
+
+  function showLoadError(name, err) {
+    state.errors = [fmt(T.loadErr, { name: name }), String(err && err.message ? err.message : err)];
+    renderContent();
+  }
+
+  async function pickFile(side) {
+    let picked;
+    try {
+      picked = await window.showOpenFilePicker({ types: [{ description: "CSV", accept: { "text/csv": [".csv"] } }] });
+    } catch (e) {
+      if (e.name !== "AbortError") showLoadError(expectedName[side], e);
+      return;
+    }
+    await readHandle(side, picked[0]);
+  }
+
+  // Must run from a click: requestPermission needs a user gesture.
+  async function readHandle(side, handle) {
+    try {
+      const opts = { mode: "read" };
+      if ((await handle.queryPermission(opts)) !== "granted" && (await handle.requestPermission(opts)) !== "granted") return;
+      loadFile(await handle.getFile(), side, handle);
+    } catch (e) {
+      showLoadError(handle.name, e);
+    }
+  }
+
+  // Re-read the same files when every side came from a picker; otherwise go back to the
+  // empty state so the user can pick or drop the updated CSV.
+  function reload() {
+    if (SIDES.every((s) => state.handles[s])) {
+      (async () => { for (const s of SIDES) await readHandle(s, state.handles[s]); })();
+      return;
+    }
+    state.data = { a: null, b: null };
+    state.errors = [];
+    state.selectedId = null;
+    initReview();
+    renderAll();
+  }
+
+  // Remembered handles are a convenience only: IndexedDB can be missing or blocked
+  // (private windows, file:// in some browsers), so every failure is ignored on purpose.
+  const IDB_NAME = "csv-review-dashboard", IDB_STORE = "handles";
+
+  function idbRequest(mode, makeRequest) {
+    return new Promise((resolve, reject) => {
+      const open = indexedDB.open(IDB_NAME, 1);
+      open.onupgradeneeded = () => open.result.createObjectStore(IDB_STORE);
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const db = open.result;
+        const tx = db.transaction(IDB_STORE, mode);
+        const req = makeRequest(tx.objectStore(IDB_STORE));
+        tx.oncomplete = () => { db.close(); resolve(req.result); };
+        tx.onerror = tx.onabort = () => { db.close(); reject(tx.error); };
+      };
+    });
+  }
+
+  function handleKey(side) { return STORAGE_PREFIX + cfg.title + "\u0000" + side; }
+
+  async function rememberHandle(side, handle) {
+    try { await idbRequest("readwrite", (store) => store.put(handle, handleKey(side))); } catch (e) { /* optional */ }
+  }
+
+  async function recallHandles() {
+    if (!loadMode || !canPick) return;
+    let found = false;
+    for (const side of SIDES) {
+      try {
+        const handle = await idbRequest("readonly", (store) => store.get(handleKey(side)));
+        if (handle && !state.saved[side]) { state.saved[side] = handle; found = true; }
+      } catch (e) { /* optional */ }
+    }
+    if (found && needsLoad()) renderContent();
+  }
+
+  // A drop in load mode fills the side whose expected file name matches, then any side
+  // still empty; in embed mode it replaces A, as before.
+  function dropFiles(files) {
+    if (!loadMode) { if (files[0]) loadFile(files[0], "a"); return; }
+    const free = SIDES.slice();
+    for (const file of files.slice(0, SIDES.length)) {
+      const side = free.find((s) => expectedName[s] === file.name) || free.find((s) => !state.data[s]) || free[0];
+      free.splice(free.indexOf(side), 1);
+      loadFile(file, side);
+    }
+  }
+
   const overlay = document.getElementById("drop-overlay");
-  overlay.textContent = fmt(T.dropHint, { label: sideLabel.a });
+  overlay.textContent = loadMode ? T.dropHintLoad : fmt(T.dropHint, { label: sideLabel.a });
   let dragDepth = 0;
   document.addEventListener("dragenter", (e) => { if (e.dataTransfer && [...e.dataTransfer.types].includes("Files")) { dragDepth++; overlay.hidden = false; } });
   document.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) overlay.hidden = true; });
@@ -1153,8 +1322,7 @@
     e.preventDefault();
     dragDepth = 0;
     overlay.hidden = true;
-    const file = e.dataTransfer && e.dataTransfer.files[0];
-    if (file) loadFile(file, "a");
+    if (e.dataTransfer) dropFiles([...e.dataTransfer.files]);
   });
 
   let resizeTimer = null;
@@ -1168,4 +1336,5 @@
 
   initReview();
   renderAll();
+  recallHandles();
 })();

@@ -3,9 +3,12 @@
 
 Usage:
     python3 build_dashboard.py --config cfg.json --out out.html [--csv a.csv] [--csv-b b.csv]
+        [--mode embed|load]
 
 CSV paths in the config are resolved relative to the config file; --csv / --csv-b
-override them (resolved relative to the current directory). Python 3 stdlib only.
+override them (resolved relative to the current directory). In "load" mode the CSVs
+are still read and validated, but no rows are written to the HTML: the page asks for
+the CSV when it is opened. Python 3 stdlib only.
 """
 
 from __future__ import annotations
@@ -26,9 +29,10 @@ TABS = ("overview", "compare", "review", "table")
 AGGREGATES = ("mean", "sum", "rate")
 BETTER = ("higher", "lower")
 LANGS = ("ja", "en")
+MODES = ("embed", "load")
 
 TOP_KEYS = {"title", "lang", "tabs", "data", "columns", "order", "histogram", "review"}
-DATA_KEYS = {"csv", "csv_b", "label_a", "label_b"}
+DATA_KEYS = {"csv", "csv_b", "label_a", "label_b", "mode"}
 COLUMN_KEYS = {"id", "text", "category", "status", "verdict", "metrics"}
 METRIC_KEYS = {"column", "label", "unit", "aggregate", "better", "regression_threshold"}
 REVIEW_KEYS = {"labels"}
@@ -96,6 +100,9 @@ def validate_config(cfg: object) -> dict:
     require_str(data, "csv", "config.data")
     for key in ("csv_b", "label_a", "label_b"):
         optional_str(data, key, "config.data")
+    mode = data.setdefault("mode", "embed")
+    if mode not in MODES:
+        fail(f"config.data.mode must be one of {list(MODES)}, got {mode!r}")
     if "compare" in tabs and not data.get("csv_b"):
         fail('config.tabs includes "compare" but config.data.csv_b is not set')
 
@@ -303,7 +310,7 @@ def html_escape(text: str) -> str:
 
 
 def build(config_path: Path, out_path: Path, csv_override: Path | None,
-          csv_b_override: Path | None) -> list[str]:
+          csv_b_override: Path | None, mode_override: str | None) -> list[str]:
     if not config_path.is_file():
         fail(f"config not found: {config_path}")
     try:
@@ -312,6 +319,8 @@ def build(config_path: Path, out_path: Path, csv_override: Path | None,
         fail(f"config is not valid JSON ({e}): {config_path}")
     cfg = validate_config(raw_cfg)
     data = cfg["data"]
+    if mode_override:
+        data["mode"] = mode_override
     base = config_path.resolve().parent
 
     path_a = csv_override.resolve() if csv_override else base / data["csv"]
@@ -335,12 +344,20 @@ def build(config_path: Path, out_path: Path, csv_override: Path | None,
         if mismatch["only_b"]:
             warnings.append(f"ids only in B ({len(mismatch['only_b'])}): {mismatch['only_b']}")
 
-    payload = {
-        "config": cfg,
-        "a": {"name": table_a.path.name, "headers": table_a.headers, "rows": table_a.rows},
-        "b": None if table_b is None else {
-            "name": table_b.path.name, "headers": table_b.headers, "rows": table_b.rows},
-    }
+    # The HTML may be shared, so it carries file names only, never the build machine's
+    # paths. In load mode these names are what the page asks the user to pick.
+    data["csv"] = table_a.path.name
+    if table_b is not None:
+        data["csv_b"] = table_b.path.name
+    if data["mode"] == "load":
+        payload = {"config": cfg, "a": None, "b": None}
+    else:
+        payload = {
+            "config": cfg,
+            "a": {"name": table_a.path.name, "headers": table_a.headers, "rows": table_a.rows},
+            "b": None if table_b is None else {
+                "name": table_b.path.name, "headers": table_b.headers, "rows": table_b.rows},
+        }
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(render(cfg, payload), encoding="utf-8")
     return warnings
@@ -352,9 +369,10 @@ def main() -> int:
     parser.add_argument("--out", required=True, type=Path, help="output HTML file")
     parser.add_argument("--csv", type=Path, help="override config.data.csv")
     parser.add_argument("--csv-b", type=Path, help="override config.data.csv_b")
+    parser.add_argument("--mode", choices=MODES, help="override config.data.mode")
     args = parser.parse_args()
     try:
-        warnings = build(args.config, args.out, args.csv, args.csv_b)
+        warnings = build(args.config, args.out, args.csv, args.csv_b, args.mode)
     except BuildError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1

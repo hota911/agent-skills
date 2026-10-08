@@ -11,7 +11,7 @@ file.
 | `title` | yes | string | Page title and heading. Also part of the review storage key. |
 | `lang` | no (default `"ja"`) | `"ja"` \| `"en"` | Language of all UI text. |
 | `tabs` | yes | list | Non-empty, no repeats, from `overview`, `compare`, `review`, `table`. The first entry is the tab shown on open. |
-| `data` | yes | object | Which CSV files to embed. See below. |
+| `data` | yes | object | Which CSV files to use and whether to embed them. See below. |
 | `columns` | yes | object | Roles of CSV columns. See below. |
 | `order` | no | object | `{ "<column>": ["value", ...] }` - display order for category / status / verdict values. |
 | `histogram` | no | string | A metric column with `aggregate` `mean` or `sum` to plot as a histogram in the overview. Defaults to the first such metric. |
@@ -24,6 +24,21 @@ file.
 | `csv` | yes | The main CSV (side A when comparing). |
 | `csv_b` | required by `compare` | The second CSV (side B). |
 | `label_a`, `label_b` | no (default `A`, `B`) | Short names shown everywhere, for example `"現行"` and `"新"`. |
+| `mode` | no (default `"embed"`) | `"embed"` inlines the rows into the HTML. `"load"` writes no rows; the page asks for the CSV each time it opens. `--mode` on the command line overrides it. |
+
+In both modes the build reads the CSVs and runs every check below, and the HTML keeps
+only the file names (`golden_model_a.csv`), never the paths. In load mode those names
+are shown as the expected files, and a file loaded in the browser is checked against
+the same rules; a file that fails stays unloaded and the error is shown.
+
+### Review storage key in load mode
+
+Embed mode keys review labels by the title plus the full data, so a different snapshot
+starts with no labels. Load mode exists so the same CSV can be reloaded after it
+changes, so it keys labels by the title plus the sorted set of ids instead: labels
+survive a reload as long as the ids are the same, even when the text or metrics
+changed. Adding or removing an id gives a new key and an empty review; export the
+labels before changing the id set.
 
 CSV requirements, checked at build time and again when a file is loaded in the browser:
 
