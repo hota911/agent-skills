@@ -32,11 +32,14 @@
       parseErr: "データ {r} 行目: {msg}", reserved: "列 {cols} はレビューの書き出し用に予約されています",
       noData: "データがありません",
       loadTitle: "CSV を選択 / ドロップ",
-      loadIntro: "この HTML にはデータが入っていません。CSV を選ぶかページにドロップすると表示します。データを更新したら「読み込み直す」で反映できます。",
-      expectedFile: "想定するファイル: {name}", requiredCols: "必須の列: {cols}",
+      loadIntro: "この HTML にはデータが入っていません。http で配信していれば既定の場所の CSV を開いたときに自動で読み込みます。それ以外は CSV を選ぶかページにドロップしてください。データを更新したら「読み込み直す」で反映できます。",
+      expectedFile: "想定するファイル: {name}", requiredCols: "必須の列: {cols}", defaultPath: "既定の場所（HTML からの相対パス）: {path}",
       chooseFile: "ファイルを選ぶ", notLoaded: "未読み込み", reload: "読み込み直す",
       lastFile: "前回のファイルを読み込む ({name})", loadedAt: "{time} に読み込み",
-      dropHintLoad: "ドロップした CSV を読み込みます"
+      dropHintLoad: "ドロップした CSV を読み込みます",
+      autoLoading: "{path} を読み込んでいます…",
+      autoFile: "file:// で開いているため自動では読み込みません。ブラウザは隣にあるファイルの読み取りを禁止しています。フォルダを http で配信すると（例: python3 -m http.server）開いたときに自動で読み込みます。",
+      autoFail: "{path} を自動で読み込めませんでした（{msg}）。ファイルを選ぶかドロップしてください。"
     },
     en: {
       tabs: { overview: "Overview", compare: "Compare", review: "Review", table: "Table" },
@@ -67,11 +70,14 @@
       parseErr: "data row {r}: {msg}", reserved: "column(s) {cols} are reserved for review export",
       noData: "No data",
       loadTitle: "Choose or drop CSV",
-      loadIntro: "This HTML contains no data. Choose a CSV or drop it on the page to show it. When the data changes, use Reload to pick it up.",
-      expectedFile: "Expected file: {name}", requiredCols: "Required columns: {cols}",
+      loadIntro: "This HTML contains no data. Served over http, it loads the CSV from its default location when it opens. Otherwise choose a CSV or drop it on the page. When the data changes, use Reload to pick it up.",
+      expectedFile: "Expected file: {name}", requiredCols: "Required columns: {cols}", defaultPath: "Default location (relative to the HTML): {path}",
       chooseFile: "Choose file", notLoaded: "Not loaded", reload: "Reload",
       lastFile: "Load previous file ({name})", loadedAt: "loaded {time}",
-      dropHintLoad: "Drop to load the CSV"
+      dropHintLoad: "Drop to load the CSV",
+      autoLoading: "Loading {path}…",
+      autoFile: "Opened from file://, so nothing is loaded automatically: browsers block reading neighbouring files. Serve the folder over http (for example python3 -m http.server) to load it on open.",
+      autoFail: "Could not load {path} automatically ({msg}). Choose the file or drop it."
     }
   };
 
@@ -89,9 +95,12 @@
   const metrics = cols.metrics;
   const hasB = Boolean(cfg.data.csv_b);
   const SIDES = hasB ? ["a", "b"] : ["a"];
-  // "load" mode: the HTML carries no rows; the user picks the CSV(s) every time it opens.
+  // "load" mode: the HTML carries no rows. Served over http(s) it fetches the CSV(s) from
+  // the default paths (relative to the HTML); otherwise the user picks them on open.
   const loadMode = cfg.data.mode === "load";
   const expectedName = { a: cfg.data.csv, b: cfg.data.csv_b };
+  const defaultPath = payload.default_paths || {};
+  const canFetch = location.protocol === "http:" || location.protocol === "https:";
   const sideLabel = { a: cfg.data.label_a || "A", b: cfg.data.label_b || "B" };
   const stackCol = cols.status || cols.verdict || null;
   const numFmtCache = {};
@@ -103,6 +112,11 @@
     // session, `saved` were restored from IndexedDB and still need a permission prompt.
     handles: { a: null, b: null },
     saved: { a: null, b: null },
+    // Sides whose current data came from fetching the default path; Reload re-fetches them.
+    fetched: { a: false, b: false },
+    autoLoading: false,
+    // Why the default CSV was not loaded on open, shown in the load panel.
+    autoNotes: [],
     tab: cfg.tabs[0],
     side: "a",
     filters: { category: "", status: "", verdict: "", q: "" },
@@ -661,7 +675,7 @@
   function sourceText(d) {
     const when = d.origin === "embedded" ? T.embedded
       : loadMode ? fmt(T.loadedAt, { time: d.loadedAt.toLocaleString(cfg.lang) }) : T.loaded;
-    return d.name + " (" + fmt(T.rows, { n: d.rows.length }) + ", " + when + ")";
+    return (d.path || d.name) + " (" + fmt(T.rows, { n: d.rows.length }) + ", " + when + ")";
   }
 
   function renderTabs() {
@@ -1158,42 +1172,107 @@
 
   // ---------- loading CSV in the browser ----------
 
-  // `handle` is the FileSystemFileHandle the file came from, if any; it enables Reload.
-  function loadFile(file, side, handle) {
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: "greedy",
-      transformHeader: (h) => h.replace(/^\uFEFF/, ""),
-      complete: (res) => {
-        const headers = res.meta.fields || [];
-        const errors = res.errors.slice(0, 5).map((e) => fmt(T.parseErr, { r: (e.row ?? 0) + 1, msg: e.message }));
-        if (!errors.length) errors.push(...validateTable(headers, res.data).slice(0, 10));
-        if (errors.length) {
-          state.errors = [fmt(T.loadErr, { name: file.name })].concat(errors);
-          renderContent();
-          return;
-        }
-        const rows = res.data.map((r) => {
-          const o = {};
-          for (const h of headers) o[h] = r[h] ?? "";
-          return o;
-        });
-        state.errors = [];
-        state.data[side] = { name: file.name, headers: headers, rows: rows, origin: "loaded", loadedAt: new Date() };
-        state.handles[side] = handle || null;
-        if (handle) {
-          state.saved[side] = handle;
-          rememberHandle(side, handle);
-        }
-        state.selectedId = null;
-        if (side === "a") initReview();
-        renderAll();
-      },
-      error: (err) => {
-        state.errors = [fmt(T.loadErr, { name: file.name }), String(err && err.message ? err.message : err)];
-        renderContent();
-      }
+  function errorText(err) { return String(err && err.message ? err.message : err); }
+
+  // Parse a File or CSV text and run the same checks as the build script. Resolves to
+  // { headers, rows }; rejects with an Error whose `details` lists every problem found.
+  function parseCsv(input) {
+    return new Promise((resolve, reject) => {
+      Papa.parse(input, {
+        header: true,
+        skipEmptyLines: "greedy",
+        transformHeader: (h) => h.replace(/^\uFEFF/, ""),
+        complete: (res) => {
+          const headers = res.meta.fields || [];
+          const errors = res.errors.slice(0, 5).map((e) => fmt(T.parseErr, { r: (e.row ?? 0) + 1, msg: e.message }));
+          if (!errors.length) errors.push(...validateTable(headers, res.data).slice(0, 10));
+          if (errors.length) {
+            const err = new Error(errors.join("; "));
+            err.details = errors;
+            reject(err);
+            return;
+          }
+          const rows = res.data.map((r) => {
+            const o = {};
+            for (const h of headers) o[h] = r[h] ?? "";
+            return o;
+          });
+          resolve({ headers: headers, rows: rows });
+        },
+        error: reject
+      });
     });
+  }
+
+  function setSide(side, table, name, path) {
+    state.errors = [];
+    state.data[side] = { name: name, path: path || null, headers: table.headers, rows: table.rows, origin: "loaded", loadedAt: new Date() };
+    state.selectedId = null;
+    if (side === "a") initReview();
+    renderAll();
+  }
+
+  function showLoadError(name, err) {
+    state.errors = [fmt(T.loadErr, { name: name })].concat(err && err.details ? err.details : [errorText(err)]);
+    renderContent();
+  }
+
+  // `handle` is the FileSystemFileHandle the file came from, if any; it enables Reload.
+  async function loadFile(file, side, handle) {
+    let table;
+    try {
+      table = await parseCsv(file);
+    } catch (err) {
+      showLoadError(file.name, err);
+      return;
+    }
+    state.handles[side] = handle || null;
+    state.fetched[side] = false;
+    if (handle) {
+      state.saved[side] = handle;
+      rememberHandle(side, handle);
+    }
+    setSide(side, table, file.name);
+  }
+
+  // ---------- load mode: fetching the default CSV over http(s) ----------
+
+  async function fetchDefault(side) {
+    const path = defaultPath[side];
+    const url = new URL(path.split("/").map(encodeURIComponent).join("/"), location.href);
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return parseCsv(await res.text());
+  }
+
+  // On open, a failure only adds a note and leaves the side to the picker; on Reload it
+  // is an error and the previously loaded data stays.
+  async function loadDefault(side, onOpen) {
+    const path = defaultPath[side];
+    let table;
+    try {
+      table = await fetchDefault(side);
+    } catch (err) {
+      if (onOpen) state.autoNotes.push(fmt(T.autoFail, { path: path, msg: errorText(err) }));
+      else showLoadError(path, err);
+      return;
+    }
+    state.handles[side] = null;
+    state.fetched[side] = true;
+    setSide(side, table, path.split("/").pop(), path);
+  }
+
+  async function autoLoad() {
+    if (!loadMode) return;
+    if (!canFetch) {
+      state.autoNotes.push(T.autoFile);
+    } else {
+      state.autoLoading = true;
+      renderContent();
+      for (const side of SIDES) await loadDefault(side, true);
+      state.autoLoading = false;
+    }
+    if (needsLoad()) renderContent();
   }
 
   // ---------- load mode: empty state, picker, remembered files ----------
@@ -1202,14 +1281,18 @@
     const card = el("div", { class: "card load-panel" }, [
       el("h2", { text: T.loadTitle }),
       el("p", { class: "muted", text: T.loadIntro }),
+      ...state.autoNotes.map((n) => el("p", { class: "small", text: "ⓘ " + n })),
       el("p", { class: "small", text: fmt(T.requiredCols, { cols: requiredColumns().join(", ") }) })
     ]);
     for (const side of SIDES) {
       const d = state.data[side];
       const saved = state.saved[side];
+      const status = d ? "✓ " + sourceText(d)
+        : state.autoLoading ? fmt(T.autoLoading, { path: defaultPath[side] }) : T.notLoaded;
       card.appendChild(el("div", { class: "load-side" }, [
         el("h3", { text: (hasB ? sideLabel[side] + " — " : "") + fmt(T.expectedFile, { name: expectedName[side] }) }),
-        el("p", { class: "small" + (d ? "" : " muted"), text: d ? "✓ " + sourceText(d) : T.notLoaded }),
+        defaultPath[side] ? el("p", { class: "small muted", text: fmt(T.defaultPath, { path: defaultPath[side] }) }) : null,
+        el("p", { class: "small" + (d ? "" : " muted"), text: status }),
         el("div", { class: "load-actions" }, [
           canPick
             ? el("button", { class: "btn", type: "button", text: T.chooseFile, onclick: () => pickFile(side) })
@@ -1220,11 +1303,6 @@
       ]));
     }
     root.appendChild(card);
-  }
-
-  function showLoadError(name, err) {
-    state.errors = [fmt(T.loadErr, { name: name }), String(err && err.message ? err.message : err)];
-    renderContent();
   }
 
   async function pickFile(side) {
@@ -1249,11 +1327,17 @@
     }
   }
 
-  // Re-read the same files when every side came from a picker; otherwise go back to the
-  // empty state so the user can pick or drop the updated CSV.
+  // Re-read every side from where it came from (a fetched default path or a picked file);
+  // if any side was dropped or chosen without a handle, go back to the empty state so the
+  // user can pick or drop the updated CSV.
   function reload() {
-    if (SIDES.every((s) => state.handles[s])) {
-      (async () => { for (const s of SIDES) await readHandle(s, state.handles[s]); })();
+    if (SIDES.every((s) => state.fetched[s] || state.handles[s])) {
+      (async () => {
+        for (const s of SIDES) {
+          if (state.fetched[s]) await loadDefault(s, false);
+          else await readHandle(s, state.handles[s]);
+        }
+      })();
       return;
     }
     state.data = { a: null, b: null };
@@ -1337,4 +1421,5 @@
   initReview();
   renderAll();
   recallHandles();
+  autoLoad();
 })();

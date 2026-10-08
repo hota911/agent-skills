@@ -7,8 +7,8 @@ description: Turn local CSV files into one self-contained offline HTML dashboard
 
 Build a single HTML file from one or two CSV files plus a small JSON config. The file
 opens from disk with no server and no network: Tabulator, PapaParse, the app code, and
-the data are all inlined (or, in load mode, the data is picked when the page opens).
-The user can then sort, filter, read long text, compare A/B,
+the data are all inlined (or, in load mode, the data is read from the CSV when the page
+opens). The user can then sort, filter, read long text, compare A/B,
 record review labels, and export CSV.
 
 Three jobs, selected by `tabs` in the config:
@@ -23,15 +23,16 @@ Three jobs, selected by `tabs` in the config:
 
 1. **Inspect the CSV headers and a few rows** before writing anything. Note the id
    column, long-text columns, the category / status / verdict columns, and numeric or
-   boolean metric columns. Do not guess column names.
-2. **Ask the user which data mode they want**, with these tradeoffs, before building:
-   - `embed` (default): a fixed snapshot in one shareable file. The file contains
-     every row of the CSV, so anyone it is shared with can read the data.
-   - `load`: the HTML contains no data rows and asks for the CSV each time it opens,
-     so a data update only needs "読み込み直す" / Reload. Safe to share; each viewer
-     needs the CSV themselves.
-
-   Set it as `data.mode` in the config or pass `--mode embed|load`.
+   boolean metric columns. Do not guess column names. Note data anomalies you see on
+   the way (a verdict that contradicts its rationale, ids present in only one file,
+   duplicate texts) to report later; do not fix the data.
+2. **Pick the data mode without asking.** Use `embed` (the default): a fixed snapshot
+   in one file, containing every row of the CSV. Use `load` only when the request
+   implies it: the data is refreshed regularly, the data must not live in the HTML, or
+   the HTML is distributed separately from the data. A `load` HTML contains no rows;
+   it reads the CSV when it opens, so a data update only needs "読み込み直す" / Reload.
+   Set `data.mode` in the config or pass `--mode load`. When choosing `load`, quote the
+   words in the request that led to it.
 3. **Write the config** next to the CSVs (paths in it resolve relative to the config
    file). Read [references/config.md](references/config.md) for every key and one
    example per job. Keep it minimal; unknown keys are an error by design.
@@ -43,7 +44,9 @@ Three jobs, selected by `tabs` in the config:
 
    Python 3 standard library only; nothing to install. `--csv` / `--csv-b`
    override the CSV paths for a one-off run (resolved from the current directory).
-   Load mode still reads the CSVs at build time to check columns and ids.
+   Load mode still reads the CSVs at build time to check columns and ids, and stores
+   each CSV's path relative to `--out` as its default location, so write the HTML
+   next to the CSV (or where that relative path stays valid).
 5. **Read the build output.** It prints `wrote <path> (<bytes> bytes)` on success, or
    `error: ...` and exits 1. A warning such as `ids only in A (1): [...]` is not
    fatal; the same notice appears as a banner in the dashboard. Fix errors by
@@ -52,12 +55,19 @@ Three jobs, selected by `tabs` in the config:
 6. **Verify before handing over.** If a browser tool is available, open the file and
    check each tab: no console errors, charts sized to their cards, numbers that match
    a quick count from the CSV (for example the number of rows and of `true` values).
-   In load mode, load the CSV first (drop it on the page). If no browser is
-   available, say so instead of claiming it renders.
-7. **Hand the HTML file to the user** with a one-paragraph summary of what is in it
-   and how to use it (which tab answers their question, keyboard keys for review,
-   where the export button is). Mention any build warning. In load mode, name the
-   CSV file(s) the page will ask for.
+   In load mode, serve the folder (`python3 -m http.server`) so the CSV loads, or drop
+   it on the page. If no browser is available, say so instead of claiming it renders.
+7. **Hand the HTML file to the user** with a short reply covering:
+   - the HTML path and size (from the build output);
+   - what is in it and how to use it: which tab answers their question, keyboard keys
+     for review, where the export / download buttons are;
+   - any build warning;
+   - data anomalies noticed in step 1, one line each, without fixing them;
+   - in load mode: the words in the request that led to load; the CSV file(s) the page
+     reads; that the HTML must sit next to the CSV (or keep the same relative path);
+     that served over http it loads the CSV automatically, while opened by
+     double-click (file://) it needs one click on "前回のファイルを読み込む" (Chromium,
+     after the first pick) or a file pick / drop; and that every viewer needs the CSV.
 
 ## Choosing the config for a request
 
@@ -98,22 +108,27 @@ Three jobs, selected by `tabs` in the config:
 - **Loading other data:** the "load CSV" buttons and drag-and-drop replace the
   embedded data in the browser only (a dropped file replaces A). The same column
   checks as the build script run; a mismatch shows an error and keeps the old data.
-- **Load mode:** the page opens on "CSV を選択 / ドロップ" with the expected file
-  names and required columns. Dropped files go to the side whose expected name
-  matches. The header shows each file's name, row count, and load time. In Chromium
-  browsers a picked file is remembered, so after reopening the page one click on
-  "前回のファイルを読み込む" (plus the browser's permission prompt) re-reads it, and
-  "読み込み直す" re-reads the same files directly; elsewhere it returns to the picker.
+- **Load mode:** served over http(s), the page fetches each CSV from its default
+  path (relative to the HTML) on open, checks it like a picked file, and renders;
+  "読み込み直す" fetches it again. Opened from file://, or when the fetch fails (404,
+  wrong columns), it shows "CSV を選択 / ドロップ" with a one-line reason, the expected
+  file names, and the required columns. Dropped files go to the side whose expected
+  name matches. The header shows each file's path or name, row count, and load time.
+  In Chromium browsers a picked file is remembered, so after reopening the page one
+  click on "前回のファイルを読み込む" (plus the browser's permission prompt) re-reads
+  it, and "読み込み直す" re-reads the same files directly; elsewhere it returns to the
+  picker.
 
 ## Security and privacy notes
 
-- The HTML is self-contained: a Content-Security-Policy forbids network requests,
-  external scripts, and remote images. Nothing is uploaded anywhere.
+- The HTML is self-contained: a Content-Security-Policy forbids external scripts and
+  remote images, and network requests except, in load mode, reading the CSV from the
+  same server (`connect-src 'self'`). Nothing is uploaded anywhere.
 - **In embed mode the CSV data is in the HTML.** Anyone who receives the file can read
   every row, including columns the dashboard does not show. Tell the user this before
   they share it; drop sensitive columns from the CSV first, or use load mode. A
   load-mode file holds only the config (title, column names, labels, `order` values)
-  and the CSV file names, never paths or rows.
+  and each CSV's path relative to the HTML, never absolute paths or rows.
 - CSV values are inserted as text, never as HTML, so markup in the data is displayed
   literally.
 - Review labels live only in that browser's localStorage. Clearing site data, another

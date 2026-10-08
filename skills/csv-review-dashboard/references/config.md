@@ -24,12 +24,30 @@ file.
 | `csv` | yes | The main CSV (side A when comparing). |
 | `csv_b` | required by `compare` | The second CSV (side B). |
 | `label_a`, `label_b` | no (default `A`, `B`) | Short names shown everywhere, for example `"現行"` and `"新"`. |
-| `mode` | no (default `"embed"`) | `"embed"` inlines the rows into the HTML. `"load"` writes no rows; the page asks for the CSV each time it opens. `--mode` on the command line overrides it. |
+| `mode` | no (default `"embed"`) | `"embed"` inlines the rows into the HTML. `"load"` writes no rows; the page reads the CSV each time it opens. `--mode` on the command line overrides it. |
 
-In both modes the build reads the CSVs and runs every check below, and the HTML keeps
-only the file names (`golden_model_a.csv`), never the paths. In load mode those names
-are shown as the expected files, and a file loaded in the browser is checked against
-the same rules; a file that fails stays unloaded and the error is shown.
+In both modes the build reads the CSVs and runs every check below. The config in the
+HTML keeps only the file names (`golden_model_a.csv`), never the paths.
+
+### Default CSV location in load mode
+
+A load-mode HTML also stores each CSV's path relative to the output HTML's folder,
+with `/` separators (`golden_model_a.csv` when the HTML is written beside it,
+`../data/golden_model_a.csv` when it is not). Absolute paths are never stored: when the
+CSV and the HTML share no folder below the filesystem root, the build stores just the
+file name and prints a warning.
+
+When the page is opened:
+
+- over `http:` or `https:`, it fetches each default path (`cache: 'no-store'`) and
+  checks the file like a picked one. "読み込み直す" / Reload fetches it again.
+- from `file:`, or when the fetch fails (404, network, Content-Security-Policy, parse
+  or column error), it shows the picker with a one-line reason. In Chromium browsers a
+  file picked earlier is offered as "前回のファイルを読み込む".
+
+The file picker and drop work in every case. A file loaded in the browser is checked
+against the same rules as the build; a file that fails stays unloaded and the error is
+shown.
 
 ### Review storage key in load mode
 

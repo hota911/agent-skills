@@ -12,6 +12,7 @@
         "correct を aggregate rate・better higher、latency_ms を better lower・regression_threshold 300 で定義している",
         "build_dashboard.py を実行し、出力された HTML のパスとサイズを示す",
         "g037 が A にだけある警告を伝え、比較から除外されることを説明する",
+        "悪化した 7 件の id として g004, g018, g034, g052（correct）と g009, g023, g046（latency）を挙げる（cost_usd に閾値を置いた場合は、その閾値で加わる id を別に示す）",
         "生成物を開いて確認したか、ブラウザで確認できなかったかを正直に述べる"
       ]
     },
@@ -25,7 +26,8 @@
         "llm_verdict を columns.verdict に、claim・source_excerpt・llm_rationale を columns.text に入れている",
         "1〜3 で判定、←→ で移動、N でメモといったキー操作を説明する",
         "判定はブラウザに保存され、書き出すと human_label と human_note の列が付くことを説明する",
-        "HTML に CSV の全行が埋め込まれるため、共有前に中身に注意が必要だと伝える"
+        "HTML に CSV の全行が埋め込まれるため、共有前に中身に注意が必要だと伝える",
+        "llm_verdict が llm_rationale と矛盾する行（例: f006, f019, f030 は supported なのに根拠が裏づけを否定している）を指摘し、データは修正しない"
       ]
     },
     {
@@ -38,19 +40,21 @@
         "Uses tabs overview and table, with category and status columns from the CSV header",
         "Sets order.status to the workflow order 未対応, 対応中, 対応済 instead of first-seen order",
         "Runs the build script and reports the output path; does not claim it rendered without checking",
-        "Explains that the file works offline with no server and that the table can be filtered and downloaded"
+        "Explains that the file works offline with no server and that the table can be filtered and downloaded",
+        "States that the table can download the currently filtered rows as CSV"
       ]
     },
     {
       "id": 4,
       "prompt": "feedback.csv（examples/ にあります）は毎週更新されます。チームに HTML を配りたいのですが、データ自体は HTML に入れたくありません。更新のたびに読み込み直せる形にしてください。",
-      "expected_output": "data.mode を load にした設定（または --mode load）で HTML を生成し、行データが入っていないこと、開いたときに feedback.csv を選ぶこと、更新時は読み込み直すことを説明する。",
+      "expected_output": "embed か load かを質問せずに、依頼文から load を選んで HTML を CSV の隣に生成し、行データが入っていないこと、http で配信すれば自動で読み込み、ダブルクリックで開いたときは1クリックかファイル選択が必要なこと、更新時は読み込み直すことを説明する。",
       "files": ["examples/feedback.csv"],
       "assertions": [
-        "ビルド前に embed と load のどちらにするかを、それぞれの利点と注意点を添えて確認するか、依頼文から load と判断した根拠を述べる",
+        "embed と load のどちらにするかを質問せずに load を選び、その根拠として依頼文の言葉（「毎週更新」「データ自体は HTML に入れたくない」など）を引用する",
+        "HTML を CSV の隣に置く（または相対パスを保つ）必要があり、http で配信すれば開いたときに CSV を自動で読み込み、file:// で開いた場合は Chromium での1クリック（前回のファイルを読み込む）かファイルの選択・ドロップが必要だと説明する",
         "config の data.mode を \"load\" にするか、build_dashboard.py に --mode load を渡している",
         "生成した HTML に CSV の行が含まれていないことを確認するか、含まれないと説明する",
-        "開いたら feedback.csv を選ぶかドロップする必要があり、データ更新後は「読み込み直す」で反映できることを説明する",
+        "データ更新後は「読み込み直す」で反映できることを説明する",
         "受け取った人も同じ CSV を手元に持っている必要があることを伝える"
       ]
     }

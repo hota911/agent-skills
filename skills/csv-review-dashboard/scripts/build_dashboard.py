@@ -7,8 +7,9 @@ Usage:
 
 CSV paths in the config are resolved relative to the config file; --csv / --csv-b
 override them (resolved relative to the current directory). In "load" mode the CSVs
-are still read and validated, but no rows are written to the HTML: the page asks for
-the CSV when it is opened. Python 3 stdlib only.
+are still read and validated, but no rows are written to the HTML: it stores each CSV's
+path relative to the output HTML, fetches it on open when served over http(s), and
+otherwise asks for the CSV. Python 3 stdlib only.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ import argparse
 import csv
 import json
 import math
+import os
 import re
 import sys
 from dataclasses import dataclass
@@ -43,6 +45,11 @@ FALSE_VALUES = {"false", "0", "no", "n", "f"}
 
 # Added to exported review CSVs; a source CSV must not already use them.
 REVIEW_EXPORT_COLUMNS = ("human_label", "human_note")
+
+# Embed mode makes no requests at all. Load mode may fetch its default CSV(s) from the
+# same origin when the page is served over http(s); nothing else is allowed.
+CSP_EMBED = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:"
+CSP_LOAD = CSP_EMBED + "; connect-src 'self'"
 
 
 class BuildError(Exception):
@@ -287,6 +294,7 @@ def json_for_script(payload: dict) -> str:
 def render(cfg: dict, payload: dict) -> str:
     template = read_asset("template.html")
     parts = {
+        "CSP": CSP_LOAD if cfg["data"]["mode"] == "load" else CSP_EMBED,
         "TITLE": html_escape(cfg["title"]),
         "LANG": cfg["lang"],
         "NOTICES": notices_comment(),
@@ -302,6 +310,22 @@ def render(cfg: dict, payload: dict) -> str:
         fail(f"template placeholders {sorted(found)} do not match {sorted(parts)}")
     # Single pass so inserted content is never re-scanned for placeholders.
     return re.sub(r"\{\{([A-Z_]+)\}\}", lambda m: parts[m.group(1)], template)
+
+
+def relative_to_html(csv_path: Path, out_path: Path) -> str | None:
+    """The CSV's path relative to the HTML's folder, in posix form.
+
+    None when the two share no folder below the filesystem root: such a path climbs to
+    the root and spells out the absolute location, which the HTML must not carry.
+    """
+    csv_abs, out_dir = csv_path.resolve(), out_path.resolve().parent
+    try:
+        common = Path(os.path.commonpath([csv_abs, out_dir]))
+    except ValueError:  # different drives on Windows
+        return None
+    if common == Path(common.anchor):
+        return None
+    return Path(os.path.relpath(csv_abs, out_dir)).as_posix()
 
 
 def html_escape(text: str) -> str:
@@ -339,18 +363,30 @@ def build(config_path: Path, out_path: Path, csv_override: Path | None,
     mismatch = {"only_a": [], "only_b": []}
     if table_b is not None:
         mismatch = id_mismatch(table_a, table_b, cfg["columns"]["id"])
+        banner = "(also shown as a banner in the dashboard)"
         if mismatch["only_a"]:
-            warnings.append(f"ids only in A ({len(mismatch['only_a'])}): {mismatch['only_a']}")
+            warnings.append(f"ids only in A ({len(mismatch['only_a'])}): {mismatch['only_a']} {banner}")
         if mismatch["only_b"]:
-            warnings.append(f"ids only in B ({len(mismatch['only_b'])}): {mismatch['only_b']}")
+            warnings.append(f"ids only in B ({len(mismatch['only_b'])}): {mismatch['only_b']} {banner}")
 
-    # The HTML may be shared, so it carries file names only, never the build machine's
-    # paths. In load mode these names are what the page asks the user to pick.
+    # The HTML may be shared, so it never carries the build machine's absolute paths. The
+    # config keeps file names, which load mode shows as the files to pick.
     data["csv"] = table_a.path.name
     if table_b is not None:
         data["csv_b"] = table_b.path.name
     if data["mode"] == "load":
-        payload = {"config": cfg, "a": None, "b": None}
+        # Relative to the HTML, so a page served over http fetches the CSV beside it.
+        defaults = {}
+        for side, table in (("a", table_a), ("b", table_b)):
+            if table is None:
+                continue
+            rel = relative_to_html(table.path, out_path)
+            if rel is None:
+                rel = table.path.name
+                warnings.append(f"{table.path} shares no folder with {out_path}, so the default "
+                                f"path is just {rel!r}; put the HTML next to the CSV to auto-load it")
+            defaults[side] = rel
+        payload = {"config": cfg, "a": None, "b": None, "default_paths": defaults}
     else:
         payload = {
             "config": cfg,
@@ -377,7 +413,7 @@ def main() -> int:
         print(f"error: {e}", file=sys.stderr)
         return 1
     for w in warnings:
-        print(f"warning: {w} (also shown as a banner in the dashboard)", file=sys.stderr)
+        print(f"warning: {w}", file=sys.stderr)
     print(f"wrote {args.out} ({args.out.stat().st_size:,} bytes)")
     return 0
 
