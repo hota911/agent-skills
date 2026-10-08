@@ -53,6 +53,15 @@
       "skills": [
         "./skills/delegated-work"
       ]
+    },
+    {
+      "name": "csv-review-dashboard",
+      "description": "Turn local CSV files into one self-contained offline HTML dashboard: compare model A vs B with regressions first, label fact-check items with keyboard shortcuts and export CSV, or triage feedback by category and status.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/csv-review-dashboard"
+      ]
     }
   ]
 }
