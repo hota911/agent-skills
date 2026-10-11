@@ -28,25 +28,48 @@ from pathlib import Path
 SKILL_DIR = Path(__file__).resolve().parent.parent
 ASSETS = SKILL_DIR / "assets"
 
-TABS = ("overview", "compare", "review", "table", "release", "report")
+TABS = ("overview", "compare", "review", "table", "release", "experiment", "report")
 AGGREGATES = ("mean", "sum", "rate")
 BETTER = ("higher", "lower")
 LANGS = ("ja", "en")
 MODES = ("embed", "load")
 
 TOP_KEYS = {"title", "lang", "tabs", "data", "columns", "order", "histogram", "review",
-            "extra_tabs", "release"}
+            "extra_tabs", "release", "experiment"}
 RELEASE_KEYS = {"criteria", "review_labels", "record", "report"}
+EXPERIMENT_KEYS = RELEASE_KEYS | {"hypothesis", "verdict_labels"}
 CRITERION_KEYS = {
     "absolute": {"type", "metric", "min", "max"},
     "relative": {"type", "metric", "max_worse", "max_worse_pct"},
     "regressions": {"type", "max"},
     "critical_categories": {"type", "categories"},
 }
-# The last review label rejects an item (NO-GO). Must match the release tab in app.js.
+# The last review label rejects an item. Must match the release / experiment tab in app.js.
 DEFAULT_REVIEW_LABELS = {"ja": ["許容", "不可"], "en": ["acceptable", "unacceptable"]}
-VERDICTS = ("go", "review", "no-go")
-RECORD_KIND = "dataset-dashboard/release-record"
+
+
+@dataclass(frozen=True)
+class Decision:
+    """A tab that judges each candidate against criteria: "release" or "experiment".
+
+    Both share the criteria, the review of regressed items, the record, and the report;
+    they differ in their keys, the record kind, and the verdict codes. Must match
+    DECISIONS in app.js.
+    """
+    tab: str
+    keys: frozenset[str]
+    record_kind: str
+    # Codes for: every criterion met and no regressed item left unreviewed; a regressed
+    # item left unreviewed; a criterion not met or an item rejected.
+    verdicts: tuple[str, str, str]
+
+
+DECISIONS = {
+    "release": Decision("release", frozenset(RELEASE_KEYS), "dataset-dashboard/release-record",
+                        ("go", "review", "no-go")),
+    "experiment": Decision("experiment", frozenset(EXPERIMENT_KEYS),
+                           "dataset-dashboard/experiment-record", ("pass", "review", "fail")),
+}
 DATA_KEYS = {"csv", "candidates", "label_a", "mode", "records_path"}
 CANDIDATE_KEYS = {"file", "label"}
 # Replaced by data.candidates; a config using them gets an error showing the rewrite.
@@ -230,35 +253,50 @@ def validate_config(cfg: object) -> dict:
         if not script.lower().endswith(".js"):
             fail(f"{where}.script must be a .js file, got {script!r}")
 
-    if "release" in tabs:
-        validate_release(cfg)
-    elif "release" in cfg:
-        fail('config.release is set but "release" is not in config.tabs')
-    has_report = bool(cfg.get("release", {}).get("report"))
+    decision = decision_of(cfg)
+    for name in DECISIONS:
+        if name not in tabs and name in cfg:
+            fail(f'config.{name} is set but "{name}" is not in config.tabs')
+    if decision:
+        validate_decision(cfg, decision)
+    has_report = bool(decision and cfg[decision.tab].get("report"))
     if "report" in tabs and not has_report:
-        fail('config.tabs includes "report" but config.release.report is not set')
+        fail(f'config.tabs includes "report" but config.{decision.tab if decision else "release"}.report '
+             "is not set")
     if has_report and "report" not in tabs:
-        fail('config.release.report is set but "report" is not in config.tabs')
+        fail(f'config.{decision.tab}.report is set but "report" is not in config.tabs')
     return cfg
+
+
+def decision_of(cfg: dict) -> Decision | None:
+    """The release or experiment tab in config.tabs; a config may use only one of them, so
+    the report tab and the review of regressed items always belong to one decision."""
+    found = [DECISIONS[t] for t in cfg["tabs"] if t in DECISIONS]
+    if len(found) > 1:
+        fail('config.tabs may include "release" or "experiment", not both; build a separate '
+             "dashboard for each")
+    return found[0] if found else None
 
 
 def is_number(value: object) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
-def validate_release(cfg: dict) -> None:
-    release = check_keys(cfg.get("release"), RELEASE_KEYS, "config.release")
+def validate_decision(cfg: dict, decision: Decision) -> None:
+    tab = decision.tab
+    where_cfg = f"config.{tab}"
+    section = check_keys(cfg.get(tab), set(decision.keys), where_cfg)
     if not cfg["data"]["candidates"]:
-        fail('config.tabs includes "release" but config.data.candidates is empty')
+        fail(f'config.tabs includes "{tab}" but config.data.candidates is empty')
     metrics = {m["column"]: m for m in cfg["columns"]["metrics"]}
     if not metrics:
-        fail('config.tabs includes "release" but config.columns.metrics is empty')
+        fail(f'config.tabs includes "{tab}" but config.columns.metrics is empty')
 
-    criteria = release.get("criteria")
+    criteria = section.get("criteria")
     if not isinstance(criteria, list) or not criteria:
-        fail("config.release.criteria must be a non-empty list of criteria")
+        fail(f"{where_cfg}.criteria must be a non-empty list of criteria")
     for i, c in enumerate(criteria):
-        where = f"config.release.criteria[{i}]"
+        where = f"{where_cfg}.criteria[{i}]"
         kind = c.get("type") if isinstance(c, dict) else None
         if kind not in CRITERION_KEYS:
             fail(f"{where}.type must be one of {list(CRITERION_KEYS)}")
@@ -301,20 +339,29 @@ def validate_release(cfg: dict) -> None:
                     or not all(isinstance(x, str) and x for x in cats) or len(set(cats)) != len(cats)):
                 fail(f"{where}.categories must be a non-empty list of distinct category values")
 
-    labels = release.setdefault("review_labels", list(DEFAULT_REVIEW_LABELS[cfg["lang"]]))
+    labels = section.setdefault("review_labels", list(DEFAULT_REVIEW_LABELS[cfg["lang"]]))
     if (not isinstance(labels, list) or not 2 <= len(labels) <= 9
             or not all(isinstance(x, str) and x for x in labels) or len(set(labels)) != len(labels)):
-        fail("config.release.review_labels must be 2-9 distinct non-empty strings; the last one "
-             "rejects the item (NO-GO), number keys 1-9 select them")
-    record = optional_str(release, "record", "config.release")
-    report = optional_str(release, "report", "config.release")
+        fail(f"{where_cfg}.review_labels must be 2-9 distinct non-empty strings; the last one "
+             f"rejects the item ({decision.verdicts[2]}), number keys 1-9 select them")
+    record = optional_str(section, "record", where_cfg)
+    report = optional_str(section, "report", where_cfg)
     if record and not record.lower().endswith(".json"):
-        fail(f"config.release.record must be a .json file exported from the release tab, got {record!r}")
+        fail(f"{where_cfg}.record must be a .json file exported from the {tab} tab, got {record!r}")
     if report and not report.lower().endswith(".md"):
-        fail(f"config.release.report must be a .md file, got {report!r}")
+        fail(f"{where_cfg}.report must be a .md file, got {report!r}")
     if report and not record:
-        fail("config.release.report needs config.release.record: the report's verdicts are "
+        fail(f"{where_cfg}.report needs {where_cfg}.record: the report's verdicts are "
              "checked against the record")
+    if tab == "experiment":
+        require_str(section, "hypothesis", where_cfg)
+        names = section.get("verdict_labels")
+        keys = list(decision.verdicts)
+        if (not isinstance(names, dict) or sorted(names) != sorted(keys)
+                or not all(isinstance(v, str) and v.strip() for v in names.values())
+                or len(set(names.values())) != len(names)):
+            fail(f"{where_cfg}.verdict_labels must map {keys} to 3 distinct non-empty strings, "
+                 'for example {"pass": "改善した", "review": "要レビュー", "fail": "改善しなかった"}')
 
 
 def removed_keys_message(data: dict) -> str:
@@ -532,10 +579,10 @@ def id_mismatch(a: Table, b: Table, id_col: str) -> dict[str, list[str]]:
     }
 
 
-# ---------- release decision ----------
-# These functions mirror the release tab in app.js (pairs, classifyPair, aggregate,
-# evaluateCriterion, candidateVerdict) so the build can recompute the verdicts that a
-# record or report states. Keep both sides in step.
+# ---------- release decision and experiment ----------
+# These functions mirror the release / experiment tab in app.js (pairs, classifyPair,
+# aggregate, evaluateCriterion, candidateResult) so the build can recompute the verdicts
+# that a record or report states. Keep both sides in step.
 
 
 def metric_value(row: dict, m: dict) -> float | None:
@@ -619,46 +666,52 @@ def evaluate_criterion(c: dict, metrics: dict[str, dict], pairs: list, regressed
     return pct <= c["max_worse_pct"]
 
 
-def candidate_verdict(cfg: dict, a: Table, b: Table, reviews: dict[str, dict]) -> tuple[str, set[str]]:
+def candidate_verdict(cfg: dict, decision: Decision, a: Table, b: Table,
+                      reviews: dict[str, dict]) -> tuple[str, set[str]]:
     """The verdict code and the ids of regressed items for one candidate."""
     cols = cfg["columns"]
-    release = cfg["release"]
+    section = cfg[decision.tab]
     pairs = pair_rows(a, b, cols["id"])
     regressed = [p for p in pairs if is_regressed(p[1], p[2], cols["metrics"])]
     metrics = {m["column"]: m for m in cols["metrics"]}
     failed = not all(evaluate_criterion(c, metrics, pairs, regressed, cols.get("category"))
-                     for c in release["criteria"])
-    reject = release["review_labels"][-1]
+                     for c in section["criteria"])
+    reject = section["review_labels"][-1]
     labels = [reviews.get(rid, {}).get("label", "") for rid, _, _ in regressed]
+    met, unreviewed, not_met = decision.verdicts
     if failed or reject in labels:
-        verdict = "no-go"
+        verdict = not_met
     elif any(not label for label in labels):
-        verdict = "review"
+        verdict = unreviewed
     else:
-        verdict = "go"
+        verdict = met
     return verdict, {rid for rid, _, _ in regressed}
 
 
-def read_record(path: Path, cfg: dict, tables: dict[str, Table]) -> tuple[dict, dict]:
-    """Validate an exported release record; returns (verdicts, reviews) keyed by candidate label."""
-    where = f"release record {path}"
+def read_record(path: Path, cfg: dict, decision: Decision,
+                tables: dict[str, Table]) -> tuple[dict, dict]:
+    """Validate an exported record; returns (verdicts, reviews) keyed by candidate label."""
+    tab = decision.tab
+    where = f"{tab} record {path}"
     if not path.is_file():
-        fail(f"{where} not found (config.release.record)")
+        fail(f"{where} not found (config.{tab}.record)")
     try:
         rec = json.loads(path.read_text(encoding="utf-8-sig"), parse_constant=reject_constant)
     except UnicodeDecodeError as e:
         fail(f"{where} is not UTF-8 ({e.reason} at byte {e.start})")
     except ValueError as e:
         fail(f"{where} is not valid JSON ({e})")
-    if not isinstance(rec, dict) or rec.get("kind") != RECORD_KIND or rec.get("version") != 1:
-        fail(f"{where} is not a release record exported from the release tab "
-             f"(expected kind {RECORD_KIND!r}, version 1)")
-    release = cfg["release"]
+    if not isinstance(rec, dict) or rec.get("kind") != decision.record_kind or rec.get("version") != 1:
+        fail(f"{where} is not a record exported from the {tab} tab "
+             f"(expected kind {decision.record_kind!r}, version 1)")
+    section = cfg[tab]
     again = "; export the record again from a dashboard built with this config and data"
-    if rec.get("criteria") != release["criteria"]:
-        fail(f"{where}: its criteria differ from config.release.criteria{again}")
-    if rec.get("review_labels") != release["review_labels"]:
-        fail(f"{where}: its review_labels differ from config.release.review_labels{again}")
+    compared = ["criteria", "review_labels"]
+    if tab == "experiment":
+        compared += ["hypothesis", "verdict_labels"]
+    for key in compared:
+        if rec.get(key) != section[key]:
+            fail(f"{where}: the record's {key} and config.{tab}.{key} are different{again}")
     files = rec.get("files")
     if not isinstance(files, dict) or not isinstance(files.get("current"), dict) \
             or files["current"].get("file") != tables["a"].path.name:
@@ -681,8 +734,8 @@ def read_record(path: Path, cfg: dict, tables: dict[str, Table]) -> tuple[dict, 
         table = tables[f"c{i}"]
         if entry.get("file") != table.path.name:
             fail(f"{where}: candidate {label!r} file is {entry.get('file')!r}, not {table.path.name!r}{again}")
-        if entry.get("verdict") not in VERDICTS:
-            fail(f"{where}: candidate {label!r} verdict must be one of {list(VERDICTS)}")
+        if entry.get("verdict") not in decision.verdicts:
+            fail(f"{where}: candidate {label!r} verdict must be one of {list(decision.verdicts)}")
         items = entry.get("reviews")
         if not isinstance(items, list):
             fail(f"{where}: candidate {label!r} reviews must be a list")
@@ -692,12 +745,12 @@ def read_record(path: Path, cfg: dict, tables: dict[str, Table]) -> tuple[dict, 
                     or not isinstance(item.get("label", ""), str) or not isinstance(item.get("note", ""), str):
                 fail(f"{where}: candidate {label!r} has a review that is not "
                      '{"id": str, "label": str, "note": str}')
-            if item.get("label", "") and item["label"] not in release["review_labels"]:
+            if item.get("label", "") and item["label"] not in section["review_labels"]:
                 fail(f"{where}: candidate {label!r} id {item['id']!r} has label {item['label']!r}, "
-                     f"not one of {release['review_labels']}")
+                     f"not one of {section['review_labels']}")
             if item.get("label") or item.get("note"):
                 per_id[item["id"]] = {"label": item.get("label", ""), "note": item.get("note", "")}
-        verdict, regressed = candidate_verdict(cfg, tables["a"], table, per_id)
+        verdict, regressed = candidate_verdict(cfg, decision, tables["a"], table, per_id)
         stray = sorted(set(per_id) - regressed)
         if stray:
             fail(f"{where} does not match the data: candidate {label!r} has reviews for {stray}, "
@@ -710,17 +763,18 @@ def read_record(path: Path, cfg: dict, tables: dict[str, Table]) -> tuple[dict, 
     return verdicts, reviews
 
 
-def read_report(path: Path, verdicts: dict[str, str]) -> str:
+def read_report(path: Path, decision: Decision, verdicts: dict[str, str]) -> str:
     """Check the report's frontmatter verdicts against `verdicts`; returns the body."""
-    where = f"release report {path}"
+    where = f"{decision.tab} report {path}"
+    codes = list(decision.verdicts)
     if not path.is_file():
-        fail(f"{where} not found (config.release.report)")
+        fail(f"{where} not found (config.{decision.tab}.report)")
     try:
         text = path.read_text(encoding="utf-8-sig")
     except UnicodeDecodeError as e:
         fail(f"{where} is not UTF-8 ({e.reason} at byte {e.start})")
     lines = [line.rstrip("\r") for line in text.split("\n")]
-    example = "---\\nverdicts:\\n  <candidate label>: go | review | no-go\\n---"
+    example = "---\\nverdicts:\\n  <candidate label>: " + " | ".join(codes) + "\\n---"
     if not lines or lines[0] != "---" or "---" not in lines[1:]:
         fail(f"{where} must begin with frontmatter: {example}")
     end = lines.index("---", 1)
@@ -740,8 +794,8 @@ def read_report(path: Path, verdicts: dict[str, str]) -> str:
             key = key[1:-1]
         if not in_verdicts or not sep or not key:
             fail(f"{where}, line {n}: expected '  <candidate label>: <verdict>' under 'verdicts:'")
-        if value not in VERDICTS:
-            fail(f"{where}, line {n}: verdict {value!r} must be one of {list(VERDICTS)}")
+        if value not in codes:
+            fail(f"{where}, line {n}: verdict {value!r} must be one of {codes}")
         if key in stated:
             fail(f"{where}, line {n}: candidate {key!r} appears twice")
         stated[key] = value
@@ -762,23 +816,24 @@ def read_report(path: Path, verdicts: dict[str, str]) -> str:
     return "\n".join(lines[end + 1:]).strip("\n")
 
 
-def check_release(cfg: dict, tables: dict[str, Table], base: Path) -> tuple[dict | None, str | None]:
-    """Check the release config against the data; read the record and report if set."""
-    release = cfg["release"]
+def check_decision(cfg: dict, decision: Decision, tables: dict[str, Table],
+                   base: Path) -> tuple[dict | None, str | None]:
+    """Check the release / experiment config against the data; read the record and report if set."""
+    section = cfg[decision.tab]
     cat_col = cfg["columns"].get("category")
     if cat_col:
         present = sorted({cell_text(r[cat_col]) for r in tables["a"].rows})
-        for i, c in enumerate(release["criteria"]):
+        for i, c in enumerate(section["criteria"]):
             if c["type"] != "critical_categories":
                 continue
             missing = [x for x in c["categories"] if x not in present]
             if missing:
-                fail(f"config.release.criteria[{i}].categories {missing} not found in column "
+                fail(f"config.{decision.tab}.criteria[{i}].categories {missing} not found in column "
                      f"{cat_col!r} of {tables['a'].path.name}; values: {present}")
-    if not release.get("record"):
+    if not section.get("record"):
         return None, None
-    verdicts, reviews = read_record(base / release["record"], cfg, tables)
-    report = read_report(base / release["report"], verdicts) if release.get("report") else None
+    verdicts, reviews = read_record(base / section["record"], cfg, decision, tables)
+    report = read_report(base / section["report"], decision, verdicts) if section.get("report") else None
     return {"verdicts": verdicts, "reviews": reviews}, report
 
 
@@ -904,24 +959,24 @@ def build(config_path: Path, out_path: Path, csv_override: Path | None,
             warnings.append(f"ids only in {cand['label']}, not in {data['label_a']} "
                             f"({len(mismatch['only_b'])}): {mismatch['only_b']} {banner}")
 
-    release_record = None
-    release_report = None
-    if "release" in cfg:
-        release_record, release_report = check_release(cfg, tables, base)
+    decision = decision_of(cfg)
+    record = None
+    report = None
+    if decision:
+        record, report = check_decision(cfg, decision, tables, base)
 
     # The HTML may be shared, so it never carries the build machine's absolute paths. The
     # config keeps file names, which load mode shows as the files to pick.
     data["csv"] = tables["a"].path.name
     for i, cand in enumerate(candidates, start=1):
         cand["file"] = tables[f"c{i}"].path.name
-    if "release" in cfg:
+    if decision:
         for key in ("record", "report"):
-            if cfg["release"].get(key):
-                cfg["release"][key] = Path(cfg["release"][key]).name
+            if cfg[decision.tab].get(key):
+                cfg[decision.tab][key] = Path(cfg[decision.tab][key]).name
     # The scripts are inlined; the page only needs each tab's id and title.
     cfg["extra_tabs"] = [{"id": t["id"], "title": t["title"]} for t in cfg["extra_tabs"]]
-    payload: dict = {"config": cfg, "release_record": release_record,
-                     "release_report": release_report}
+    payload: dict = {"config": cfg, "record": record, "report": report}
     if data["mode"] == "load":
         # Relative to the HTML, so a page served over http fetches the file beside it.
         defaults = {}

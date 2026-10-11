@@ -4,7 +4,7 @@
 
   const STRINGS = {
     ja: {
-      tabs: { overview: "概要", compare: "比較", review: "レビュー", table: "表", release: "リリース判定", report: "レポート" },
+      tabs: { overview: "概要", compare: "比較", review: "レビュー", table: "表", release: "リリース判定", experiment: "実験結果", report: "レポート" },
       all: "すべて", search: "検索", searchPh: "id・本文を検索", shown: "表示 {n} / {total} 件",
       dataSide: "表示するデータ", mean: "平均", sum: "合計", perItem: "1件あたり",
       items: "件", other: "その他", rows: "{n} 行", embedded: "ビルド時に埋め込み", loaded: "ブラウザで読み込み",
@@ -69,10 +69,15 @@
       reportStale: "このレポートはビルド時の判定の記録に基づいています。その後この画面でレビューを変えたため、判定が記録と異なります: {diffs}。記録を書き出し直し、レポートを更新してください。",
       staleItem: "{label}（記録: {was} → 現在: {now}）",
       recordTitle: "リリース判定の記録", exportedAt: "書き出した日時", dataFiles: "データ",
-      criteriaH: "判定基準", summaryH: "判定のまとめ", reviewsH: "悪化項目のレビュー"
+      criteriaH: "判定基準", summaryH: "判定のまとめ", reviewsH: "悪化項目のレビュー",
+      hypothesis: "仮説", experimentRecordTitle: "実験結果の記録",
+      experimentRule: "判定の順: 自動の基準を1つでも満たさないか「{reject}」が1件でもあれば「{fail}」、悪化項目にレビューしていないものが残れば「{review}」、それ以外は「{pass}」。95% 区間は判定に使わない。集計はフィルタにかかわらず全件。",
+      ciGuide: "区間の読み方", ciExcludesZero: "区間が0を含まない：差は誤差の範囲を超えている可能性が高い",
+      ciIncludesZero: "区間が0を含む：差は誤差の範囲かもしれない",
+      exportReport: "Markdown を書き出す"
     },
     en: {
-      tabs: { overview: "Overview", compare: "Compare", review: "Review", table: "Table", release: "Release decision", report: "Report" },
+      tabs: { overview: "Overview", compare: "Compare", review: "Review", table: "Table", release: "Release decision", experiment: "Experiment", report: "Report" },
       all: "All", search: "Search", searchPh: "Search id and text", shown: "Showing {n} of {total}",
       dataSide: "Dataset", mean: "mean", sum: "sum", perItem: "per item",
       items: "items", other: "Other", rows: "{n} rows", embedded: "embedded at build", loaded: "loaded in browser",
@@ -137,7 +142,12 @@
       reportStale: "This report is based on the record made at build time. Reviews changed on this page since then, so the verdicts differ from the record: {diffs}. Export the record again and update the report.",
       staleItem: "{label} (record: {was} → now: {now})",
       recordTitle: "Release decision record", exportedAt: "Exported at", dataFiles: "Data",
-      criteriaH: "Criteria", summaryH: "Verdicts", reviewsH: "Reviews of regressed items"
+      criteriaH: "Criteria", summaryH: "Verdicts", reviewsH: "Reviews of regressed items",
+      hypothesis: "Hypothesis", experimentRecordTitle: "Experiment record",
+      experimentRule: "Order: any criterion not met or any \"{reject}\" item means \"{fail}\"; otherwise any regressed item left unreviewed means \"{review}\"; otherwise \"{pass}\". The 95% interval is not used in the verdict. Computed on all items, regardless of the filters.",
+      ciGuide: "Reading the interval", ciExcludesZero: "Interval excludes 0: the difference is likely beyond noise",
+      ciIncludesZero: "Interval includes 0: the difference may be within noise",
+      exportReport: "Export Markdown"
     }
   };
 
@@ -169,8 +179,16 @@
   candidates.forEach((c, i) => { expectedName[CAND_SIDES[i]] = c.file; sideLabel[CAND_SIDES[i]] = c.label; });
   const defaultPath = payload.default_paths || {};
   const canFetch = location.protocol === "http:" || location.protocol === "https:";
-  const release = cfg.release || null;
-  const releaseRecord = payload.release_record || null;
+  // config.release or config.experiment (a config has at most one): verdicts on the
+  // candidates, their record and the report. Must match DECISIONS in build_dashboard.py.
+  const DECISIONS = {
+    release: { kind: "dataset-dashboard/release-record", verdicts: ["go", "review", "no-go"] },
+    experiment: { kind: "dataset-dashboard/experiment-record", verdicts: ["pass", "review", "fail"] }
+  };
+  const decisionTab = cfg.tabs.find((t) => Object.prototype.hasOwnProperty.call(DECISIONS, t)) || null;
+  const decision = decisionTab ? cfg[decisionTab] : null;
+  const isExperiment = decisionTab === "experiment";
+  const decisionRecord = payload.record || null;
   function perSide(make) { return Object.fromEntries(SIDES.map((s) => [s, make(s)])); }
   const stackCol = cols.status || cols.verdict || null;
   const numFmtCache = {};
@@ -202,12 +220,12 @@
     selectedId: null,
     // Release tab: the candidate whose regressed items are being reviewed (null shows the
     // verdicts), the item shown, and per-candidate review labels.
-    releaseSide: null,
-    releaseCursor: null,
-    releaseUnreviewedOnly: false,
-    releaseReview: {},
-    releaseStorageKey: {},
-    releaseStorageOk: false,
+    decisionSide: null,
+    decisionCursor: null,
+    decisionUnreviewedOnly: false,
+    decisionReview: {},
+    decisionStorageKey: {},
+    decisionStorageOk: false,
     review: {},
     storageKey: null,
     storageOk: false,
@@ -1185,18 +1203,18 @@
     ]));
   }
 
-  // The same keys drive the review tab and the release tab's review of one candidate.
+  // The same keys drive the review tab and the release / experiment tab's review of one candidate.
   document.addEventListener("keydown", (e) => {
     const inReview = state.tab === "review" && cfg.review;
-    const inRelease = state.tab === "release" && release && state.releaseSide;
-    if ((!inReview && !inRelease) || e.metaKey || e.ctrlKey || e.altKey) return;
+    const inDecision = state.tab === decisionTab && state.decisionSide;
+    if ((!inReview && !inDecision) || e.metaKey || e.ctrlKey || e.altKey) return;
     const target = e.target;
     const typing = target && (target.tagName === "TEXTAREA" || target.tagName === "INPUT" || target.tagName === "SELECT");
     if (typing) {
       if (e.key === "Escape") target.blur();
       return;
     }
-    const move = inReview ? moveCursor : moveReleaseCursor;
+    const move = inReview ? moveCursor : moveDecisionCursor;
     if (e.key === "ArrowLeft") { e.preventDefault(); move(-1); }
     else if (e.key === "ArrowRight") { e.preventDefault(); move(1); }
     else if (e.key === "n" || e.key === "N") {
@@ -1208,17 +1226,19 @@
         if (label && state.reviewCursor !== null && reviewItems().length) { e.preventDefault(); applyLabel(state.reviewCursor, label); }
       } else {
         const label = REVIEW_LABELS[Number(e.key) - 1];
-        if (label && state.releaseCursor !== null) { e.preventDefault(); applyReleaseLabel(state.releaseCursor, label); }
+        if (label && state.decisionCursor !== null) { e.preventDefault(); applyDecisionLabel(state.decisionCursor, label); }
       }
     }
   });
 
-  // ---------- release decision ----------
+  // ---------- release / experiment decision ----------
 
-  const REVIEW_LABELS = release ? release.review_labels : [];
+  const REVIEW_LABELS = decision ? decision.review_labels : [];
   // The last review label rejects the candidate. Must match candidate_verdict() in build_dashboard.py.
   const REJECT = REVIEW_LABELS.length ? REVIEW_LABELS[REVIEW_LABELS.length - 1] : null;
-  const RECORD_KIND = "dataset-dashboard/release-record";
+  // Verdict codes in the order: met / regressions left unreviewed / not met.
+  const VERDICTS = decision ? DECISIONS[decisionTab].verdicts : [];
+  const VERDICT_MARKS = ["✓", "△", "✕"];
   const metricByColumn = new Map(metrics.map((m) => [m.column, m]));
 
   // What a candidate's stored review belongs to: like the review tab, embed mode uses the
@@ -1229,43 +1249,43 @@
   }
 
   // Per candidate: labels saved in this browser, else the reviews embedded from
-  // release.record. The embedded reviews are part of the key, so rebuilding with a new
+  // the decision's record. The embedded reviews are part of the key, so rebuilding with a new
   // record starts from that record.
-  function initReleaseReview() {
-    state.releaseReview = {};
-    state.releaseStorageKey = {};
-    state.releaseCursor = null;
-    state.releaseStorageOk = false;
-    if (!release || !state.data.a) return;
-    state.releaseStorageOk = true;
+  function initDecisionReview() {
+    state.decisionReview = {};
+    state.decisionStorageKey = {};
+    state.decisionCursor = null;
+    state.decisionStorageOk = false;
+    if (!decision || !state.data.a) return;
+    state.decisionStorageOk = true;
     for (const s of CAND_SIDES) {
       if (!state.data[s]) continue;
-      const embedded = releaseRecord ? releaseRecord.reviews[sideLabel[s]] || {} : {};
-      const key = STORAGE_PREFIX + "release:" + fnv1a(JSON.stringify([cfg.title, sideLabel[s], tableSignature("a"), tableSignature(s), embedded]));
-      state.releaseStorageKey[s] = key;
+      const embedded = decisionRecord ? decisionRecord.reviews[sideLabel[s]] || {} : {};
+      const key = STORAGE_PREFIX + decisionTab + ":" + fnv1a(JSON.stringify([cfg.title, sideLabel[s], tableSignature("a"), tableSignature(s), embedded]));
+      state.decisionStorageKey[s] = key;
       let stored = null;
       try {
         const raw = window.localStorage.getItem(key);
         if (raw) stored = JSON.parse(raw);
       } catch (e) {
-        state.releaseStorageOk = false;
+        state.decisionStorageOk = false;
       }
-      state.releaseReview[s] = isPlainObject(stored) ? stored : JSON.parse(JSON.stringify(embedded));
+      state.decisionReview[s] = isPlainObject(stored) ? stored : JSON.parse(JSON.stringify(embedded));
     }
   }
 
-  function releaseReviewOf(side, id) { return (state.releaseReview[side] || {})[id] || { label: "", note: "" }; }
+  function decisionReviewOf(side, id) { return (state.decisionReview[side] || {})[id] || { label: "", note: "" }; }
 
-  function setReleaseReview(side, id, patch) {
-    const all = state.releaseReview[side] || (state.releaseReview[side] = {});
-    const next = Object.assign({}, releaseReviewOf(side, id), patch);
+  function setDecisionReview(side, id, patch) {
+    const all = state.decisionReview[side] || (state.decisionReview[side] = {});
+    const next = Object.assign({}, decisionReviewOf(side, id), patch);
     if (!next.label && !next.note) delete all[id];
     else all[id] = next;
-    if (!state.releaseStorageOk) return;
+    if (!state.decisionStorageOk) return;
     try {
-      window.localStorage.setItem(state.releaseStorageKey[side], JSON.stringify(all));
+      window.localStorage.setItem(state.decisionStorageKey[side], JSON.stringify(all));
     } catch (e) {
-      state.releaseStorageOk = false;
+      state.decisionStorageOk = false;
       renderContent();
     }
   }
@@ -1299,12 +1319,12 @@
     const regressed = ps.map((p) => ({ p: p, c: classifyPair(p) })).filter((x) => x.c.kind === "regressed");
     regressed.sort(bySeverity);
     const regPairs = regressed.map((x) => x.p);
-    const results = release.criteria.map((c) => evaluateCriterion(c, ps, regPairs));
-    const labels = regPairs.map((p) => releaseReviewOf(side, p.id).label);
+    const results = decision.criteria.map((c) => evaluateCriterion(c, ps, regPairs));
+    const labels = regPairs.map((p) => decisionReviewOf(side, p.id).label);
     const rejected = labels.filter((l) => l === REJECT).length;
     const unreviewed = labels.filter((l) => !l).length;
-    const failed = release.criteria.map((c, i) => i).filter((i) => !results[i].pass);
-    const verdict = failed.length || rejected ? "no-go" : unreviewed ? "review" : "go";
+    const failed = decision.criteria.map((c, i) => i).filter((i) => !results[i].pass);
+    const verdict = VERDICTS[failed.length || rejected ? 2 : unreviewed ? 1 : 0];
     return { side: side, label: sideLabel[side], pairs: ps, regressed: regressed, results: results, failed: failed,
       rejected: rejected, unreviewed: unreviewed, verdict: verdict };
   }
@@ -1360,8 +1380,14 @@
     return (v > 0 ? "+" : "−") + amount + (v > 0 ? T.worsePos : T.worseNeg);
   }
 
+  // Release verdicts have fixed wording; an experiment's come from config.experiment.verdict_labels.
+  function verdictText(verdict) {
+    if (!isExperiment) return T.verdict[verdict];
+    return VERDICT_MARKS[VERDICTS.indexOf(verdict)] + " " + decision.verdict_labels[verdict];
+  }
+
   function verdictBadge(verdict) {
-    return el("span", { class: "verdict verdict-" + verdict, text: T.verdict[verdict] });
+    return el("span", { class: "verdict verdict-" + verdict, text: verdictText(verdict) });
   }
 
   function passNode(pass) {
@@ -1375,23 +1401,26 @@
     window.scrollTo(0, 0);
   }
 
-  function renderRelease(root) {
+  function renderDecision(root) {
     const results = CAND_SIDES.map(candidateResult);
-    if (state.releaseSide) renderReleaseReview(root, results.find((r) => r.side === state.releaseSide));
-    else renderReleaseSummary(root, results);
+    if (state.decisionSide) renderDecisionReview(root, results.find((r) => r.side === state.decisionSide));
+    else renderDecisionSummary(root, results);
   }
 
-  function renderReleaseSummary(root, results) {
+  function renderDecisionSummary(root, results) {
     root.appendChild(el("div", { class: "table-toolbar" }, [
       el("button", { class: "btn", text: T.exportMd, onclick: () => download(recordMarkdown(results), recordFileName("md"), "text/markdown;charset=utf-8") }),
       el("button", { class: "btn", text: T.exportJson, onclick: () => download(JSON.stringify(recordData(results), null, 2) + "\n", recordFileName("json"), "application/json") }),
-      el("span", { class: "small muted", text: state.releaseStorageOk ? "✓ " + T.storageOk : "⚠ " + T.storageNo })
+      el("span", { class: "small muted", text: state.decisionStorageOk ? "✓ " + T.storageOk : "⚠ " + T.storageNo })
     ]));
 
+    if (isExperiment) root.appendChild(el("div", { class: "card" }, [el("h2", { text: T.hypothesis }), el("p", { class: "hypothesis", text: decision.hypothesis })]));
     root.appendChild(el("h2", { text: T.verdictTitle }));
-    root.appendChild(el("p", { class: "small muted", text: fmt(T.verdictRule, { reject: REJECT }) }));
+    root.appendChild(el("p", { class: "small muted", text: isExperiment
+      ? fmt(T.experimentRule, { reject: REJECT, pass: decision.verdict_labels.pass, review: decision.verdict_labels.review, fail: decision.verdict_labels.fail })
+      : fmt(T.verdictRule, { reject: REJECT }) }));
     root.appendChild(el("div", { class: "verdict-grid" }, results.map((r) => {
-      const failedNames = r.failed.map((i) => criterionName(release.criteria[i]));
+      const failedNames = r.failed.map((i) => criterionName(decision.criteria[i]));
       return el("div", { class: "card verdict-card verdict-card-" + r.verdict }, [
         el("div", { class: "verdict-head" }, [el("strong", { text: r.label }), verdictBadge(r.verdict)]),
         el("div", { class: "small", text: T.failedCriteria + ": " + (failedNames.length ? failedNames.join(" / ") : T.none) }),
@@ -1399,7 +1428,7 @@
         el("div", { class: "small", text: fmt(T.unreviewedItems, { n: r.unreviewed, total: r.regressed.length }) }),
         el("div", { class: "review-nav" }, [
           el("button", { class: "btn", text: fmt(T.reviewRegressed, { n: r.regressed.length }), disabled: !r.regressed.length,
-            onclick: () => { state.releaseSide = r.side; state.releaseCursor = null; renderContent(); window.scrollTo(0, 0); } }),
+            onclick: () => { state.decisionSide = r.side; state.decisionCursor = null; renderContent(); window.scrollTo(0, 0); } }),
           cfg.tabs.includes("compare") ? el("button", { class: "btn", text: T.openCompare,
             onclick: () => { state.compareSide = r.side; state.compareView = "regressed"; state.selectedId = null; goTo("compare"); } }) : null
         ])
@@ -1409,7 +1438,7 @@
     const card = el("div", { class: "card" }, [el("h2", { text: T.criteriaTitle })]);
     root.appendChild(card);
     const head = [el("th", { text: T.criterion }), el("th", { text: T.thresholdCol })].concat(results.map((r) => el("th", { class: "num", text: r.label })));
-    const body = release.criteria.map((c, i) => el("tr", { style: "cursor:default" }, [
+    const body = decision.criteria.map((c, i) => el("tr", { style: "cursor:default" }, [
       el("td", { text: criterionName(c), style: "min-width:10em" }),
       el("td", { class: "num", text: criterionThreshold(c) })
     ].concat(results.map((r) => el("td", { class: "num" }, [el("div", { text: criterionValue(c, r.results[i]) }), passNode(r.results[i].pass)])))));
@@ -1424,7 +1453,6 @@
     for (const r of results) {
       for (const m of metrics) {
         const s = diffStats(r.pairs, m);
-        const zero = s.ci ? s.ci[0] <= 0 && s.ci[1] >= 0 : null;
         rows.push(el("tr", { style: "cursor:default" }, [
           el("td", { text: r.label }), el("td", { text: m.label }),
           el("td", { class: "num", text: String(s.n) }),
@@ -1432,57 +1460,70 @@
           el("td", { class: "num", text: fmtMetric(s.cand, m) }),
           el("td", { class: "num" }, deltaNode(s.d, m)),
           el("td", { class: "num", text: s.ci ? "[" + fmtDelta(s.ci[0], m) + ", " + fmtDelta(s.ci[1], m) + "]" : "–" }),
-          el("td", { text: zero === null ? "–" : zero ? T.czYes : T.czNo })
+          el("td", { text: zeroText(s) })
         ]));
       }
     }
     mcard.appendChild(el("div", { class: "scroll-x" }, el("table", { class: "list" }, [
-      el("thead", null, el("tr", null, [T.candidateCol, T.metric, "n", sideLabel.a, T.candidateValue, fmt(T.delta, { a: sideLabel.a, b: T.candidateCol }), T.ci, T.containsZero]
-        .map((h, i) => el("th", { class: i >= 2 && i <= 6 ? "num" : null, text: h })))),
+      el("thead", null, el("tr", null, metricsHeaders().map((h, i) => el("th", { class: i >= 2 && i <= 6 ? "num" : null, text: h })))),
       el("tbody", null, rows)])));
   }
 
-  function releaseItems(r) {
-    return r.regressed.filter((x) => !state.releaseUnreviewedOnly || !releaseReviewOf(r.side, x.p.id).label);
+  function metricsHeaders() {
+    return [T.candidateCol, T.metric, "n", sideLabel.a, T.candidateValue, fmt(T.delta, { a: sideLabel.a, b: T.candidateCol }), T.ci,
+      isExperiment ? T.ciGuide : T.containsZero];
   }
 
-  function moveReleaseCursor(delta) {
-    const r = candidateResult(state.releaseSide);
-    const items = releaseItems(r);
+  // Whether the 95% interval contains 0. An experiment spells out how to read it; neither
+  // changes a verdict.
+  function zeroText(s) {
+    if (!s.ci) return "–";
+    const zero = s.ci[0] <= 0 && s.ci[1] >= 0;
+    if (isExperiment) return zero ? T.ciIncludesZero : T.ciExcludesZero;
+    return zero ? T.czYes : T.czNo;
+  }
+
+  function decisionItems(r) {
+    return r.regressed.filter((x) => !state.decisionUnreviewedOnly || !decisionReviewOf(r.side, x.p.id).label);
+  }
+
+  function moveDecisionCursor(delta) {
+    const r = candidateResult(state.decisionSide);
+    const items = decisionItems(r);
     if (!items.length) return;
-    let idx = items.findIndex((x) => x.p.id === state.releaseCursor);
+    let idx = items.findIndex((x) => x.p.id === state.decisionCursor);
     idx = idx < 0 ? 0 : Math.min(items.length - 1, Math.max(0, idx + delta));
-    state.releaseCursor = items[idx].p.id;
+    state.decisionCursor = items[idx].p.id;
     renderContent();
   }
 
-  function applyReleaseLabel(id, label) {
-    const side = state.releaseSide;
-    const items = releaseItems(candidateResult(side));
+  function applyDecisionLabel(id, label) {
+    const side = state.decisionSide;
+    const items = decisionItems(candidateResult(side));
     const idx = items.findIndex((x) => x.p.id === id);
-    const current = releaseReviewOf(side, id).label;
-    setReleaseReview(side, id, { label: current === label ? "" : label });
+    const current = decisionReviewOf(side, id).label;
+    setDecisionReview(side, id, { label: current === label ? "" : label });
     // Advance to the next item after a judgment; toggling a label off stays put.
-    if (current !== label && idx >= 0 && idx + 1 < items.length) state.releaseCursor = items[idx + 1].p.id;
+    if (current !== label && idx >= 0 && idx + 1 < items.length) state.decisionCursor = items[idx + 1].p.id;
     renderContent();
   }
 
-  function renderReleaseReview(root, r) {
+  function renderDecisionReview(root, r) {
     const side = r.side;
-    const items = releaseItems(r);
-    let idx = items.findIndex((x) => x.p.id === state.releaseCursor);
-    if (idx < 0 && items.length) { idx = 0; state.releaseCursor = items[0].p.id; }
+    const items = decisionItems(r);
+    let idx = items.findIndex((x) => x.p.id === state.decisionCursor);
+    if (idx < 0 && items.length) { idx = 0; state.decisionCursor = items[0].p.id; }
     const reviewedCount = r.regressed.length - r.unreviewed;
 
     root.appendChild(el("div", { class: "review-bar" }, [
-      el("button", { class: "btn", text: T.backToVerdicts, onclick: () => { state.releaseSide = null; renderContent(); } }),
+      el("button", { class: "btn", text: T.backToVerdicts, onclick: () => { state.decisionSide = null; renderContent(); } }),
       el("strong", { text: fmt(T.reviewTitle, { label: r.label }) }),
       verdictBadge(r.verdict),
       el("span", { class: "small muted", text: fmt(T.reviewed, { n: reviewedCount, total: r.regressed.length }) }),
-      el("label", { class: "check" }, [el("input", { type: "checkbox", checked: state.releaseUnreviewedOnly,
-        onchange: (e) => { state.releaseUnreviewedOnly = e.target.checked; renderContent(); } }), T.unreviewedOnly])
+      el("label", { class: "check" }, [el("input", { type: "checkbox", checked: state.decisionUnreviewedOnly,
+        onchange: (e) => { state.decisionUnreviewedOnly = e.target.checked; renderContent(); } }), T.unreviewedOnly])
     ]));
-    root.appendChild(el("p", { class: "small muted", text: (state.releaseStorageOk ? "✓ " + T.storageOk : "⚠ " + T.storageNo) + " · " + fmt(T.keys, { n: REVIEW_LABELS.length }) }));
+    root.appendChild(el("p", { class: "small muted", text: (state.decisionStorageOk ? "✓ " + T.storageOk : "⚠ " + T.storageNo) + " · " + fmt(T.keys, { n: REVIEW_LABELS.length }) }));
     if (!r.regressed.length) { root.appendChild(el("div", { class: "card empty", text: T.noRegressedItems })); return; }
 
     const list = el("div", { class: "card" }, [el("h2", { text: T.allRegressed })]);
@@ -1492,9 +1533,9 @@
       list.appendChild(el("div", { class: "scroll-x" }, el("table", { class: "list" }, [
         el("thead", null, el("tr", null, [el("th", { text: cols.id }), cols.category ? el("th", { text: cols.category }) : null, el("th", { text: T.reason }), el("th", { text: T.yourLabel }), el("th", { text: T.note })])),
         el("tbody", null, items.map((x) => {
-          const rv = releaseReviewOf(side, x.p.id);
-          const select = () => { state.releaseCursor = x.p.id; renderContent(); };
-          return el("tr", { tabindex: 0, "aria-selected": String(state.releaseCursor === x.p.id), onclick: select,
+          const rv = decisionReviewOf(side, x.p.id);
+          const select = () => { state.decisionCursor = x.p.id; renderContent(); };
+          return el("tr", { tabindex: 0, "aria-selected": String(state.decisionCursor === x.p.id), onclick: select,
             onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(); } } }, [
             el("td", { text: x.p.id, style: "white-space:nowrap" }),
             cols.category ? el("td", { text: x.p.a[cols.category] }) : null,
@@ -1507,43 +1548,47 @@
     if (!items.length) return;
 
     const id = items[idx].p.id;
-    const rv = releaseReviewOf(side, id);
+    const rv = decisionReviewOf(side, id);
     const card = el("div", { class: "card" });
     root.appendChild(card);
     card.appendChild(el("div", { class: "review-meta" }, [el("strong", { text: (idx + 1) + " / " + items.length })]));
     card.appendChild(el("h3", { text: T.humanLabel }));
     card.appendChild(el("div", { class: "label-buttons" }, REVIEW_LABELS.map((l, i) =>
-      el("button", { "aria-pressed": String(rv.label === l), onclick: () => applyReleaseLabel(id, l) }, [el("kbd", { text: String(i + 1) }), l]))));
+      el("button", { "aria-pressed": String(rv.label === l), onclick: () => applyDecisionLabel(id, l) }, [el("kbd", { text: String(i + 1) }), l]))));
     card.appendChild(el("h3", { text: T.note }));
-    card.appendChild(el("textarea", { class: "note", id: "review-note", text: rv.note, oninput: (e) => setReleaseReview(side, id, { note: e.target.value }) }));
+    card.appendChild(el("textarea", { class: "note", id: "review-note", text: rv.note, oninput: (e) => setDecisionReview(side, id, { note: e.target.value }) }));
     card.appendChild(el("div", { class: "review-nav" }, [
-      el("button", { class: "btn", text: T.prev, disabled: idx === 0, onclick: () => moveReleaseCursor(-1) }),
-      el("button", { class: "btn", text: T.next, disabled: idx === items.length - 1, onclick: () => moveReleaseCursor(1) })
+      el("button", { class: "btn", text: T.prev, disabled: idx === 0, onclick: () => moveDecisionCursor(-1) }),
+      el("button", { class: "btn", text: T.next, disabled: idx === items.length - 1, onclick: () => moveDecisionCursor(1) })
     ]));
     root.appendChild(renderPairDetail(items[idx].p, side));
   }
 
-  // ---------- release record export ----------
+  // ---------- release / experiment record export ----------
 
   function recordFileName(ext) {
     const d = new Date();
     const pad = (n) => String(n).padStart(2, "0");
-    return "release_record_" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + "-" + pad(d.getHours()) + pad(d.getMinutes()) + "." + ext;
+    return decisionTab + "_record_" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + "-" + pad(d.getHours()) + pad(d.getMinutes()) + "." + ext;
   }
 
-  // The JSON record that release.record reads back. read_record() in build_dashboard.py
-  // checks kind, version, criteria, review_labels, files, candidates and their verdicts.
+  // The JSON record that config.release.record / config.experiment.record reads back.
+  // read_record() in build_dashboard.py checks kind, version, criteria, review_labels (and
+  // an experiment's hypothesis and verdict_labels), files, candidates and their verdicts.
   function recordData(results) {
     const num = (v) => (v === null || !Number.isFinite(v) ? null : v);
-    return {
-      kind: RECORD_KIND,
+    const out = {
+      kind: DECISIONS[decisionTab].kind,
       version: 1,
       title: cfg.title,
       exported_at: new Date().toISOString(),
-      files: { current: { label: sideLabel.a, file: state.data.a.name } },
-      criteria: release.criteria,
-      review_labels: REVIEW_LABELS,
-      candidates: results.map((r) => ({
+      files: { current: { label: sideLabel.a, file: state.data.a.name } }
+    };
+    if (isExperiment) out.hypothesis = decision.hypothesis;
+    out.criteria = decision.criteria;
+    out.review_labels = REVIEW_LABELS;
+    if (isExperiment) out.verdict_labels = decision.verdict_labels;
+    out.candidates = results.map((r) => ({
         label: r.label,
         file: state.data[r.side].name,
         verdict: r.verdict,
@@ -1551,17 +1596,17 @@
         regressed: r.regressed.length,
         unreviewed: r.unreviewed,
         rejected: r.rejected,
-        criteria: release.criteria.map((c, i) => ({ index: i, value: num(r.results[i].value), pass: r.results[i].pass })),
+        criteria: decision.criteria.map((c, i) => ({ index: i, value: num(r.results[i].value), pass: r.results[i].pass })),
         metrics: metrics.map((m) => {
           const s = diffStats(r.pairs, m);
           return { column: m.column, label: m.label, n: s.n, current: num(s.cur), candidate: num(s.cand), difference: num(s.d), ci95: s.ci ? s.ci.map(num) : null };
         }),
         reviews: r.regressed.map((x) => {
-          const rv = releaseReviewOf(r.side, x.p.id);
+          const rv = decisionReviewOf(r.side, x.p.id);
           return { id: x.p.id, label: rv.label || "", note: rv.note || "" };
         })
-      }))
-    };
+      }));
+    return out;
   }
 
   function mdCell(s) { return String(s).replace(/\|/g, "\\|").replace(/\s*\n\s*/g, " "); }
@@ -1571,21 +1616,22 @@
   }
 
   function recordMarkdown(results) {
-    const out = ["# " + cfg.title + " — " + T.recordTitle, "",
-      "- " + T.exportedAt + ": " + new Date().toLocaleString(cfg.lang),
-      "", "## " + T.dataFiles, "",
-      "- " + sideLabel.a + ": " + state.data.a.name];
+    const out = ["# " + cfg.title + " — " + (isExperiment ? T.experimentRecordTitle : T.recordTitle), "",
+      "- " + T.exportedAt + ": " + new Date().toLocaleString(cfg.lang)];
+    if (isExperiment) out.push("", "## " + T.hypothesis, "", decision.hypothesis);
+    out.push("", "## " + T.dataFiles, "",
+      "- " + sideLabel.a + ": " + state.data.a.name);
     for (const r of results) out.push("- " + r.label + ": " + state.data[r.side].name);
     out.push("", "## " + T.criteriaH, "");
-    release.criteria.forEach((c) => out.push("- " + criterionName(c) + ": " + criterionThreshold(c)));
+    decision.criteria.forEach((c) => out.push("- " + criterionName(c) + ": " + criterionThreshold(c)));
     out.push("", "## " + T.summaryH, "");
-    const rows = release.criteria.map((c, i) => [criterionName(c), criterionThreshold(c)]
+    const rows = decision.criteria.map((c, i) => [criterionName(c), criterionThreshold(c)]
       .concat(results.map((r) => criterionValue(c, r.results[i]) + " " + (r.results[i].pass ? T.pass : T.fail))));
-    rows.push([T.verdictRow, ""].concat(results.map((r) => T.verdict[r.verdict])));
+    rows.push([T.verdictRow, ""].concat(results.map((r) => verdictText(r.verdict))));
     out.push(mdTable([T.criterion, T.thresholdCol].concat(results.map((r) => r.label)), rows));
     out.push("");
     for (const r of results) {
-      out.push("- " + r.label + ": " + T.verdict[r.verdict] + " · " + fmt(T.unreviewedItems, { n: r.unreviewed, total: r.regressed.length }) +
+      out.push("- " + r.label + ": " + verdictText(r.verdict) + " · " + fmt(T.unreviewedItems, { n: r.unreviewed, total: r.regressed.length }) +
         (r.rejected ? " · " + fmt(T.rejectedItems, { reject: REJECT, n: r.rejected }) : ""));
     }
     if (metrics.length) {
@@ -1594,19 +1640,18 @@
       for (const r of results) {
         for (const m of metrics) {
           const s = diffStats(r.pairs, m);
-          const zero = s.ci ? s.ci[0] <= 0 && s.ci[1] >= 0 : null;
           mrows.push([r.label, m.label, String(s.n), fmtMetric(s.cur, m), fmtMetric(s.cand, m), s.d === null ? "–" : fmtDelta(s.d, m),
-            s.ci ? "[" + fmtDelta(s.ci[0], m) + ", " + fmtDelta(s.ci[1], m) + "]" : "–", zero === null ? "–" : zero ? T.czYes : T.czNo]);
+            s.ci ? "[" + fmtDelta(s.ci[0], m) + ", " + fmtDelta(s.ci[1], m) + "]" : "–", zeroText(s)]);
         }
       }
-      out.push(mdTable([T.candidateCol, T.metric, "n", sideLabel.a, T.candidateValue, fmt(T.delta, { a: sideLabel.a, b: T.candidateCol }), T.ci, T.containsZero], mrows));
+      out.push(mdTable(metricsHeaders(), mrows));
     }
     out.push("", "## " + T.reviewsH);
     for (const r of results) {
       out.push("", "### " + r.label, "");
       if (!r.regressed.length) { out.push(T.noRegressedItems); continue; }
       out.push(mdTable([cols.id].concat(cols.category ? [cols.category] : [], [T.reason, T.yourLabel, T.note]), r.regressed.map((x) => {
-        const rv = releaseReviewOf(r.side, x.p.id);
+        const rv = decisionReviewOf(r.side, x.p.id);
         const reasons = reasonNodes(x.c).map((n) => n.textContent).join(", ");
         return [x.p.id].concat(cols.category ? [cellText(x.p.a[cols.category])] : [], [reasons, rv.label || T.unlabeled, rv.note || ""]);
       })));
@@ -1618,10 +1663,14 @@
 
   function renderReport(root) {
     const now = CAND_SIDES.map(candidateResult);
-    const diffs = now.filter((r) => releaseRecord.verdicts[r.label] !== r.verdict)
-      .map((r) => fmt(T.staleItem, { label: r.label, was: T.verdict[releaseRecord.verdicts[r.label]], now: T.verdict[r.verdict] }));
+    const diffs = now.filter((r) => decisionRecord.verdicts[r.label] !== r.verdict)
+      .map((r) => fmt(T.staleItem, { label: r.label, was: verdictText(decisionRecord.verdicts[r.label]), now: verdictText(r.verdict) }));
     if (diffs.length) root.appendChild(el("div", { class: "banner" }, el("p", { text: "⚠ " + fmt(T.reportStale, { diffs: diffs.join(", ") }) })));
-    root.appendChild(el("div", { class: "card report" }, renderMarkdown(payload.release_report || "")));
+    // The download is the report body as embedded at build time (without the frontmatter),
+    // for pasting into other documents.
+    root.appendChild(el("div", { class: "table-toolbar" }, el("button", { class: "btn", text: T.exportReport,
+      onclick: () => download(payload.report + "\n", decision.report, "text/markdown;charset=utf-8") })));
+    root.appendChild(el("div", { class: "card report" }, renderMarkdown(payload.report)));
   }
 
   // A small Markdown subset: ATX headings, paragraphs, flat - / * / 1. lists, pipe tables,
@@ -1838,15 +1887,15 @@
     const root = document.getElementById("content");
     root.replaceChildren();
     renderBanner();
-    // The release decision and its report always use every item, so the filter bar is hidden there.
-    document.getElementById("filters").hidden = needsLoad() || state.tab === "release" || state.tab === "report";
+    // The release / experiment decision and its report always use every item, so the filter bar is hidden there.
+    document.getElementById("filters").hidden = needsLoad() || state.tab === decisionTab || state.tab === "report";
     if (needsLoad()) renderLoadPanel(root);
     else if (!rowsOf("a").length) root.appendChild(el("div", { class: "card empty", text: T.noData }));
     else if (state.tab === "overview") renderOverview(root);
     else if (state.tab === "compare") renderCompare(root);
     else if (state.tab === "review") renderReview(root);
     else if (state.tab === "table") renderTable(root);
-    else if (state.tab === "release") renderRelease(root);
+    else if (state.tab === decisionTab) renderDecision(root);
     else if (state.tab === "report") renderReport(root);
     else if (extraTitle.has(state.tab)) renderExtra(root, state.tab);
     updateCount();
@@ -1990,7 +2039,7 @@
     state.data[side] = { name: name, path: path || null, headers: table.headers, rows: table.rows, origin: "loaded", loadedAt: new Date() };
     state.selectedId = null;
     if (side === "a") initReview();
-    initReleaseReview();
+    initDecisionReview();
     renderAll();
   }
 
@@ -2126,7 +2175,7 @@
     state.errors = [];
     state.selectedId = null;
     initReview();
-    initReleaseReview();
+    initDecisionReview();
     renderAll();
   }
 
@@ -2205,7 +2254,7 @@
   window.DatasetDashboard = Object.freeze({ registerTab: registerTab });
 
   initReview();
-  initReleaseReview();
+  initDecisionReview();
   renderAll();
   recallHandles();
   autoLoad();
