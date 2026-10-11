@@ -10,22 +10,27 @@ file.
 |-----|----------|------|---------|
 | `title` | yes | string | Page title and heading. Also part of the review storage key. |
 | `lang` | no (default `"ja"`) | `"ja"` \| `"en"` | Language of all UI text. |
-| `tabs` | yes | list | Non-empty, no repeats, from `overview`, `compare`, `review`, `table`. The first entry is the tab shown on open. |
+| `tabs` | yes | list | Non-empty, no repeats, from `overview`, `compare`, `review`, `table`, `release`, `report`. The first entry is the tab shown on open. |
 | `data` | yes | object | Which CSV files to use and whether to embed them. See below. |
 | `columns` | yes | object | Roles of CSV columns. See below. |
 | `order` | no | object | `{ "<column>": ["value", ...] }` - display order for category / status / verdict values. |
 | `histogram` | no | string | A metric column with `aggregate` `mean` or `sum` to plot as a histogram in the overview. Defaults to the first such metric. |
 | `review` | only with the `review` tab | object | `{ "labels": [...] }`. See below. |
+| `release` | only with the `release` tab | object | Release criteria, review labels, and the optional record and report. See below. |
 | `extra_tabs` | no | list | `[{"id": "...", "title": "...", "script": "tab.js"}]` - tabs written for this dashboard when the built-in ones do not cover the request. They follow the `tabs` entries. `script` is a `.js` file resolved relative to the config file. Ids are unique and must not be a built-in tab name. See [extra-tabs.md](extra-tabs.md). |
 
 ## `data`
 
 | Key | Required | Meaning |
 |-----|----------|---------|
-| `csv` | yes | The main data file (side A when comparing): `.csv`, `.json`, or `.jsonl`, chosen by extension. |
-| `csv_b` | required by `compare` | The second data file (side B), same formats. |
-| `records_path` | no | Only for `.json` files whose top level is an object: the dotted path to the record array, for example `"data.items"`. Applies to both files. An error with a `.csv` or `.jsonl` file. |
-| `label_a`, `label_b` | no (default `A`, `B`) | Short names shown everywhere, for example `"現行"` and `"新"`. |
+| `csv` | yes | The main data file (side A, the current model, when comparing): `.csv`, `.json`, or `.jsonl`, chosen by extension. |
+| `candidates` | required by `compare` and `release` | List of `{"file": "...", "label": "..."}`, one per model compared against `csv`, same formats. The compare view has a picker for them. Labels must be unique and differ from `label_a`. |
+| `records_path` | no | Only for `.json` files whose top level is an object: the dotted path to the record array, for example `"data.items"`. Applies to every file. An error with a `.csv` or `.jsonl` file. |
+| `label_a` | no (default `A`) | Short name of `csv` shown everywhere, for example `"現行"`. |
+
+`csv_b` and `label_b` were replaced by `candidates`; a config that still uses them
+fails with the rewrite to use (`{"candidates": [{"file": "<csv_b>", "label": "<label_b>"}]}`).
+The `--csv-b` command-line option was removed with them.
 | `mode` | no (default `"embed"`) | `"embed"` inlines the rows into the HTML. `"load"` writes no rows; the page reads the CSV each time it opens. `--mode` on the command line overrides it. |
 
 In both modes the build reads the CSVs and runs every check below. The config in the
@@ -150,9 +155,72 @@ beyond that, values from the 8th on share the "Other" color.
 Review always works on side A. Export adds `human_label` and `human_note` to the
 original columns, in the original row order, as UTF-8 with BOM.
 
+## `release`
+
+Needs at least one entry in `data.candidates` and in `columns.metrics`.
+
+| Key | Required | Meaning |
+|-----|----------|---------|
+| `criteria` | yes | Non-empty list of criteria, all of which a candidate must meet. |
+| `review_labels` | no (default `["許容","不可"]`, English `["acceptable","unacceptable"]`) | 2 to 9 distinct non-empty strings for reviewing regressed items. The last one rejects the item. Keys 1-9 pick them. |
+| `record` | needed by `report` | A `.json` record exported from the release tab. Checked against the config and the data at build time. |
+| `report` | only with the `report` tab | A `.md` report whose frontmatter verdicts are checked against the record. See [release-report.md](release-report.md). |
+
+The `report` tab and `release.report` require each other.
+
+A criterion object, by `type`:
+
+| `type` | Keys | Passes when |
+|--------|------|-------------|
+| `absolute` | `metric`, `min` and/or `max` | The candidate's aggregate of the metric is within the bounds. For a `rate` metric the bounds are fractions (0.85 means 85%). |
+| `relative` | `metric`, exactly one of `max_worse` / `max_worse_pct` | The candidate is worse than the current model by at most `max_worse` (in the metric's unit; a fraction for `rate`, so 0.02 means 2pt) or `max_worse_pct` percent of the current value. Getting better always passes. |
+| `regressions` | `max` (integer >= 0) | The number of regressed items is at most `max`. |
+| `critical_categories` | `categories` (needs `columns.category`) | No regressed item is in one of these categories. Each value must occur in the current model's data. |
+
+`metric` is a column in `columns.metrics`. Aggregates use paired items only (ids
+present on both sides with a value on both), the same as the compare view. An
+`absolute` or `relative` criterion with no paired values fails.
+
+Verdicts, per candidate, over all paired items regardless of the filter bar:
+
+1. 出さない (`no-go`): a criterion fails, or a regressed item is labelled with the last
+   review label.
+2. 要レビュー (`review`): otherwise, a regressed item has no label yet.
+3. 出してよい (`go`): otherwise.
+
+The release tab also shows each metric's n and the 95% interval of the paired
+difference (mean of the per-item differences ± 1.96 standard errors, times n for `sum`
+metrics; shown when n >= 2). The interval is for reference only and never changes a
+verdict.
+
+### Review of regressed items
+
+Each candidate has its own review of its regressed items, stored in the browser's
+localStorage. The key is the title, the candidate label, and the current and candidate
+data (in load mode, their sorted ids), plus the embedded record's reviews when there
+is one. Reviews in `release.record` are the starting values, so a teammate opening the
+built HTML sees the reviews that the record was exported with.
+
+### Record
+
+"記録を書き出す (JSON)" and "(Markdown)" on the release tab download
+`release_record_YYYYMMDD-HHMM.json` / `.md`. Neither holds reviewer names or review
+times. The JSON holds `kind` (`"dataset-dashboard/release-record"`), `version` (1),
+`title`, `exported_at`, `files.current` (label and file name), `criteria`,
+`review_labels`, and per candidate: `label`, `file`, `verdict`, the counts `paired`,
+`regressed`, `unreviewed`, `rejected`, each criterion's `value` and `pass`, each
+metric's n, aggregates, difference and `ci95`, and `reviews` for every regressed item
+(label `""` when unreviewed).
+
+When `release.record` is set, the build fails unless the record's criteria,
+review labels, current file, and candidate labels and files equal the config; every
+review is for a regressed item and uses a review label; and each verdict equals the one
+recomputed from the data and the record's reviews. A changed config or data file
+therefore means exporting the record again.
+
 ## Examples
 
-All three are in `examples/` with synthetic CSVs; the feedback example there also has
+`examples/` has synthetic CSVs for each job; the feedback example there also has
 an extra tab (`feedback_weekly.js`, counts per week). `examples/factcheck_jsonl.config.json`
 is the fact-check review on `factcheck.jsonl`, using flattened names
 (`llm.verdict`, `llm.confidence`) and an array column (`citations`) in `text`.
@@ -166,9 +234,8 @@ is the fact-check review on `factcheck.jsonl`, using flattened names
   "tabs": ["compare", "overview", "table"],
   "data": {
     "csv": "golden_model_a.csv",
-    "csv_b": "golden_model_b.csv",
     "label_a": "現行",
-    "label_b": "新"
+    "candidates": [{"file": "golden_model_b.csv", "label": "新"}]
   },
   "columns": {
     "id": "id",
@@ -218,5 +285,47 @@ is the fact-check review on `factcheck.jsonl`, using flattened names
     "status": "status"
   },
   "order": {"status": ["未対応", "対応中", "対応済"]}
+}
+```
+
+### Release decision over several candidates
+
+`examples/release.config.json`; `examples/release_report.config.json` adds the
+`report` tab with `"record": "release_record.json"` and `"report": "release_report.md"`.
+
+```json
+{
+  "title": "リリース判定: 現行モデルと候補3つ",
+  "lang": "ja",
+  "tabs": ["release", "compare", "overview", "table"],
+  "data": {
+    "csv": "release_current.csv",
+    "label_a": "現行",
+    "candidates": [
+      {"file": "release_cand_b.csv", "label": "候補B"},
+      {"file": "release_cand_c.csv", "label": "候補C"},
+      {"file": "release_cand_d.csv", "label": "候補D"}
+    ]
+  },
+  "columns": {
+    "id": "id",
+    "text": ["question", "expected_answer", "answer"],
+    "category": "category",
+    "metrics": [
+      {"column": "correct", "label": "正答率", "aggregate": "rate", "better": "higher"},
+      {"column": "latency_ms", "label": "レイテンシ", "unit": "ms", "aggregate": "mean", "better": "lower", "regression_threshold": 300},
+      {"column": "cost_usd", "label": "コスト", "unit": "USD", "aggregate": "sum", "better": "lower", "regression_threshold": 0.001}
+    ]
+  },
+  "order": {"category": ["計算", "知識", "安全"]},
+  "release": {
+    "criteria": [
+      {"type": "absolute", "metric": "correct", "min": 0.85},
+      {"type": "relative", "metric": "latency_ms", "max_worse_pct": 10},
+      {"type": "relative", "metric": "cost_usd", "max_worse": 0.005},
+      {"type": "regressions", "max": 3},
+      {"type": "critical_categories", "categories": ["安全"]}
+    ]
+  }
 }
 ```
