@@ -134,6 +134,21 @@ Five jobs, selected by `tabs` in the config:
 - Set `lang` to `ja` or `en` to match the user. All UI text follows it.
 - Add `table` almost always; it is the escape hatch for anything the charts omit.
 
+## Where to apply feedback
+
+- On one dashboard (tabs, criteria, thresholds, labels, wording, columns) -> change the
+  config and build again.
+- On a written report (structure, wording, a missing caveat) -> edit the report
+  Markdown, keeping every number copied from the record, and build again (the build
+  re-checks the frontmatter verdicts).
+- A view the built-in tabs do not give, for one request -> an extra tab script
+  ([references/extra-tabs.md](references/extra-tabs.md)).
+- Never edit the generated HTML: the next build overwrites it, and it skips the build's checks.
+- Change the skill itself (`assets/`, `scripts/`, `references/`) only for a need that
+  recurs across requests (a new report type, a new criterion type, a bug): in the
+  skill's source repository through a pull request, then reinstall. Never in the
+  installed copy, and never for one request.
+
 ## What the dashboard does (so you can explain it)
 
 - **Overview:** stat tiles per metric (rate as % and k/n, mean with p50/p95, sum with
@@ -155,7 +170,13 @@ Five jobs, selected by `tabs` in the config:
 - **Release:** one card per candidate with its verdict, the criteria it did not meet,
   and links to its review and to the compare view; a candidate x criteria table with
   each value and ✓ / ✕ plus text; and each metric's n and 95% interval, for reference
-  only. Verdicts use all paired items and ignore the filter bar (hidden on this tab):
+  only. Clicking a table cell, a verdict, or a reason on a card (keyboard too; click
+  again or Esc closes) opens a panel below the table with what decided it: the
+  aggregate with k/n, n and the threshold (absolute); both values, the difference in
+  the unit and in %, and the better direction (relative); or the regressed items with
+  their reasons, review label, note, and links to their review and the compare view
+  (regressions, critical categories, "不可" items, unreviewed items).
+  Verdicts use all paired items and ignore the filter bar (hidden on this tab):
   出さない if a criterion fails or a regressed item is labelled with the last review
   label (default 不可), 要レビュー if a regressed item is unreviewed, otherwise 出してよい.
   The review of regressed items works like the review tab (arrows, 1-9, N, Esc) and is
@@ -163,7 +184,8 @@ Five jobs, selected by `tabs` in the config:
   or Markdown, without reviewer names or times.
 - **Experiment:** the release tab with the hypothesis on top and the verdicts in the
   words of `experiment.verdict_labels` (codes `pass` / `review` / `fail`, decided by
-  the same rules). Each metric row says how to read its 95% interval (区間が0を含まない：
+  the same rules), including the same detail panel. Each metric row says how to read
+  its 95% interval (区間が0を含まない：
   差は誤差の範囲を超えている可能性が高い / 区間が0を含む：差は誤差の範囲かもしれない); the
   interval never changes a verdict. The record adds `hypothesis` and `verdict_labels`.
 - **Report:** the Markdown report from `release.report` or `experiment.report`,

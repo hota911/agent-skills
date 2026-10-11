@@ -74,7 +74,14 @@
       experimentRule: "判定の順: 自動の基準を1つでも満たさないか「{reject}」が1件でもあれば「{fail}」、悪化項目にレビューしていないものが残れば「{review}」、それ以外は「{pass}」。95% 区間は判定に使わない。集計はフィルタにかかわらず全件。",
       ciGuide: "区間の読み方", ciExcludesZero: "区間が0を含まない：差は誤差の範囲を超えている可能性が高い",
       ciIncludesZero: "区間が0を含む：差は誤差の範囲かもしれない",
-      exportReport: "Markdown を書き出す"
+      exportReport: "Markdown を書き出す",
+      detailHint: "値・判定・理由を押すと、判断の根拠を表の下に表示します（もう一度押すか Esc で閉じる）。",
+      close: "閉じる", verdictReasons: "判定の理由", result: "結果", aggregation: "集計方法",
+      aggRate: "割合（true の件数 / 値のある件数）", pairedN: "n（両方に値がある同じ id の項目）", valueOf: "{label} の値",
+      failMin: "下限 {v} を下回る", failMax: "上限 {v} を上回る", noValue: "両方に値がある項目がないため満たさない",
+      whyFail: "満たさない理由", direction: "良い方向", higherBetter: "高いほど良い", lowerBetter: "低いほど良い",
+      comparedValue: "基準値と比べる値", regCount: "悪化した項目 {n} 件（上限 {max} 件）",
+      openInReview: "レビューで開く", goTo: "移動"
     },
     en: {
       tabs: { overview: "Overview", compare: "Compare", review: "Review", table: "Table", release: "Release decision", experiment: "Experiment", report: "Report" },
@@ -147,7 +154,14 @@
       experimentRule: "Order: any criterion not met or any \"{reject}\" item means \"{fail}\"; otherwise any regressed item left unreviewed means \"{review}\"; otherwise \"{pass}\". The 95% interval is not used in the verdict. Computed on all items, regardless of the filters.",
       ciGuide: "Reading the interval", ciExcludesZero: "Interval excludes 0: the difference is likely beyond noise",
       ciIncludesZero: "Interval includes 0: the difference may be within noise",
-      exportReport: "Export Markdown"
+      exportReport: "Export Markdown",
+      detailHint: "Click a value, a verdict, or a reason to see what decided it below the table (click again or press Esc to close).",
+      close: "Close", verdictReasons: "Why this verdict", result: "Result", aggregation: "Aggregation",
+      aggRate: "rate (true count / items with a value)", pairedN: "n (items with the same id and a value on both sides)", valueOf: "{label} value",
+      failMin: "below the minimum {v}", failMax: "above the maximum {v}", noValue: "not met: no item has a value on both sides",
+      whyFail: "Why not met", direction: "Better when", higherBetter: "higher", lowerBetter: "lower",
+      comparedValue: "Compared with the threshold", regCount: "{n} regressed items (at most {max})",
+      openInReview: "Open in review", goTo: "Go to"
     }
   };
 
@@ -223,6 +237,9 @@
     decisionSide: null,
     decisionCursor: null,
     decisionUnreviewedOnly: false,
+    // The open detail panel on the verdicts view: { side, kind, index? } with kind
+    // "criterion" (index into the criteria), "verdict", "rejected" or "unreviewed".
+    decisionDetail: null,
     decisionReview: {},
     decisionStorageKey: {},
     decisionStorageOk: false,
@@ -1255,6 +1272,7 @@
     state.decisionReview = {};
     state.decisionStorageKey = {};
     state.decisionCursor = null;
+    state.decisionDetail = null;
     state.decisionStorageOk = false;
     if (!decision || !state.data.a) return;
     state.decisionStorageOk = true;
@@ -1292,25 +1310,29 @@
 
   // Must match evaluate_criterion() in build_dashboard.py. `value` is what the threshold
   // is compared with: the candidate's aggregate, its worsening from A (in the metric's
-  // unit or in percent), or a count of items.
+  // unit or in percent), or a count of items. `regressed` is [{ p, c }] from classifyPair.
+  // The other fields (the counted items, n, both aggregates and their sums) are what the
+  // detail panel shows; the verdict and the record use only `value` and `pass`.
   function evaluateCriterion(c, ps, regressed) {
-    if (c.type === "regressions") return { value: regressed.length, pass: regressed.length <= c.max };
+    if (c.type === "regressions") return { value: regressed.length, pass: regressed.length <= c.max, items: regressed };
     if (c.type === "critical_categories") {
       const cats = new Set(c.categories);
-      const n = regressed.filter((p) => cats.has(cellText(p.a[cols.category]))).length;
-      return { value: n, pass: n === 0 };
+      const items = regressed.filter((x) => cats.has(cellText(x.p.a[cols.category])));
+      return { value: items.length, pass: items.length === 0, items: items };
     }
     const m = metricByColumn.get(c.metric);
     const both = pairedValues(ps, m);
-    const cur = aggregate(both.map((x) => x[0]), m), cand = aggregate(both.map((x) => x[1]), m);
-    if (cand === null) return { value: null, pass: false };
+    const curs = both.map((x) => x[0]), cands = both.map((x) => x[1]);
+    const cur = aggregate(curs, m), cand = aggregate(cands, m);
+    const basis = { n: both.length, cur: cur, cand: cand, sumCur: sum(curs), sumCand: sum(cands) };
+    if (cand === null) return Object.assign({ value: null, pass: false }, basis);
     if (c.type === "absolute") {
-      return { value: cand, pass: (c.min === undefined || cand >= c.min) && (c.max === undefined || cand <= c.max) };
+      return Object.assign({ value: cand, pass: (c.min === undefined || cand >= c.min) && (c.max === undefined || cand <= c.max) }, basis);
     }
     const worse = m.better === "lower" ? cand - cur : cur - cand;
-    if (c.max_worse !== undefined) return { value: worse, pass: worse <= c.max_worse };
+    if (c.max_worse !== undefined) return Object.assign({ value: worse, pass: worse <= c.max_worse }, basis);
     const pct = cur !== 0 ? worse / Math.abs(cur) * 100 : worse > 0 ? Infinity : 0;
-    return { value: pct, pass: pct <= c.max_worse_pct };
+    return Object.assign({ value: pct, pass: pct <= c.max_worse_pct }, basis);
   }
 
   // Every pair counts, regardless of the filter bar. Must match candidate_verdict().
@@ -1319,7 +1341,7 @@
     const regressed = ps.map((p) => ({ p: p, c: classifyPair(p) })).filter((x) => x.c.kind === "regressed");
     regressed.sort(bySeverity);
     const regPairs = regressed.map((x) => x.p);
-    const results = decision.criteria.map((c) => evaluateCriterion(c, ps, regPairs));
+    const results = decision.criteria.map((c) => evaluateCriterion(c, ps, regressed));
     const labels = regPairs.map((p) => decisionReviewOf(side, p.id).label);
     const rejected = labels.filter((l) => l === REJECT).length;
     const unreviewed = labels.filter((l) => !l).length;
@@ -1420,12 +1442,17 @@
       ? fmt(T.experimentRule, { reject: REJECT, pass: decision.verdict_labels.pass, review: decision.verdict_labels.review, fail: decision.verdict_labels.fail })
       : fmt(T.verdictRule, { reject: REJECT }) }));
     root.appendChild(el("div", { class: "verdict-grid" }, results.map((r) => {
-      const failedNames = r.failed.map((i) => criterionName(decision.criteria[i]));
+      const failedLinks = [];
+      r.failed.forEach((i, k) => {
+        if (k) failedLinks.push(" / ");
+        failedLinks.push(detailButton({ side: r.side, kind: "criterion", index: i }, "link-btn", criterionName(decision.criteria[i])));
+      });
+      const unreviewedText = fmt(T.unreviewedItems, { n: r.unreviewed, total: r.regressed.length });
       return el("div", { class: "card verdict-card verdict-card-" + r.verdict }, [
-        el("div", { class: "verdict-head" }, [el("strong", { text: r.label }), verdictBadge(r.verdict)]),
-        el("div", { class: "small", text: T.failedCriteria + ": " + (failedNames.length ? failedNames.join(" / ") : T.none) }),
-        r.rejected ? el("div", { class: "small", text: fmt(T.rejectedItems, { reject: REJECT, n: r.rejected }) }) : null,
-        el("div", { class: "small", text: fmt(T.unreviewedItems, { n: r.unreviewed, total: r.regressed.length }) }),
+        el("div", { class: "verdict-head" }, [el("strong", { text: r.label }), detailButton({ side: r.side, kind: "verdict" }, "link-btn", verdictBadge(r.verdict))]),
+        el("div", { class: "small" }, [T.failedCriteria + ": "].concat(failedLinks.length ? failedLinks : [T.none])),
+        r.rejected ? el("div", { class: "small" }, detailButton({ side: r.side, kind: "rejected" }, "link-btn", fmt(T.rejectedItems, { reject: REJECT, n: r.rejected }))) : null,
+        el("div", { class: "small" }, r.unreviewed ? detailButton({ side: r.side, kind: "unreviewed" }, "link-btn", unreviewedText) : unreviewedText),
         el("div", { class: "review-nav" }, [
           el("button", { class: "btn", text: fmt(T.reviewRegressed, { n: r.regressed.length }), disabled: !r.regressed.length,
             onclick: () => { state.decisionSide = r.side; state.decisionCursor = null; renderContent(); window.scrollTo(0, 0); } }),
@@ -1435,15 +1462,18 @@
       ]);
     })));
 
-    const card = el("div", { class: "card" }, [el("h2", { text: T.criteriaTitle })]);
+    const card = el("div", { class: "card" }, [el("h2", { text: T.criteriaTitle }), el("p", { class: "small muted", text: T.detailHint })]);
     root.appendChild(card);
     const head = [el("th", { text: T.criterion }), el("th", { text: T.thresholdCol })].concat(results.map((r) => el("th", { class: "num", text: r.label })));
     const body = decision.criteria.map((c, i) => el("tr", { style: "cursor:default" }, [
       el("td", { text: criterionName(c), style: "min-width:10em" }),
       el("td", { class: "num", text: criterionThreshold(c) })
-    ].concat(results.map((r) => el("td", { class: "num" }, [el("div", { text: criterionValue(c, r.results[i]) }), passNode(r.results[i].pass)])))));
-    body.push(el("tr", { style: "cursor:default" }, [el("td", { text: T.verdictRow }), el("td")].concat(results.map((r) => el("td", { class: "num" }, verdictBadge(r.verdict))))));
+    ].concat(results.map((r) => el("td", { class: "num" }, detailButton({ side: r.side, kind: "criterion", index: i }, "cell-btn",
+      [el("span", { class: "cell-value", text: criterionValue(c, r.results[i]) }), passNode(r.results[i].pass)]))))));
+    body.push(el("tr", { style: "cursor:default" }, [el("td", { text: T.verdictRow }), el("td")].concat(results.map((r) =>
+      el("td", { class: "num" }, detailButton({ side: r.side, kind: "verdict" }, "cell-btn", verdictBadge(r.verdict)))))));
     card.appendChild(el("div", { class: "scroll-x" }, el("table", { class: "list" }, [el("thead", null, el("tr", null, head)), el("tbody", null, body)])));
+    if (state.decisionDetail) root.appendChild(renderDecisionDetail(state.decisionDetail, results));
 
     if (!metrics.length) return;
     const mcard = el("div", { class: "card" }, [el("h2", { text: T.metricsTitle }),
@@ -1467,6 +1497,174 @@
     mcard.appendChild(el("div", { class: "scroll-x" }, el("table", { class: "list" }, [
       el("thead", null, el("tr", null, metricsHeaders().map((h, i) => el("th", { class: i >= 2 && i <= 6 ? "num" : null, text: h })))),
       el("tbody", null, rows)])));
+  }
+
+  // ---------- release / experiment: what decided a cell or a verdict ----------
+
+  function detailKey(d) { return d.side + ":" + d.kind + (d.index === undefined ? "" : ":" + d.index); }
+  function detailOpen(d) { return state.decisionDetail !== null && detailKey(state.decisionDetail) === detailKey(d); }
+
+  function detailButton(d, cls, children) {
+    return el("button", { type: "button", class: cls, "data-detail": detailKey(d), "aria-expanded": String(detailOpen(d)),
+      onclick: () => toggleDetail(d) }, children);
+  }
+
+  function focusDetailTrigger(d) {
+    const node = document.querySelector('[data-detail="' + CSS.escape(detailKey(d)) + '"]');
+    if (node) node.focus();
+  }
+
+  // One panel at a time; the same trigger closes it and gets the focus back.
+  function toggleDetail(d) {
+    const closing = detailOpen(d);
+    state.decisionDetail = closing ? null : d;
+    renderContent();
+    if (closing) { focusDetailTrigger(d); return; }
+    const panel = document.getElementById("decision-detail");
+    panel.focus({ preventScroll: true });
+    panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function closeDetail() {
+    const d = state.decisionDetail;
+    state.decisionDetail = null;
+    renderContent();
+    focusDetailTrigger(d);
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || state.tab !== decisionTab || state.decisionSide || !state.decisionDetail) return;
+    const t = e.target;
+    if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT" || t.tagName === "SELECT")) return;
+    e.preventDefault();
+    closeDetail();
+  });
+
+  function openInReview(side, id) {
+    state.decisionSide = side;
+    state.decisionCursor = id;
+    state.decisionUnreviewedOnly = false;
+    renderContent();
+    window.scrollTo(0, 0);
+  }
+
+  // The compare view lists filtered pairs; clear the (hidden on this tab) filters if they hide the item.
+  function openInCompare(side, id) {
+    state.compareSide = side;
+    state.compareView = "regressed";
+    if (!filteredPairs(side).some((p) => p.id === id)) {
+      state.filters = { category: "", status: "", verdict: "", q: "" };
+      renderFilters();
+    }
+    state.tab = "compare";
+    renderTabs();
+    selectPair(id);
+  }
+
+  function kvList(rows) {
+    return el("dl", { class: "kv" }, rows.flatMap(([k, v]) => [el("dt", { text: k }), el("dd", null, v)]));
+  }
+
+  // Regressed items ([{ p, c }]) with their reasons, review label and note, and links.
+  // Every caller shows the count next to the list, so an empty list shows nothing.
+  function regressedItemList(r, xs) {
+    if (!xs.length) return null;
+    const withCompare = cfg.tabs.includes("compare");
+    return el("div", { class: "scroll-x" }, el("table", { class: "list" }, [
+      el("thead", null, el("tr", null, [el("th", { text: cols.id }), cols.category ? el("th", { text: cols.category }) : null,
+        el("th", { text: T.reason }), el("th", { text: T.yourLabel }), el("th", { text: T.note }), el("th", { text: T.goTo })])),
+      el("tbody", null, xs.map((x) => {
+        const rv = decisionReviewOf(r.side, x.p.id);
+        return el("tr", { style: "cursor:default" }, [
+          el("td", { text: x.p.id, style: "white-space:nowrap" }),
+          cols.category ? el("td", { text: x.p.a[cols.category] }) : null,
+          el("td", null, el("div", { style: "display:flex;flex-wrap:wrap;gap:4px" }, reasonNodes(x.c))),
+          el("td", { class: rv.label === REJECT ? "delta bad" : rv.label ? "" : "muted", text: rv.label || T.unlabeled }),
+          el("td", { class: "longtext", text: rv.note || "" }),
+          el("td", null, el("div", { class: "detail-links" }, [
+            el("button", { type: "button", class: "link-btn", text: T.openInReview, onclick: () => openInReview(r.side, x.p.id) }),
+            withCompare ? el("button", { type: "button", class: "link-btn", text: T.openCompare, onclick: () => openInCompare(r.side, x.p.id) }) : null
+          ]))
+        ]);
+      }))]));
+  }
+
+  function signedPct(v) {
+    return (v > 0 ? "+" : v < 0 ? "−" : "±") + fmtNum(Math.abs(v)) + "%";
+  }
+
+  // Shows the values evaluateCriterion() computed for the verdict, never a recomputation.
+  function criterionDetail(c, res, r) {
+    if (c.type === "regressions") {
+      return [kvList([[T.result, passNode(res.pass)], [T.comparedValue, fmt(T.regCount, { n: res.value, max: c.max })]]),
+        regressedItemList(r, res.items)];
+    }
+    if (c.type === "critical_categories") {
+      const out = [kvList([[T.result, passNode(res.pass)], [T.thresholdCol, criterionThreshold(c)]])];
+      for (const cat of c.categories) {
+        const xs = res.items.filter((x) => cellText(x.p.a[cols.category]) === cat);
+        out.push(el("h3", { text: cols.category + " = " + cat + ": " + fmt(T.nItems, { n: xs.length }) }), regressedItemList(r, xs));
+      }
+      return out;
+    }
+    const m = metricByColumn.get(c.metric);
+    // Rates also show the count of true values over n.
+    const show = (v, k) => fmtMetric(v, m) + (m.aggregate === "rate" && v !== null ? " (" + k + "/" + res.n + ")" : "");
+    const rows = [[T.result, passNode(res.pass)]];
+    if (c.type === "relative") rows.push([fmt(T.valueOf, { label: sideLabel.a }), show(res.cur, res.sumCur)]);
+    rows.push([fmt(T.valueOf, { label: r.label }), show(res.cand, res.sumCand)],
+      [T.aggregation, m.aggregate === "rate" ? T.aggRate : m.aggregate === "sum" ? T.sum : T.mean],
+      [T.pairedN, String(res.n)]);
+    if (c.type === "relative") {
+      const d = res.cand === null ? null : res.cand - res.cur;
+      rows.push([T.direction, m.better === "lower" ? T.lowerBetter : T.higherBetter],
+        [fmt(T.delta, { a: sideLabel.a, b: r.label }), d === null ? "–" : [deltaNode(d, m), res.cur !== 0 ? " (" + signedPct(d / Math.abs(res.cur) * 100) + ")" : ""]],
+        [T.comparedValue, criterionValue(c, res)]);
+    }
+    rows.push([T.thresholdCol, criterionThreshold(c)]);
+    if (!res.pass) {
+      let why = T.noValue;
+      if (res.cand !== null && c.type === "absolute") why = c.min !== undefined && res.cand < c.min ? fmt(T.failMin, { v: fmtMetric(c.min, m) }) : fmt(T.failMax, { v: fmtMetric(c.max, m) });
+      else if (res.cand !== null) why = criterionValue(c, res) + " > " + criterionThreshold(c).replace(/^≤ /, "");
+      rows.push([T.whyFail, why]);
+    }
+    return [kvList(rows)];
+  }
+
+  function rejectedOf(r) { return r.regressed.filter((x) => decisionReviewOf(r.side, x.p.id).label === REJECT); }
+  function unreviewedOf(r) { return r.regressed.filter((x) => !decisionReviewOf(r.side, x.p.id).label); }
+
+  function verdictDetail(r) {
+    const failed = r.failed.length
+      ? el("ul", { class: "detail-list" }, r.failed.map((i) => el("li", null,
+        detailButton({ side: r.side, kind: "criterion", index: i }, "link-btn", "✕ " + criterionName(decision.criteria[i])))))
+      : el("p", { class: "small muted", text: T.none });
+    return [el("h3", { text: T.failedCriteria }), failed,
+      el("h3", { text: fmt(T.rejectedItems, { reject: REJECT, n: r.rejected }) }), regressedItemList(r, rejectedOf(r)),
+      el("h3", { text: fmt(T.unreviewedItems, { n: r.unreviewed, total: r.regressed.length }) }), regressedItemList(r, unreviewedOf(r))];
+  }
+
+  function renderDecisionDetail(d, results) {
+    const r = results.find((x) => x.side === d.side);
+    let title, body;
+    if (d.kind === "criterion") {
+      const c = decision.criteria[d.index];
+      title = criterionName(c);
+      body = criterionDetail(c, r.results[d.index], r);
+    } else if (d.kind === "verdict") {
+      title = T.verdictReasons;
+      body = [el("p", null, verdictBadge(r.verdict))].concat(verdictDetail(r));
+    } else if (d.kind === "rejected") {
+      title = fmt(T.rejectedItems, { reject: REJECT, n: r.rejected });
+      body = [regressedItemList(r, rejectedOf(r))];
+    } else {
+      title = fmt(T.unreviewedItems, { n: r.unreviewed, total: r.regressed.length });
+      body = [regressedItemList(r, unreviewedOf(r))];
+    }
+    const heading = r.label + " · " + title;
+    return el("div", { class: "card decision-detail", id: "decision-detail", tabindex: -1, role: "region", "aria-label": heading }, [
+      el("div", { class: "verdict-head" }, [el("h2", { text: heading }), el("button", { type: "button", class: "btn", text: T.close + " (Esc)", onclick: closeDetail })])
+    ].concat(body));
   }
 
   function metricsHeaders() {
