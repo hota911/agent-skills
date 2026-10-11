@@ -4,9 +4,8 @@
   "tabs": ["compare", "overview", "table"],
   "data": {
     "csv": "golden_model_a.csv",
-    "csv_b": "golden_model_b.csv",
     "label_a": "現行",
-    "label_b": "新"
+    "candidates": [{"file": "golden_model_b.csv", "label": "新"}]
   },
   "columns": {
     "id": "id",

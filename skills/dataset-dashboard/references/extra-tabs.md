@@ -19,7 +19,7 @@ separate HTML page instead.
 
 | Key | Meaning |
 |-----|---------|
-| `id` | Unique among extra tabs and different from `overview`, `compare`, `review`, `table`. The script registers under this id. |
+| `id` | Unique among extra tabs and different from the built-in tabs `overview`, `compare`, `review`, `table`, `release`, `report`. The script registers under this id. |
 | `title` | Tab label. |
 | `script` | A `.js` file, resolved relative to the config file like the data paths. |
 
@@ -40,11 +40,12 @@ The container is new and empty each time, so `render` builds the whole tab from 
 |-------|---------|
 | `container` | The tab's element. Append to it. |
 | `rows` | Rows of the main data file (A) that match the filter bar. Each row maps every header to its cell: text as in the CSV (`"true"`, `"0.92"`), or an array / object for JSON values kept in `columns.text` columns. |
-| `rowsB` | The same for B, or `null` without `data.csv_b`. |
-| `pairs` | With B: `[{id, a, b}]` for ids present on both sides, filtered like the compare tab. Otherwise `null`. |
+| `rowsB` | The same for the candidate selected in the compare tab (the first one until another is picked), or `null` without `data.candidates`. |
+| `pairs` | With candidates: `[{id, a, b}]` for ids present in A and the selected candidate, filtered like the compare tab. Otherwise `null`. |
+| `candidates` | Every candidate in config order: `[{label, rows, pairs}]`, filtered the same way. An empty list without `data.candidates`. |
 | `columns` | The config's `columns` (`id`, `text`, `category`, `status`, `verdict`, `metrics`). |
 | `order` | The config's `order`. |
-| `labels` | `{a, b}` side names (`data.label_a`, `data.label_b`). |
+| `labels` | `{a, b}` side names: `data.label_a` and the selected candidate's label (`null` without candidates). |
 | `lang` | `"ja"` or `"en"`. Write the tab's own text in this language. |
 | `el(tag, attrs, children)` | Element builder. `attrs.text` sets `textContent`; `on<event>` adds a listener; other keys are attributes. String children become text nodes. |
 | `cellText(value)` | A cell as one line of text (arrays and objects as compact JSON). |

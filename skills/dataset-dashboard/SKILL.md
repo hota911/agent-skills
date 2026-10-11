@@ -1,15 +1,15 @@
 ---
 name: dataset-dashboard
-description: Turn local CSV, JSON, or JSONL datasets into one self-contained offline HTML dashboard for reviewing LLM or evaluation results - compare model A vs B on a golden dataset (regressions first), let a human review and label items (for example fact-check) with keyboard shortcuts and export the labels as CSV, or triage feedback by category and status. Use when the user has a CSV / JSON / JSONL dataset or evaluation results (for example LLM eval outputs as JSONL) and asks to visualize, explore, compare, review, label, or triage them, or says CSV を可視化, JSON を可視化, JSONL を確認, データセットを見たい, A/B 比較, レビュー画面, ファクトチェックの確認. Not for live databases, BI dashboards, or charts meant for slides.
+description: Turn local CSV, JSON, or JSONL datasets into one self-contained offline HTML dashboard for reviewing LLM or evaluation results - compare a current model against one or more candidates on a golden dataset (regressions first), decide which candidates can be released against stated criteria with a human review of regressed items and a written report, let a human review and label items (for example fact-check) with keyboard shortcuts and export the labels as CSV, or triage feedback by category and status. Use when the user has a CSV / JSON / JSONL dataset or evaluation results (for example LLM eval outputs as JSONL) and asks to visualize, explore, compare, review, label, or triage them, or says CSV を可視化, JSON を可視化, JSONL を確認, データセットを見たい, A/B 比較, リリース判定, 出してよいか, レビュー画面, ファクトチェックの確認. Not for live databases, BI dashboards, or charts meant for slides.
 ---
 
 # Dataset Dashboard
 
-Build a single HTML file from one or two data files plus a small JSON config. The file
+Build a single HTML file from one or more data files plus a small JSON config. The file
 opens from disk with no server and no network: Tabulator, PapaParse, the app code, and
 the data are all inlined (or, in load mode, the data is read from the data file when
-the page opens). The user can then sort, filter, read long text, compare A/B,
-record review labels, and export CSV.
+the page opens). The user can then sort, filter, read long text, compare the
+current model with candidates, decide releases, record review labels, and export CSV.
 
 Input formats, chosen by file extension (anything else is an error):
 
@@ -26,11 +26,12 @@ after flattening are allowed only in `columns.text` columns; they are shown as
 pretty-printed JSON in review and compare details and as compact JSON in the table.
 Exports are always CSV.
 
-Three jobs, selected by `tabs` in the config:
+Four jobs, selected by `tabs` in the config:
 
 | Job | Tabs | What the reader gets |
 |-----|------|----------------------|
-| Model A vs B on a golden set | `compare`, `overview`, `table` | Counts of regressed / improved / unchanged items, metric deltas, a regressions-first list, and a side-by-side A/B detail view |
+| Model A vs B on a golden set | `compare`, `overview`, `table` | Counts of regressed / improved / unchanged items, metric deltas, a regressions-first list, and a side-by-side A/B detail view; with several candidates, a picker |
+| Release decision | `release` (+ `report`), `compare`, `overview`, `table` | Per candidate a verdict (出してよい / 要レビュー / 出さない) against the config's criteria, a candidate x criteria table, a review of regressed items, a record to export, and later the written report |
 | Fact-check human review | `review`, `overview`, `table` | One item at a time, keys 1-9 to label, N for a note, autosave in the browser, CSV export with `human_label` and `human_note` |
 | Feedback triage | `overview`, `table` | Category x status stacked bars, filters, and a full table with header filters and CSV download |
 
@@ -64,9 +65,9 @@ Three jobs, selected by `tabs` in the config:
    python3 <skill-dir>/scripts/build_dashboard.py --config review.config.json --out review.html [--mode load]
    ```
 
-   Python 3 standard library only; nothing to install. `--csv` / `--csv-b`
-   override the data file paths (CSV, JSON, or JSONL) for a one-off run (resolved from
-   the current directory).
+   Python 3 standard library only; nothing to install. `--csv` overrides the main
+   data file path (CSV, JSON, or JSONL) for a one-off run (resolved from the current
+   directory); candidates are always taken from the config.
    Load mode still reads the CSVs at build time to check columns and ids, and stores
    each CSV's path relative to `--out` as its default location, so write the HTML
    next to the CSV (or where that relative path stays valid).
@@ -99,6 +100,18 @@ Three jobs, selected by `tabs` in the config:
   true->false flip of a `better: "higher"` rate is a regression. For numeric metrics
   set `regression_threshold` in the metric's unit (for example 300 for latency in ms);
   a numeric metric without a threshold is shown but does not classify items.
+  Put the current model in `data.csv` and each other model in `data.candidates`.
+- "Which candidate can we release?" -> `release` first, then `compare`, `overview`,
+  `table`. Turn each condition the user states into a `release.criteria` entry
+  (`absolute`, `relative`, `regressions`, `critical_categories`); do not invent
+  criteria they did not state, and ask when a threshold is missing. The metric
+  thresholds decide which items count as regressed, so set them too.
+- "Write up the decision" -> only after a human has reviewed the regressed items and
+  exported the record (JSON). Read
+  [references/release-report.md](references/release-report.md), write the report with
+  every number copied from the record (never recomputed from the data), set
+  `release.record` and `release.report`, add the `report` tab, and build again; the
+  build checks the report's frontmatter verdicts against the record.
 - "I need to check the LLM's fact-check verdicts" -> `review` first, with the verdict
   column as `columns.verdict` and the labels the user wants (`["正しい","誤り","保留"]`).
   Put the claim, the evidence, and the rationale in `columns.text` in reading order.
@@ -113,8 +126,9 @@ Three jobs, selected by `tabs` in the config:
 - **Overview:** stat tiles per metric (rate as % and k/n, mean with p50/p95, sum with
   per-item), horizontal bars of items per category stacked by status or verdict, and
   a histogram of one numeric metric. Every chart has hover tooltips and a "show as
-  table" view. With two CSVs a toggle switches the overview between A and B.
-- **Compare:** items are paired by id. Ids present on only one side are excluded and
+  table" view. With candidates, buttons switch the overview between the data files.
+- **Compare:** with several candidates, buttons pick the one compared with A. Items
+  are paired by id. Ids present on only one side are excluded and
   listed in a banner. Regressions sort flips first, then by size relative to the
   threshold. Selecting a row shows metrics side by side, text that is identical once,
   and text that differs as two columns.
@@ -125,6 +139,19 @@ Three jobs, selected by `tabs` in the config:
   pick a label, N focuses the note, Esc leaves the note. "Unreviewed only" filters the
   queue. Export writes the original columns plus `human_label` and `human_note`
   (UTF-8 with BOM so Excel opens it correctly).
+- **Release:** one card per candidate with its verdict, the criteria it did not meet,
+  and links to its review and to the compare view; a candidate x criteria table with
+  each value and ✓ / ✕ plus text; and each metric's n and 95% interval, for reference
+  only. Verdicts use all paired items and ignore the filter bar (hidden on this tab):
+  出さない if a criterion fails or a regressed item is labelled with the last review
+  label (default 不可), 要レビュー if a regressed item is unreviewed, otherwise 出してよい.
+  The review of regressed items works like the review tab (arrows, 1-9, N, Esc) and is
+  saved per candidate in localStorage. "記録を書き出す" downloads the record as JSON
+  or Markdown, without reviewer names or times.
+- **Report:** the Markdown report from `release.report`, rendered as headings,
+  paragraphs, flat lists, tables, and bold / italic only, with HTML shown as text. If
+  the viewer's reviews change a verdict from the record, a warning on top says the
+  report is out of date.
 - **Table:** Tabulator with sort, header filters (drop-downs for category / status /
   verdict), long text truncated with an expand button, optional grouping by category,
   and download of the currently filtered rows.
@@ -155,8 +182,10 @@ Three jobs, selected by `tabs` in the config:
 - CSV values are inserted as text, never as HTML, so markup in the data is displayed
   literally. Extra tab scripts must keep this: data goes in only through the provided
   element builder or `textContent`, never `innerHTML`.
-- Review labels live only in that browser's localStorage. Clearing site data, another
-  browser, or another machine starts empty. Export to keep them.
+- Review labels, including release reviews, live only in that browser's localStorage.
+  Clearing site data, another browser, or another machine starts empty. Export to keep
+  them; for release reviews, export the record and set it as `release.record` so the
+  rebuilt HTML carries them.
 
 ## Gotchas
 
@@ -179,8 +208,13 @@ Three jobs, selected by `tabs` in the config:
 - `assets/template.html`, `assets/app.js`, `assets/app.css` - the dashboard itself.
 - `assets/vendor/` - PapaParse 5.4.1 and Tabulator 6.3.1 (MIT); see
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- `references/config.md` - every config key, including `release`, and the record format.
+- `references/release-report.md` - the release report's frontmatter, structure, and
+  the Markdown the report tab renders.
 - `references/extra-tabs.md` - the extra tab API, an example, and the security rule.
-- `examples/` - synthetic CSVs and a config for each job, plus `factcheck.jsonl` with
+- `examples/` - synthetic CSVs and a config for each job (the release decision has a
+  current model and three candidates, plus `release_record.json`, `release_report.md`,
+  and `release_report.config.json`), plus `factcheck.jsonl` with
   `factcheck_jsonl.config.json` (nested keys and an array column) and
   `feedback_weekly.js` (an extra tab used by `feedback.config.json`). Build one to see the result:
   `python3 scripts/build_dashboard.py --config examples/golden.config.json --out /tmp/golden.html`.

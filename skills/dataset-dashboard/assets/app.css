@@ -192,6 +192,28 @@ button, select, input, textarea { font: inherit; color: inherit; }
 textarea.note { width: 100%; min-height: 72px; border: 1px solid var(--axis); border-radius: 6px; padding: 6px 8px; background: var(--surface); resize: vertical; }
 .check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
 
+/* Release decision: the verdict is always written out, the color only repeats it. */
+.verdict-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); margin-bottom: 4px; }
+.verdict-card { border-left-width: 4px; display: flex; flex-direction: column; gap: 4px; }
+.verdict-card-go { border-left-color: var(--good-text); }
+.verdict-card-review { border-left-color: var(--warning); }
+.verdict-card-no-go { border-left-color: var(--critical); }
+.verdict-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; font-size: 15px; }
+.verdict { font-weight: 600; white-space: nowrap; }
+.verdict-go { color: var(--good-text); }
+.verdict-no-go { color: var(--bad-text); }
+.verdict-review { color: var(--text-primary); }
+
+/* Report: rendered from the Markdown subset */
+.report { line-height: 1.7; overflow-wrap: anywhere; }
+.report .md-h { margin: 16px 0 8px; color: var(--text-primary); }
+.report .md-h:first-child { margin-top: 0; }
+.report h2.md-h { font-size: 18px; }
+.report h3.md-h { font-size: 15px; }
+.report p { margin: 0 0 10px; }
+.report .md-list { margin: 0 0 10px; padding-left: 1.5em; }
+.report .scroll-x { margin-bottom: 12px; }
+
 /* Table tab */
 .table-toolbar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-bottom: 8px; }
 .cell-text { white-space: pre-wrap; overflow-wrap: anywhere; }

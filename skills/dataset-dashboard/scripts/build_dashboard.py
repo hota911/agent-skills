@@ -2,11 +2,11 @@
 """Build a single self-contained HTML dashboard from local CSV, JSON, or JSONL files.
 
 Usage:
-    python3 build_dashboard.py --config cfg.json --out out.html [--csv a.csv] [--csv-b b.csv]
+    python3 build_dashboard.py --config cfg.json --out out.html [--csv a.csv]
         [--mode embed|load]
 
-Data paths in the config are resolved relative to the config file; --csv / --csv-b
-override them (resolved relative to the current directory). The format follows the
+Data paths in the config are resolved relative to the config file; --csv overrides the
+main file (resolved relative to the current directory). The format follows the
 extension (.csv, .json, .jsonl); nested JSON objects become dot-separated columns. In
 "load" mode the files are still read and validated, but no rows are written to the HTML:
 it stores each file's path relative to the output HTML, fetches it on open when served
@@ -28,14 +28,29 @@ from pathlib import Path
 SKILL_DIR = Path(__file__).resolve().parent.parent
 ASSETS = SKILL_DIR / "assets"
 
-TABS = ("overview", "compare", "review", "table")
+TABS = ("overview", "compare", "review", "table", "release", "report")
 AGGREGATES = ("mean", "sum", "rate")
 BETTER = ("higher", "lower")
 LANGS = ("ja", "en")
 MODES = ("embed", "load")
 
-TOP_KEYS = {"title", "lang", "tabs", "data", "columns", "order", "histogram", "review", "extra_tabs"}
-DATA_KEYS = {"csv", "csv_b", "label_a", "label_b", "mode", "records_path"}
+TOP_KEYS = {"title", "lang", "tabs", "data", "columns", "order", "histogram", "review",
+            "extra_tabs", "release"}
+RELEASE_KEYS = {"criteria", "review_labels", "record", "report"}
+CRITERION_KEYS = {
+    "absolute": {"type", "metric", "min", "max"},
+    "relative": {"type", "metric", "max_worse", "max_worse_pct"},
+    "regressions": {"type", "max"},
+    "critical_categories": {"type", "categories"},
+}
+# The last review label rejects an item (NO-GO). Must match the release tab in app.js.
+DEFAULT_REVIEW_LABELS = {"ja": ["許容", "不可"], "en": ["acceptable", "unacceptable"]}
+VERDICTS = ("go", "review", "no-go")
+RECORD_KIND = "dataset-dashboard/release-record"
+DATA_KEYS = {"csv", "candidates", "label_a", "mode", "records_path"}
+CANDIDATE_KEYS = {"file", "label"}
+# Replaced by data.candidates; a config using them gets an error showing the rewrite.
+REMOVED_DATA_KEYS = ("csv_b", "label_b")
 COLUMN_KEYS = {"id", "text", "category", "status", "verdict", "metrics"}
 METRIC_KEYS = {"column", "label", "unit", "aggregate", "better", "regression_threshold"}
 REVIEW_KEYS = {"labels"}
@@ -116,15 +131,31 @@ def validate_config(cfg: object) -> dict:
     if bad or len(set(tabs)) != len(tabs):
         fail(f"config.tabs has unknown or repeated entries {tabs}; allowed: {list(TABS)}")
 
-    data = check_keys(cfg.get("data"), DATA_KEYS, "config.data")
+    data = cfg.get("data")
+    if isinstance(data, dict) and any(k in data for k in REMOVED_DATA_KEYS):
+        fail(removed_keys_message(data))
+    data = check_keys(data, DATA_KEYS, "config.data")
     require_str(data, "csv", "config.data")
-    for key in ("csv_b", "label_a", "label_b", "records_path"):
+    for key in ("label_a", "records_path"):
         optional_str(data, key, "config.data")
+    data.setdefault("label_a", "A")
     mode = data.setdefault("mode", "embed")
     if mode not in MODES:
         fail(f"config.data.mode must be one of {list(MODES)}, got {mode!r}")
-    if "compare" in tabs and not data.get("csv_b"):
-        fail('config.tabs includes "compare" but config.data.csv_b is not set')
+    candidates = data.setdefault("candidates", [])
+    if not isinstance(candidates, list):
+        fail('config.data.candidates must be a list of {"file", "label"} objects')
+    seen_labels = {data["label_a"]}
+    for i, cand in enumerate(candidates):
+        where = f"config.data.candidates[{i}]"
+        check_keys(cand, CANDIDATE_KEYS, where)
+        require_str(cand, "file", where)
+        label = require_str(cand, "label", where)
+        if label in seen_labels:
+            fail(f"{where}.label {label!r} is already used by data.label_a or another candidate")
+        seen_labels.add(label)
+    if "compare" in tabs and not candidates:
+        fail('config.tabs includes "compare" but config.data.candidates is empty')
 
     cols = check_keys(cfg.get("columns"), COLUMN_KEYS, "config.columns")
     require_str(cols, "id", "config.columns")
@@ -198,7 +229,100 @@ def validate_config(cfg: object) -> dict:
         seen_ids.add(tab_id)
         if not script.lower().endswith(".js"):
             fail(f"{where}.script must be a .js file, got {script!r}")
+
+    if "release" in tabs:
+        validate_release(cfg)
+    elif "release" in cfg:
+        fail('config.release is set but "release" is not in config.tabs')
+    has_report = bool(cfg.get("release", {}).get("report"))
+    if "report" in tabs and not has_report:
+        fail('config.tabs includes "report" but config.release.report is not set')
+    if has_report and "report" not in tabs:
+        fail('config.release.report is set but "report" is not in config.tabs')
     return cfg
+
+
+def is_number(value: object) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def validate_release(cfg: dict) -> None:
+    release = check_keys(cfg.get("release"), RELEASE_KEYS, "config.release")
+    if not cfg["data"]["candidates"]:
+        fail('config.tabs includes "release" but config.data.candidates is empty')
+    metrics = {m["column"]: m for m in cfg["columns"]["metrics"]}
+    if not metrics:
+        fail('config.tabs includes "release" but config.columns.metrics is empty')
+
+    criteria = release.get("criteria")
+    if not isinstance(criteria, list) or not criteria:
+        fail("config.release.criteria must be a non-empty list of criteria")
+    for i, c in enumerate(criteria):
+        where = f"config.release.criteria[{i}]"
+        kind = c.get("type") if isinstance(c, dict) else None
+        if kind not in CRITERION_KEYS:
+            fail(f"{where}.type must be one of {list(CRITERION_KEYS)}")
+        check_keys(c, CRITERION_KEYS[kind], where)
+        m = None
+        if kind in ("absolute", "relative"):
+            if c.get("metric") not in metrics:
+                fail(f"{where}.metric must be a column in config.columns.metrics: {list(metrics)}")
+            m = metrics[c["metric"]]
+        if kind == "absolute":
+            bounds = [k for k in ("min", "max") if k in c]
+            if not bounds:
+                fail(f"{where}: set min, max, or both")
+            for k in bounds:
+                if not is_number(c[k]):
+                    fail(f"{where}.{k} must be a number")
+                if m["aggregate"] == "rate" and not 0 <= c[k] <= 1:
+                    fail(f"{where}.{k} must be between 0 and 1 for a rate metric (0.85 means 85%)")
+            if len(bounds) == 2 and c["min"] > c["max"]:
+                fail(f"{where}: min {c['min']} is greater than max {c['max']}")
+        elif kind == "relative":
+            given = [k for k in ("max_worse", "max_worse_pct") if k in c]
+            if len(given) != 1:
+                fail(f"{where}: set exactly one of max_worse (in the metric's unit) or "
+                     "max_worse_pct (percent of the current model's value)")
+            key = given[0]
+            if not is_number(c[key]) or c[key] < 0:
+                fail(f"{where}.{key} must be a number >= 0")
+            if m["aggregate"] == "rate" and key == "max_worse" and c[key] > 1:
+                fail(f"{where}.max_worse is a fraction for a rate metric (0.02 means 2pt)")
+        elif kind == "regressions":
+            value = c.get("max")
+            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                fail(f"{where}.max must be an integer >= 0")
+        else:
+            if not cfg["columns"].get("category"):
+                fail(f"{where}: critical_categories needs config.columns.category")
+            cats = c.get("categories")
+            if (not isinstance(cats, list) or not cats
+                    or not all(isinstance(x, str) and x for x in cats) or len(set(cats)) != len(cats)):
+                fail(f"{where}.categories must be a non-empty list of distinct category values")
+
+    labels = release.setdefault("review_labels", list(DEFAULT_REVIEW_LABELS[cfg["lang"]]))
+    if (not isinstance(labels, list) or not 2 <= len(labels) <= 9
+            or not all(isinstance(x, str) and x for x in labels) or len(set(labels)) != len(labels)):
+        fail("config.release.review_labels must be 2-9 distinct non-empty strings; the last one "
+             "rejects the item (NO-GO), number keys 1-9 select them")
+    record = optional_str(release, "record", "config.release")
+    report = optional_str(release, "report", "config.release")
+    if record and not record.lower().endswith(".json"):
+        fail(f"config.release.record must be a .json file exported from the release tab, got {record!r}")
+    if report and not report.lower().endswith(".md"):
+        fail(f"config.release.report must be a .md file, got {report!r}")
+    if report and not record:
+        fail("config.release.report needs config.release.record: the report's verdicts are "
+             "checked against the record")
+
+
+def removed_keys_message(data: dict) -> str:
+    file_b = data.get("csv_b", "b.csv")
+    label_b = data.get("label_b", "B")
+    rewrite = json.dumps({"candidates": [{"file": file_b, "label": label_b}]}, ensure_ascii=False)
+    return ("config.data.csv_b / label_b were replaced by config.data.candidates. Remove them "
+            f"and write {rewrite} (add one object per candidate to compare against data.csv)")
 
 
 def read_extra_scripts(cfg: dict, base: Path) -> list[tuple[str, str]]:
@@ -408,6 +532,256 @@ def id_mismatch(a: Table, b: Table, id_col: str) -> dict[str, list[str]]:
     }
 
 
+# ---------- release decision ----------
+# These functions mirror the release tab in app.js (pairs, classifyPair, aggregate,
+# evaluateCriterion, candidateVerdict) so the build can recompute the verdicts that a
+# record or report states. Keep both sides in step.
+
+
+def metric_value(row: dict, m: dict) -> float | None:
+    raw = cell_text(row[m["column"]]).strip()
+    if m["aggregate"] == "rate":
+        low = raw.lower()
+        return 1 if low in TRUE_VALUES else 0 if low in FALSE_VALUES else None
+    if not raw:
+        return None
+    value = float(raw)
+    return value if math.isfinite(value) else None
+
+
+def js_sum(values: list[float]) -> float:
+    # Plain left-to-right addition like Array.reduce; sum() compensates since Python 3.12.
+    total = 0
+    for v in values:
+        total += v
+    return total
+
+
+def aggregate(values: list[float], m: dict) -> float | None:
+    if not values:
+        return None
+    return js_sum(values) if m["aggregate"] == "sum" else js_sum(values) / len(values)
+
+
+def pair_rows(a: Table, b: Table, id_col: str) -> list[tuple[str, dict, dict]]:
+    by_id = {cell_text(r[id_col]): r for r in b.rows}
+    out = []
+    for row in a.rows:
+        rid = cell_text(row[id_col])
+        if rid in by_id:
+            out.append((rid, row, by_id[rid]))
+    return out
+
+
+def is_regressed(a: dict, b: dict, metrics: list[dict]) -> bool:
+    for m in metrics:
+        va, vb = metric_value(a, m), metric_value(b, m)
+        if va is None or vb is None:
+            continue
+        if m["aggregate"] == "rate":
+            good = 1 if m["better"] == "higher" else 0
+            if va == good and vb != good:
+                return True
+            continue
+        threshold = m.get("regression_threshold")
+        if threshold is None:
+            continue
+        worse = vb - va if m["better"] == "lower" else va - vb
+        if worse > threshold:
+            return True
+    return False
+
+
+def evaluate_criterion(c: dict, metrics: dict[str, dict], pairs: list, regressed: list,
+                       category_col: str | None) -> bool:
+    kind = c["type"]
+    if kind == "regressions":
+        return len(regressed) <= c["max"]
+    if kind == "critical_categories":
+        cats = set(c["categories"])
+        return not any(cell_text(a[category_col]) in cats for _, a, _ in regressed)
+    m = metrics[c["metric"]]
+    both = [(va, vb) for va, vb in ((metric_value(a, m), metric_value(b, m)) for _, a, b in pairs)
+            if va is not None and vb is not None]
+    cur = aggregate([x[0] for x in both], m)
+    cand = aggregate([x[1] for x in both], m)
+    if cand is None:
+        return False
+    if kind == "absolute":
+        return ("min" not in c or cand >= c["min"]) and ("max" not in c or cand <= c["max"])
+    worse = cand - cur if m["better"] == "lower" else cur - cand
+    if "max_worse" in c:
+        return worse <= c["max_worse"]
+    if cur != 0:
+        pct = worse / abs(cur) * 100
+    else:
+        pct = math.inf if worse > 0 else 0
+    return pct <= c["max_worse_pct"]
+
+
+def candidate_verdict(cfg: dict, a: Table, b: Table, reviews: dict[str, dict]) -> tuple[str, set[str]]:
+    """The verdict code and the ids of regressed items for one candidate."""
+    cols = cfg["columns"]
+    release = cfg["release"]
+    pairs = pair_rows(a, b, cols["id"])
+    regressed = [p for p in pairs if is_regressed(p[1], p[2], cols["metrics"])]
+    metrics = {m["column"]: m for m in cols["metrics"]}
+    failed = not all(evaluate_criterion(c, metrics, pairs, regressed, cols.get("category"))
+                     for c in release["criteria"])
+    reject = release["review_labels"][-1]
+    labels = [reviews.get(rid, {}).get("label", "") for rid, _, _ in regressed]
+    if failed or reject in labels:
+        verdict = "no-go"
+    elif any(not label for label in labels):
+        verdict = "review"
+    else:
+        verdict = "go"
+    return verdict, {rid for rid, _, _ in regressed}
+
+
+def read_record(path: Path, cfg: dict, tables: dict[str, Table]) -> tuple[dict, dict]:
+    """Validate an exported release record; returns (verdicts, reviews) keyed by candidate label."""
+    where = f"release record {path}"
+    if not path.is_file():
+        fail(f"{where} not found (config.release.record)")
+    try:
+        rec = json.loads(path.read_text(encoding="utf-8-sig"), parse_constant=reject_constant)
+    except UnicodeDecodeError as e:
+        fail(f"{where} is not UTF-8 ({e.reason} at byte {e.start})")
+    except ValueError as e:
+        fail(f"{where} is not valid JSON ({e})")
+    if not isinstance(rec, dict) or rec.get("kind") != RECORD_KIND or rec.get("version") != 1:
+        fail(f"{where} is not a release record exported from the release tab "
+             f"(expected kind {RECORD_KIND!r}, version 1)")
+    release = cfg["release"]
+    again = "; export the record again from a dashboard built with this config and data"
+    if rec.get("criteria") != release["criteria"]:
+        fail(f"{where}: its criteria differ from config.release.criteria{again}")
+    if rec.get("review_labels") != release["review_labels"]:
+        fail(f"{where}: its review_labels differ from config.release.review_labels{again}")
+    files = rec.get("files")
+    if not isinstance(files, dict) or not isinstance(files.get("current"), dict) \
+            or files["current"].get("file") != tables["a"].path.name:
+        fail(f"{where}: its current file is not {tables['a'].path.name}{again}")
+
+    candidates = cfg["data"]["candidates"]
+    expected = [c["label"] for c in candidates]
+    entries = rec.get("candidates")
+    if not isinstance(entries, list) or not all(isinstance(e, dict) for e in entries):
+        fail(f"{where}: candidates must be a list of objects")
+    found = [e.get("label") for e in entries]
+    if sorted(map(str, found)) != sorted(expected) or len(set(found)) != len(found):
+        fail(f"{where}: candidates {found} differ from config.data.candidates {expected}{again}")
+    by_label = {e["label"]: e for e in entries}
+    verdicts: dict[str, str] = {}
+    reviews: dict[str, dict[str, dict]] = {}
+    for i, cand in enumerate(candidates, start=1):
+        label = cand["label"]
+        entry = by_label[label]
+        table = tables[f"c{i}"]
+        if entry.get("file") != table.path.name:
+            fail(f"{where}: candidate {label!r} file is {entry.get('file')!r}, not {table.path.name!r}{again}")
+        if entry.get("verdict") not in VERDICTS:
+            fail(f"{where}: candidate {label!r} verdict must be one of {list(VERDICTS)}")
+        items = entry.get("reviews")
+        if not isinstance(items, list):
+            fail(f"{where}: candidate {label!r} reviews must be a list")
+        per_id: dict[str, dict] = {}
+        for item in items:
+            if not isinstance(item, dict) or not isinstance(item.get("id"), str) \
+                    or not isinstance(item.get("label", ""), str) or not isinstance(item.get("note", ""), str):
+                fail(f"{where}: candidate {label!r} has a review that is not "
+                     '{"id": str, "label": str, "note": str}')
+            if item.get("label", "") and item["label"] not in release["review_labels"]:
+                fail(f"{where}: candidate {label!r} id {item['id']!r} has label {item['label']!r}, "
+                     f"not one of {release['review_labels']}")
+            if item.get("label") or item.get("note"):
+                per_id[item["id"]] = {"label": item.get("label", ""), "note": item.get("note", "")}
+        verdict, regressed = candidate_verdict(cfg, tables["a"], table, per_id)
+        stray = sorted(set(per_id) - regressed)
+        if stray:
+            fail(f"{where} does not match the data: candidate {label!r} has reviews for {stray}, "
+                 "which are not regressed items")
+        if verdict != entry["verdict"]:
+            fail(f"{where} does not match the data: candidate {label!r} is {entry['verdict']!r} in "
+                 f"the record but {verdict!r} from the data and the record's reviews{again}")
+        verdicts[label] = verdict
+        reviews[label] = per_id
+    return verdicts, reviews
+
+
+def read_report(path: Path, verdicts: dict[str, str]) -> str:
+    """Check the report's frontmatter verdicts against `verdicts`; returns the body."""
+    where = f"release report {path}"
+    if not path.is_file():
+        fail(f"{where} not found (config.release.report)")
+    try:
+        text = path.read_text(encoding="utf-8-sig")
+    except UnicodeDecodeError as e:
+        fail(f"{where} is not UTF-8 ({e.reason} at byte {e.start})")
+    lines = [line.rstrip("\r") for line in text.split("\n")]
+    example = "---\\nverdicts:\\n  <candidate label>: go | review | no-go\\n---"
+    if not lines or lines[0] != "---" or "---" not in lines[1:]:
+        fail(f"{where} must begin with frontmatter: {example}")
+    end = lines.index("---", 1)
+    stated: dict[str, str] = {}
+    in_verdicts = False
+    for n, line in enumerate(lines[1:end], start=2):
+        if not line.strip():
+            continue
+        if not line[0].isspace():
+            if line.strip() != "verdicts:" or in_verdicts:
+                fail(f"{where}, line {n}: the frontmatter holds only one 'verdicts:' key ({example})")
+            in_verdicts = True
+            continue
+        key, sep, value = line.strip().rpartition(":")
+        key, value = key.strip(), value.strip()
+        if len(key) >= 2 and key[0] == key[-1] == '"':
+            key = key[1:-1]
+        if not in_verdicts or not sep or not key:
+            fail(f"{where}, line {n}: expected '  <candidate label>: <verdict>' under 'verdicts:'")
+        if value not in VERDICTS:
+            fail(f"{where}, line {n}: verdict {value!r} must be one of {list(VERDICTS)}")
+        if key in stated:
+            fail(f"{where}, line {n}: candidate {key!r} appears twice")
+        stated[key] = value
+    if not in_verdicts:
+        fail(f"{where}: the frontmatter has no 'verdicts:' key ({example})")
+    problems = []
+    missing = [k for k in verdicts if k not in stated]
+    extra = [k for k in stated if k not in verdicts]
+    if missing:
+        problems.append(f"missing candidate(s) {missing}")
+    if extra:
+        problems.append(f"unknown candidate(s) {extra}")
+    for label, verdict in verdicts.items():
+        if label in stated and stated[label] != verdict:
+            problems.append(f"{label!r} is {stated[label]!r} in the report but {verdict!r} from the record")
+    if problems:
+        fail(f"{where}: frontmatter verdicts do not match the record: " + "; ".join(problems))
+    return "\n".join(lines[end + 1:]).strip("\n")
+
+
+def check_release(cfg: dict, tables: dict[str, Table], base: Path) -> tuple[dict | None, str | None]:
+    """Check the release config against the data; read the record and report if set."""
+    release = cfg["release"]
+    cat_col = cfg["columns"].get("category")
+    if cat_col:
+        present = sorted({cell_text(r[cat_col]) for r in tables["a"].rows})
+        for i, c in enumerate(release["criteria"]):
+            if c["type"] != "critical_categories":
+                continue
+            missing = [x for x in c["categories"] if x not in present]
+            if missing:
+                fail(f"config.release.criteria[{i}].categories {missing} not found in column "
+                     f"{cat_col!r} of {tables['a'].path.name}; values: {present}")
+    if not release.get("record"):
+        return None, None
+    verdicts, reviews = read_record(base / release["record"], cfg, tables)
+    report = read_report(base / release["report"], verdicts) if release.get("report") else None
+    return {"verdicts": verdicts, "reviews": reviews}, report
+
+
 def read_asset(name: str) -> str:
     path = ASSETS / name
     if not path.is_file():
@@ -492,7 +866,7 @@ def html_escape(text: str) -> str:
 
 
 def build(config_path: Path, out_path: Path, csv_override: Path | None,
-          csv_b_override: Path | None, mode_override: str | None) -> list[str]:
+          mode_override: str | None) -> list[str]:
     if not config_path.is_file():
         fail(f"config not found: {config_path}")
     try:
@@ -507,54 +881,63 @@ def build(config_path: Path, out_path: Path, csv_override: Path | None,
     extra_scripts = read_extra_scripts(cfg, base)
 
     records_path = data.get("records_path")
+    candidates = data["candidates"]
+    # Side keys: "a" for data.csv, "c1", "c2", ... for the candidates in config order.
     path_a = csv_override.resolve() if csv_override else base / data["csv"]
-    table_a = read_table(path_a, "A" if data.get("csv_b") else "data", records_path)
-    validate_table(table_a, cfg, "A" if data.get("csv_b") else "data")
-
-    table_b = None
-    if csv_b_override and not data.get("csv_b"):
-        fail("--csv-b was given but config.data.csv_b is not set")
-    if data.get("csv_b"):
-        path_b = csv_b_override.resolve() if csv_b_override else base / data["csv_b"]
-        table_b = read_table(path_b, "B", records_path)
-        validate_table(table_b, cfg, "B")
+    role_a = data["label_a"] if candidates else "data"
+    tables = {"a": read_table(path_a, role_a, records_path)}
+    validate_table(tables["a"], cfg, role_a)
+    for i, cand in enumerate(candidates, start=1):
+        table = read_table(base / cand["file"], cand["label"], records_path)
+        validate_table(table, cfg, cand["label"])
+        tables[f"c{i}"] = table
 
     warnings: list[str] = []
-    mismatch = {"only_a": [], "only_b": []}
-    if table_b is not None:
-        mismatch = id_mismatch(table_a, table_b, cfg["columns"]["id"])
-        banner = "(also shown as a banner in the dashboard)"
+    id_col = cfg["columns"]["id"]
+    banner = "(also shown as a banner in the dashboard)"
+    for i, cand in enumerate(candidates, start=1):
+        mismatch = id_mismatch(tables["a"], tables[f"c{i}"], id_col)
         if mismatch["only_a"]:
-            warnings.append(f"ids only in A ({len(mismatch['only_a'])}): {mismatch['only_a']} {banner}")
+            warnings.append(f"ids only in {data['label_a']}, not in {cand['label']} "
+                            f"({len(mismatch['only_a'])}): {mismatch['only_a']} {banner}")
         if mismatch["only_b"]:
-            warnings.append(f"ids only in B ({len(mismatch['only_b'])}): {mismatch['only_b']} {banner}")
+            warnings.append(f"ids only in {cand['label']}, not in {data['label_a']} "
+                            f"({len(mismatch['only_b'])}): {mismatch['only_b']} {banner}")
+
+    release_record = None
+    release_report = None
+    if "release" in cfg:
+        release_record, release_report = check_release(cfg, tables, base)
 
     # The HTML may be shared, so it never carries the build machine's absolute paths. The
     # config keeps file names, which load mode shows as the files to pick.
-    data["csv"] = table_a.path.name
-    if table_b is not None:
-        data["csv_b"] = table_b.path.name
+    data["csv"] = tables["a"].path.name
+    for i, cand in enumerate(candidates, start=1):
+        cand["file"] = tables[f"c{i}"].path.name
+    if "release" in cfg:
+        for key in ("record", "report"):
+            if cfg["release"].get(key):
+                cfg["release"][key] = Path(cfg["release"][key]).name
     # The scripts are inlined; the page only needs each tab's id and title.
     cfg["extra_tabs"] = [{"id": t["id"], "title": t["title"]} for t in cfg["extra_tabs"]]
+    payload: dict = {"config": cfg, "release_record": release_record,
+                     "release_report": release_report}
     if data["mode"] == "load":
         # Relative to the HTML, so a page served over http fetches the file beside it.
         defaults = {}
-        for side, table in (("a", table_a), ("b", table_b)):
-            if table is None:
-                continue
+        for side, table in tables.items():
             rel = relative_to_html(table.path, out_path)
             if rel is None:
                 rel = table.path.name
                 warnings.append(f"{table.path} shares no folder with {out_path}, so the default "
                                 f"path is just {rel!r}; put the HTML next to the data file to auto-load it")
             defaults[side] = rel
-        payload = {"config": cfg, "a": None, "b": None, "default_paths": defaults}
+        payload["tables"] = None
+        payload["default_paths"] = defaults
     else:
-        payload = {
-            "config": cfg,
-            "a": {"name": table_a.path.name, "headers": table_a.headers, "rows": table_a.rows},
-            "b": None if table_b is None else {
-                "name": table_b.path.name, "headers": table_b.headers, "rows": table_b.rows},
+        payload["tables"] = {
+            side: {"name": t.path.name, "headers": t.headers, "rows": t.rows}
+            for side, t in tables.items()
         }
     html = render(cfg, payload, extra_scripts)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -567,11 +950,10 @@ def main() -> int:
     parser.add_argument("--config", required=True, type=Path, help="config JSON file")
     parser.add_argument("--out", required=True, type=Path, help="output HTML file")
     parser.add_argument("--csv", type=Path, help="override config.data.csv (.csv, .json or .jsonl)")
-    parser.add_argument("--csv-b", type=Path, help="override config.data.csv_b")
     parser.add_argument("--mode", choices=MODES, help="override config.data.mode")
     args = parser.parse_args()
     try:
-        warnings = build(args.config, args.out, args.csv, args.csv_b, args.mode)
+        warnings = build(args.config, args.out, args.csv, args.mode)
     except BuildError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1

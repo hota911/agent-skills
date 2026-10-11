@@ -8,7 +8,7 @@
       "files": ["examples/golden_model_a.csv", "examples/golden_model_b.csv"],
       "assertions": [
         "設定を書く前に CSV のヘッダーを確認し、id・question・answer・correct・latency_ms・cost_usd・category を実在する列名で使う",
-        "tabs の先頭が compare で、data.csv_b に B の CSV を指定している",
+        "tabs の先頭が compare で、data.candidates に B の CSV とラベルを指定している（廃止された data.csv_b は使わない）",
         "correct を aggregate rate・better higher、latency_ms を better lower・regression_threshold 300 で定義している",
         "build_dashboard.py を実行し、出力された HTML のパスとサイズを示す",
         "g037 が A にだけある警告を伝え、比較から除外されることを説明する",
@@ -71,6 +71,23 @@
         "skill の assets/（template.html・app.js・app.css）を編集しておらず、別の HTML ページを手書きしていない",
         "tabs に compare を残し、build_dashboard.py が exit 0 で HTML を出力したことを示す",
         "追加したタブをブラウザで開いてコンソールエラーがないことを確認したか、確認できなかったことを正直に述べる"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "release_current.csv が現行モデル、release_cand_b.csv・release_cand_c.csv・release_cand_d.csv が候補3つの評価結果です（すべて examples/ にあります）。どれを出してよいか判断できる HTML を作ってください。基準は、正答率 85% 以上、レイテンシの悪化は現行の 10% まで、コストの悪化は合計 0.005 USD まで、悪化した項目は 3 件まで、安全カテゴリでは1件も悪化しないこと、です。latency_ms は 300ms、cost_usd は 0.001 USD 以上の悪化を悪化項目とします。",
+      "expected_output": "release タブを先頭にした設定で3候補を data.candidates に並べ、依頼の5つの基準を release.criteria に書いて HTML を生成し、候補ごとの判定（候補B は出してよい、候補C は安全カテゴリの悪化で出さない、候補D は悪化項目のレビューが必要）と、悪化項目のレビュー、記録の書き出しの使い方を説明する。",
+      "files": ["examples/release_current.csv", "examples/release_cand_b.csv", "examples/release_cand_c.csv", "examples/release_cand_d.csv"],
+      "assertions": [
+        "設定を書く前に CSV のヘッダーを確認し、id・correct・latency_ms・cost_usd・category を実在する列名で使う",
+        "tabs に release を含め、data.csv に現行、data.candidates に3候補を file と label で指定している（data.csv_b は使わない）",
+        "release.criteria に absolute（correct の min 0.85）、relative（latency_ms の max_worse_pct 10）、relative（cost_usd の max_worse 0.005）、regressions（max 3）、critical_categories（[\"安全\"]）を書いている",
+        "latency_ms に regression_threshold 300、cost_usd に regression_threshold 0.001 を指定している",
+        "build_dashboard.py が exit 0 で HTML を出力したことを、パスとサイズとともに示す",
+        "候補B は出してよい、候補C は安全カテゴリの r17 が悪化して出さない、候補D は悪化項目（r02, r10）が未レビューのため要レビューになると伝える",
+        "判定は人が悪化項目を「許容／不可」でレビューして確定すること、レビューはブラウザに保存され、共有するには記録を JSON か Markdown で書き出すことを説明する",
+        "95% 区間は参考情報で判定には使わないこと、件数が 20 件と少ないことを注意点として伝える",
+        "生成物をブラウザで開いて確認したか、確認できなかったかを正直に述べる"
       ]
     }
   ]
