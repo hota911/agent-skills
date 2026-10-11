@@ -1,4 +1,4 @@
-/* csv-review-dashboard runtime. Data values are only ever inserted with textContent. */
+/* dataset-dashboard runtime. Data values are only ever inserted with textContent. */
 (function () {
   "use strict";
 
@@ -102,7 +102,7 @@
   // Must match MAX_SAFE_INTEGER in build_dashboard.py.
   const MAX_SAFE_ID = Number.MAX_SAFE_INTEGER;
   const SERIES_SLOTS = 8;
-  const STORAGE_PREFIX = "csv-review-dashboard:v1:";
+  const STORAGE_PREFIX = "dataset-dashboard:v1:";
 
   const payload = JSON.parse(document.getElementById("dashboard-data").textContent);
   const cfg = payload.config;
@@ -1485,7 +1485,7 @@
 
   // Remembered handles are a convenience only: IndexedDB can be missing or blocked
   // (private windows, file:// in some browsers), so every failure is ignored on purpose.
-  const IDB_NAME = "csv-review-dashboard", IDB_STORE = "handles";
+  const IDB_NAME = "dataset-dashboard", IDB_STORE = "handles";
 
   function idbRequest(mode, makeRequest) {
     return new Promise((resolve, reject) => {

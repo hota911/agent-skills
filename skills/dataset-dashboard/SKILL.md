@@ -1,9 +1,9 @@
 ---
-name: csv-review-dashboard
-description: Turn local CSV, JSON, or JSONL files into one self-contained offline HTML dashboard for reviewing LLM or evaluation results - compare model A vs B on a golden dataset (regressions first), let a human label fact-check items with keyboard shortcuts and export the labels as CSV, or triage feedback by category and status. Use when the user has CSV / JSON / JSONL results (for example LLM eval outputs as JSONL) and asks to visualize, compare, review, label, or triage them, or says CSV を可視化, JSON を可視化, JSONL を確認, A/B 比較, レビュー画面, ファクトチェックの確認. Not for live databases, BI dashboards, or charts meant for slides.
+name: dataset-dashboard
+description: Turn local CSV, JSON, or JSONL datasets into one self-contained offline HTML dashboard for reviewing LLM or evaluation results - compare model A vs B on a golden dataset (regressions first), let a human review and label items (for example fact-check) with keyboard shortcuts and export the labels as CSV, or triage feedback by category and status. Use when the user has a CSV / JSON / JSONL dataset or evaluation results (for example LLM eval outputs as JSONL) and asks to visualize, explore, compare, review, label, or triage them, or says CSV を可視化, JSON を可視化, JSONL を確認, データセットを見たい, A/B 比較, レビュー画面, ファクトチェックの確認. Not for live databases, BI dashboards, or charts meant for slides.
 ---
 
-# CSV Review Dashboard
+# Dataset Dashboard
 
 Build a single HTML file from one or two data files plus a small JSON config. The file
 opens from disk with no server and no network: Tabulator, PapaParse, the app code, and
