@@ -10,13 +10,14 @@ file.
 |-----|----------|------|---------|
 | `title` | yes | string | Page title and heading. Also part of the review storage key. |
 | `lang` | no (default `"ja"`) | `"ja"` \| `"en"` | Language of all UI text. |
-| `tabs` | yes | list | Non-empty, no repeats, from `overview`, `compare`, `review`, `table`, `release`, `report`. The first entry is the tab shown on open. |
+| `tabs` | yes | list | Non-empty, no repeats, from `overview`, `compare`, `review`, `table`, `release`, `experiment`, `report`. The first entry is the tab shown on open. `release` and `experiment` cannot both appear; build a separate dashboard for each. |
 | `data` | yes | object | Which CSV files to use and whether to embed them. See below. |
 | `columns` | yes | object | Roles of CSV columns. See below. |
 | `order` | no | object | `{ "<column>": ["value", ...] }` - display order for category / status / verdict values. |
 | `histogram` | no | string | A metric column with `aggregate` `mean` or `sum` to plot as a histogram in the overview. Defaults to the first such metric. |
 | `review` | only with the `review` tab | object | `{ "labels": [...] }`. See below. |
 | `release` | only with the `release` tab | object | Release criteria, review labels, and the optional record and report. See below. |
+| `experiment` | only with the `experiment` tab | object | The hypothesis, criteria, verdict labels, review labels, and the optional record and report. See below. |
 | `extra_tabs` | no | list | `[{"id": "...", "title": "...", "script": "tab.js"}]` - tabs written for this dashboard when the built-in ones do not cover the request. They follow the `tabs` entries. `script` is a `.js` file resolved relative to the config file. Ids are unique and must not be a built-in tab name. See [extra-tabs.md](extra-tabs.md). |
 
 ## `data`
@@ -24,7 +25,7 @@ file.
 | Key | Required | Meaning |
 |-----|----------|---------|
 | `csv` | yes | The main data file (side A, the current model, when comparing): `.csv`, `.json`, or `.jsonl`, chosen by extension. |
-| `candidates` | required by `compare` and `release` | List of `{"file": "...", "label": "..."}`, one per model compared against `csv`, same formats. The compare view has a picker for them. Labels must be unique and differ from `label_a`. |
+| `candidates` | required by `compare`, `release`, and `experiment` | List of `{"file": "...", "label": "..."}`, one per model compared against `csv`, same formats. The compare view has a picker for them. Labels must be unique and differ from `label_a`. |
 | `records_path` | no | Only for `.json` files whose top level is an object: the dotted path to the record array, for example `"data.items"`. Applies to every file. An error with a `.csv` or `.jsonl` file. |
 | `label_a` | no (default `A`) | Short name of `csv` shown everywhere, for example `"現行"`. |
 
@@ -218,6 +219,39 @@ review is for a regressed item and uses a review label; and each verdict equals 
 recomputed from the data and the record's reviews. A changed config or data file
 therefore means exporting the record again.
 
+## `experiment`
+
+For sharing the result of an experiment (a new feature, a model change, a new method)
+that tests a hypothesis against a baseline. Put the baseline in `data.csv` and each
+condition in `data.candidates`. The aggregation, criteria, verdicts, review of
+regressed items, record, and report check are the same as for `release`; only the
+words differ. Write the hypothesis and the criteria before looking at the results, so
+that a later change shows in the config's history.
+
+| Key | Required | Meaning |
+|-----|----------|---------|
+| `hypothesis` | yes | Non-empty string. Shown on top of the experiment tab and in the record. |
+| `criteria` | yes | Same as `release.criteria`. |
+| `verdict_labels` | yes | `{"pass": "...", "review": "...", "fail": "..."}` - 3 distinct non-empty strings shown for the verdicts, chosen for the experiment, for example `{"pass": "改善した", "review": "要レビュー", "fail": "改善しなかった"}` or `{"pass": "仮説を支持", "review": "要レビュー", "fail": "支持しない"}`. |
+| `review_labels` | no | Same as `release.review_labels`. |
+| `record` | needed by `report` | A `.json` record exported from the experiment tab. Checked like `release.record`. |
+| `report` | only with the `report` tab | A `.md` report. See [experiment-report.md](experiment-report.md). |
+
+Verdict codes follow the same three steps as release: `fail` (a criterion fails, or a
+regressed item has the last review label), `review` (a regressed item has no label
+yet), `pass` (otherwise). The screen shows them with `verdict_labels`.
+
+Each metric row also says how to read its 95% interval: "区間が0を含まない：差は誤差の
+範囲を超えている可能性が高い" or "区間が0を含む：差は誤差の範囲かもしれない" (in English,
+"Interval excludes 0: the difference is likely beyond noise" / "Interval includes 0:
+the difference may be within noise"). As in release, the interval never changes a
+verdict; a human interprets it in the report.
+
+The record is the release record with `kind` `"dataset-dashboard/experiment-record"`,
+plus `hypothesis` and `verdict_labels`; the files are named
+`experiment_record_YYYYMMDD-HHMM.json` / `.md`. When `experiment.record` is set, the
+build also fails unless the record's `hypothesis` and `verdict_labels` equal the config.
+
 ## Examples
 
 `examples/` has synthetic CSVs for each job; the feedback example there also has
@@ -326,6 +360,30 @@ is the fact-check review on `factcheck.jsonl`, using flattened names
       {"type": "regressions", "max": 3},
       {"type": "critical_categories", "categories": ["安全"]}
     ]
+  }
+}
+```
+
+### Experiment against a baseline
+
+`examples/experiment.config.json` (the baseline and three conditions, with the same
+`data` and `columns` as above apart from the file names and labels);
+`examples/experiment_report.config.json` adds the `report` tab with
+`"record": "experiment_record.json"` and `"report": "experiment_report.md"`. The
+experiment part:
+
+```json
+{
+  "tabs": ["experiment", "compare", "overview", "table"],
+  "experiment": {
+    "hypothesis": "回答の前に検算させる指示を加えると、正答率が 95% 以上に上がり、レイテンシの悪化は 15% 以内に収まる。安全カテゴリの回答は悪化しない。",
+    "criteria": [
+      {"type": "absolute", "metric": "correct", "min": 0.95},
+      {"type": "relative", "metric": "latency_ms", "max_worse_pct": 15},
+      {"type": "regressions", "max": 2},
+      {"type": "critical_categories", "categories": ["安全"]}
+    ],
+    "verdict_labels": {"pass": "仮説を支持", "review": "要レビュー", "fail": "支持しない"}
   }
 }
 ```

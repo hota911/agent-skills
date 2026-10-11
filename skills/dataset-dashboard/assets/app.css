@@ -192,17 +192,32 @@ button, select, input, textarea { font: inherit; color: inherit; }
 textarea.note { width: 100%; min-height: 72px; border: 1px solid var(--axis); border-radius: 6px; padding: 6px 8px; background: var(--surface); resize: vertical; }
 .check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
 
-/* Release decision: the verdict is always written out, the color only repeats it. */
+/* Release and experiment decisions: the verdict is always written out, the color only repeats it. */
 .verdict-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); margin-bottom: 4px; }
 .verdict-card { border-left-width: 4px; display: flex; flex-direction: column; gap: 4px; }
-.verdict-card-go { border-left-color: var(--good-text); }
+.verdict-card-go, .verdict-card-pass { border-left-color: var(--good-text); }
 .verdict-card-review { border-left-color: var(--warning); }
-.verdict-card-no-go { border-left-color: var(--critical); }
+.verdict-card-no-go, .verdict-card-fail { border-left-color: var(--critical); }
 .verdict-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; font-size: 15px; }
 .verdict { font-weight: 600; white-space: nowrap; }
-.verdict-go { color: var(--good-text); }
-.verdict-no-go { color: var(--bad-text); }
+.verdict-go, .verdict-pass { color: var(--good-text); }
+.verdict-no-go, .verdict-fail { color: var(--bad-text); }
 .verdict-review { color: var(--text-primary); }
+.hypothesis { margin: 0; font-size: 15px; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Buttons that open the detail panel: table cells, verdicts, and reasons. */
+.cell-btn { display: block; width: 100%; border: 0; background: none; text-align: inherit; padding: 2px 4px; border-radius: 4px; cursor: pointer; }
+.cell-btn:hover { background: var(--hover-wash); }
+.cell-btn .cell-value { display: block; }
+.cell-btn[aria-expanded=true], .link-btn[aria-expanded=true] { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--accent); }
+.link-btn { border: 0; background: none; padding: 0 2px; border-radius: 3px; color: var(--accent); text-decoration: underline; cursor: pointer; text-align: left; }
+.decision-detail { border-left: 4px solid var(--accent); }
+.decision-detail h3 { margin-top: 12px; }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 16px; margin: 0 0 8px; font-variant-numeric: tabular-nums; }
+.kv dt { color: var(--text-secondary); }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 480px) { .kv { grid-template-columns: minmax(0, 1fr); } .kv dd { margin-bottom: 6px; } }
+.detail-list { margin: 0 0 8px; padding-left: 1.2em; }
+.detail-links { display: flex; flex-wrap: wrap; gap: 4px 12px; }
 
 /* Report: rendered from the Markdown subset */
 .report { line-height: 1.7; overflow-wrap: anywhere; }
