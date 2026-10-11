@@ -37,6 +37,11 @@ gh skill install hota911/agent-skills skills/open-in-editor --agent codex --scop
 | [japanese-tech-writing](skills/japanese-tech-writing/) | 日本語の技術文書・書籍原稿の文章規範（整形・パラグラフライティング・論証の厳密さ・冗長の排除など）。日本語で技術書や記事を書く/推敲するときに使用。Derived from k16shikano's gist (used with permission). |
 | [dataset-dashboard](skills/dataset-dashboard/) | Turn local CSV, JSON, or JSONL files into one self-contained offline HTML dashboard, with the data embedded or picked from the file each time it opens: compare a current model with candidates (regressions first), decide which candidates to release against stated criteria with a review and a written report, label fact-check items with keyboard shortcuts and export CSV, or triage feedback by category and status. Python 3 stdlib build; bundles PapaParse and Tabulator (MIT). |
 
+## Design Documents
+
+Design documents for a skill live in that skill's `docs/` directory, not in a repository-level
+`docs/`. Example: [dataset-dashboard release decision](skills/dataset-dashboard/docs/release-design.md).
+
 ## License
 
 [MIT](LICENSE)
