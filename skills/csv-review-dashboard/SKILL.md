@@ -1,15 +1,30 @@
 ---
 name: csv-review-dashboard
-description: Turn local CSV files into one self-contained offline HTML dashboard for reviewing LLM or evaluation results - compare model A vs B on a golden dataset (regressions first), let a human label fact-check items with keyboard shortcuts and export the labels as CSV, or triage feedback by category and status. Use when the user has CSV results and asks to visualize, compare, review, label, or triage them, or says CSV を可視化, A/B 比較, レビュー画面, ファクトチェックの確認. Not for live databases, BI dashboards, or charts meant for slides.
+description: Turn local CSV, JSON, or JSONL files into one self-contained offline HTML dashboard for reviewing LLM or evaluation results - compare model A vs B on a golden dataset (regressions first), let a human label fact-check items with keyboard shortcuts and export the labels as CSV, or triage feedback by category and status. Use when the user has CSV / JSON / JSONL results (for example LLM eval outputs as JSONL) and asks to visualize, compare, review, label, or triage them, or says CSV を可視化, JSON を可視化, JSONL を確認, A/B 比較, レビュー画面, ファクトチェックの確認. Not for live databases, BI dashboards, or charts meant for slides.
 ---
 
 # CSV Review Dashboard
 
-Build a single HTML file from one or two CSV files plus a small JSON config. The file
+Build a single HTML file from one or two data files plus a small JSON config. The file
 opens from disk with no server and no network: Tabulator, PapaParse, the app code, and
-the data are all inlined (or, in load mode, the data is read from the CSV when the page
-opens). The user can then sort, filter, read long text, compare A/B,
+the data are all inlined (or, in load mode, the data is read from the data file when
+the page opens). The user can then sort, filter, read long text, compare A/B,
 record review labels, and export CSV.
+
+Input formats, chosen by file extension (anything else is an error):
+
+- `.csv` - a header row plus rows.
+- `.jsonl` - one JSON object per line (blank lines are skipped).
+- `.json` - an array of objects, or an object holding that array at `data.records_path`
+  (a dotted path such as `"data.items"`).
+
+JSON records are flattened: nested objects become dot-separated column names
+(`{"llm": {"verdict": ...}}` -> `llm.verdict`), and the config uses those names. A key
+missing from a record is an empty cell; numbers and booleans behave as the same text
+would in a CSV, so metrics work unchanged. Values that are still arrays or objects
+after flattening are allowed only in `columns.text` columns; they are shown as
+pretty-printed JSON in review and compare details and as compact JSON in the table.
+Exports are always CSV.
 
 Three jobs, selected by `tabs` in the config:
 
@@ -21,7 +36,9 @@ Three jobs, selected by `tabs` in the config:
 
 ## Workflow
 
-1. **Inspect the CSV headers and a few rows** before writing anything. Note the id
+1. **Inspect the headers (for JSON, the keys of a few records) and a few rows** before
+   writing anything. For JSON, note where the record array sits (`records_path`) and
+   the flattened names of nested keys. Note the id
    column, long-text columns, the category / status / verdict columns, and numeric or
    boolean metric columns. Do not guess column names. Note data anomalies you see on
    the way (a verdict that contradicts its rationale, ids present in only one file,
@@ -43,7 +60,8 @@ Three jobs, selected by `tabs` in the config:
    ```
 
    Python 3 standard library only; nothing to install. `--csv` / `--csv-b`
-   override the CSV paths for a one-off run (resolved from the current directory).
+   override the data file paths (CSV, JSON, or JSONL) for a one-off run (resolved from
+   the current directory).
    Load mode still reads the CSVs at build time to check columns and ids, and stores
    each CSV's path relative to `--out` as its default location, so write the HTML
    next to the CSV (or where that relative path stays valid).
@@ -105,13 +123,13 @@ Three jobs, selected by `tabs` in the config:
 - **Table:** Tabulator with sort, header filters (drop-downs for category / status /
   verdict), long text truncated with an expand button, optional grouping by category,
   and download of the currently filtered rows.
-- **Loading other data:** the "load CSV" buttons and drag-and-drop replace the
+- **Loading other data:** the load buttons and drag-and-drop (CSV, JSON, or JSONL) replace the
   embedded data in the browser only (a dropped file replaces A). The same column
   checks as the build script run; a mismatch shows an error and keeps the old data.
 - **Load mode:** served over http(s), the page fetches each CSV from its default
   path (relative to the HTML) on open, checks it like a picked file, and renders;
   "読み込み直す" fetches it again. Opened from file://, or when the fetch fails (404,
-  wrong columns), it shows "CSV を選択 / ドロップ" with a one-line reason, the expected
+  wrong columns), it shows "データファイルを選択 / ドロップ" with a one-line reason, the expected
   file names, and the required columns. Dropped files go to the side whose expected
   name matches. The header shows each file's path or name, row count, and load time.
   In Chromium browsers a picked file is remembered, so after reopening the page one
@@ -151,9 +169,10 @@ Three jobs, selected by `tabs` in the config:
 
 ## Files
 
-- `scripts/build_dashboard.py` - validates the config and CSVs, inlines everything.
+- `scripts/build_dashboard.py` - validates the config and data files, inlines everything.
 - `assets/template.html`, `assets/app.js`, `assets/app.css` - the dashboard itself.
 - `assets/vendor/` - PapaParse 5.4.1 and Tabulator 6.3.1 (MIT); see
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-- `examples/` - synthetic CSVs and a config for each job. Build one to see the result:
+- `examples/` - synthetic CSVs and a config for each job, plus `factcheck.jsonl` with
+  `factcheck_jsonl.config.json` (nested keys and an array column). Build one to see the result:
   `python3 scripts/build_dashboard.py --config examples/golden.config.json --out /tmp/golden.html`.

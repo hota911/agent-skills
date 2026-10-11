@@ -21,8 +21,9 @@ file.
 
 | Key | Required | Meaning |
 |-----|----------|---------|
-| `csv` | yes | The main CSV (side A when comparing). |
-| `csv_b` | required by `compare` | The second CSV (side B). |
+| `csv` | yes | The main data file (side A when comparing): `.csv`, `.json`, or `.jsonl`, chosen by extension. |
+| `csv_b` | required by `compare` | The second data file (side B), same formats. |
+| `records_path` | no | Only for `.json` files whose top level is an object: the dotted path to the record array, for example `"data.items"`. Applies to both files. An error with a `.csv` or `.jsonl` file. |
 | `label_a`, `label_b` | no (default `A`, `B`) | Short names shown everywhere, for example `"現行"` and `"新"`. |
 | `mode` | no (default `"embed"`) | `"embed"` inlines the rows into the HTML. `"load"` writes no rows; the page reads the CSV each time it opens. `--mode` on the command line overrides it. |
 
@@ -58,13 +59,37 @@ survive a reload as long as the ids are the same, even when the text or metrics
 changed. Adding or removing an id gives a new key and an empty review; export the
 labels before changing the id set.
 
-CSV requirements, checked at build time and again when a file is loaded in the browser:
+Data requirements, checked at build time and again when a file is loaded in the browser.
+For CSV:
 
 - UTF-8 (a BOM is fine), a header row, no duplicate header names, and the same number
   of fields in every row. Quoted fields may contain commas, quotes, and newlines.
 - Every column named in `columns` must exist in the header.
 - The id column must be non-empty and unique in each file.
 - With the `review` tab, `human_label` and `human_note` must not already be columns.
+
+### JSON and JSONL
+
+The same checks apply after the records are turned into rows:
+
+- UTF-8 (a BOM is fine). `.jsonl`: one JSON object per line; blank lines are skipped.
+  `.json`: an array of objects, or an object holding it at `records_path`. Invalid
+  JSON (including `NaN` / `Infinity`), a record that is not an object, or a missing
+  `records_path` key is an error that names the line or record.
+- Nested objects are flattened into dot-separated column names: `{"llm": {"verdict":
+  "supported"}}` becomes the column `llm.verdict`. Use these names in `columns`,
+  `order`, and `histogram`. Two keys that flatten to the same name (a literal
+  `"llm.verdict"` key next to a nested one) are an error.
+- Columns are the union of keys in first-seen order. A key missing from a record is an
+  empty cell; `null` is also an empty cell.
+- Numbers and booleans become the text a CSV would hold (`0.92`, `true`), so `rate`,
+  `mean`, and `sum` metrics read them as usual. A numeric id larger in magnitude than 2^53 - 1
+  is an error, because a browser cannot represent it exactly; store such ids as strings.
+- A value that is still an array or object (for example `citations: [...]`) may only be
+  in a `columns.text` column. Review and compare details show it as pretty-printed
+  JSON; the table, search, and exports use compact JSON. It is an error in any other
+  configured column.
+- Exports are CSV regardless of the input format.
 
 ## `columns`
 
@@ -126,7 +151,9 @@ original columns, in the original row order, as UTF-8 with BOM.
 
 ## Examples
 
-All three are in `examples/` with synthetic CSVs.
+All three are in `examples/` with synthetic CSVs. `examples/factcheck_jsonl.config.json`
+is the fact-check review on `factcheck.jsonl`, using flattened names
+(`llm.verdict`, `llm.confidence`) and an array column (`citations`) in `text`.
 
 ### Model A vs B on a golden dataset
 

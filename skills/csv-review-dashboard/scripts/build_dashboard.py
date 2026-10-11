@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Build a single self-contained HTML dashboard from local CSV files.
+"""Build a single self-contained HTML dashboard from local CSV, JSON, or JSONL files.
 
 Usage:
     python3 build_dashboard.py --config cfg.json --out out.html [--csv a.csv] [--csv-b b.csv]
         [--mode embed|load]
 
-CSV paths in the config are resolved relative to the config file; --csv / --csv-b
-override them (resolved relative to the current directory). In "load" mode the CSVs
-are still read and validated, but no rows are written to the HTML: it stores each CSV's
-path relative to the output HTML, fetches it on open when served over http(s), and
-otherwise asks for the CSV. Python 3 stdlib only.
+Data paths in the config are resolved relative to the config file; --csv / --csv-b
+override them (resolved relative to the current directory). The format follows the
+extension (.csv, .json, .jsonl); nested JSON objects become dot-separated columns. In
+"load" mode the files are still read and validated, but no rows are written to the HTML:
+it stores each file's path relative to the output HTML, fetches it on open when served
+over http(s), and otherwise asks for the file. Python 3 stdlib only.
 """
 
 from __future__ import annotations
@@ -34,7 +35,7 @@ LANGS = ("ja", "en")
 MODES = ("embed", "load")
 
 TOP_KEYS = {"title", "lang", "tabs", "data", "columns", "order", "histogram", "review"}
-DATA_KEYS = {"csv", "csv_b", "label_a", "label_b", "mode"}
+DATA_KEYS = {"csv", "csv_b", "label_a", "label_b", "mode", "records_path"}
 COLUMN_KEYS = {"id", "text", "category", "status", "verdict", "metrics"}
 METRIC_KEYS = {"column", "label", "unit", "aggregate", "better", "regression_threshold"}
 REVIEW_KEYS = {"labels"}
@@ -43,24 +44,35 @@ REVIEW_KEYS = {"labels"}
 TRUE_VALUES = {"true", "1", "yes", "y", "t"}
 FALSE_VALUES = {"false", "0", "no", "n", "f"}
 
-# Added to exported review CSVs; a source CSV must not already use them.
+# Input formats by file extension. Must match formatOf() in app.js.
+FORMATS = (".csv", ".json", ".jsonl")
+
+# Larger numbers lose precision in the browser (JavaScript doubles), so ids beyond this
+# would silently change or collide there. Must match MAX_SAFE_ID in app.js.
+MAX_SAFE_INTEGER = 2**53 - 1
+
+# Added to exported review CSVs; a source file must not already use them.
 REVIEW_EXPORT_COLUMNS = ("human_label", "human_note")
 
-# Embed mode makes no requests at all. Load mode may fetch its default CSV(s) from the
+# Embed mode makes no requests at all. Load mode may fetch its default data file(s) from the
 # same origin when the page is served over http(s); nothing else is allowed.
 CSP_EMBED = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:"
 CSP_LOAD = CSP_EMBED + "; connect-src 'self'"
 
 
 class BuildError(Exception):
-    """A user-facing error: bad config, missing file, or invalid CSV content."""
+    """A user-facing error: bad config, missing file, or invalid CSV / JSON content."""
 
 
 @dataclass(frozen=True)
 class Table:
     path: Path
     headers: list[str]
-    rows: list[dict[str, str]]
+    # CSV cells are strings. JSON cells keep their JSON value: str, int, float, bool, None,
+    # or a list / dict that flattening left in place.
+    rows: list[dict[str, object]]
+    # Where each row came from, for error messages ("row 3", "line 3", "record 3").
+    locations: list[str]
 
 
 def fail(message: str) -> None:
@@ -105,7 +117,7 @@ def validate_config(cfg: object) -> dict:
 
     data = check_keys(cfg.get("data"), DATA_KEYS, "config.data")
     require_str(data, "csv", "config.data")
-    for key in ("csv_b", "label_a", "label_b"):
+    for key in ("csv_b", "label_a", "label_b", "records_path"):
         optional_str(data, key, "config.data")
     mode = data.setdefault("mode", "embed")
     if mode not in MODES:
@@ -170,9 +182,20 @@ def validate_config(cfg: object) -> dict:
     return cfg
 
 
-def read_csv(path: Path, role: str) -> Table:
+def read_table(path: Path, role: str, records_path: str | None) -> Table:
     if not path.is_file():
-        fail(f"{role} CSV not found: {path}")
+        fail(f"{role} file not found: {path}")
+    suffix = path.suffix.lower()
+    if suffix not in FORMATS:
+        fail(f"{role} file {path}: unknown extension {path.suffix!r}; use one of {list(FORMATS)}")
+    if records_path and suffix != ".json":
+        fail(f"{role} file {path}: config.data.records_path only applies to .json files")
+    if suffix == ".csv":
+        return read_csv(path, role)
+    return read_json(path, role, records_path)
+
+
+def read_csv(path: Path, role: str) -> Table:
     try:
         with path.open(encoding="utf-8-sig", newline="") as f:
             reader = csv.reader(f)
@@ -182,7 +205,7 @@ def read_csv(path: Path, role: str) -> Table:
             if len(set(headers)) != len(headers):
                 dupes = sorted({h for h in headers if headers.count(h) > 1})
                 fail(f"{role} CSV has duplicate header(s) {dupes}: {path}")
-            rows = []
+            rows, locations = [], []
             for line_no, values in enumerate(reader, start=2):
                 if not any(v.strip() for v in values):
                     continue
@@ -190,11 +213,95 @@ def read_csv(path: Path, role: str) -> Table:
                     fail(f"{role} CSV {path}, row {line_no}: expected {len(headers)} "
                          f"fields, got {len(values)}")
                 rows.append(dict(zip(headers, values)))
+                locations.append(f"row {line_no}")
     except UnicodeDecodeError as e:
         fail(f"{role} CSV is not UTF-8 ({e.reason} at byte {e.start}): {path}")
     except csv.Error as e:
         fail(f"{role} CSV could not be parsed ({e}): {path}")
-    return Table(path=path, headers=headers, rows=rows)
+    return Table(path=path, headers=headers, rows=rows, locations=locations)
+
+
+def reject_constant(name: str) -> None:
+    # json.loads accepts NaN / Infinity, which are not JSON and which JSON.parse rejects.
+    raise ValueError(f"{name} is not valid JSON")
+
+
+def read_json(path: Path, role: str, records_path: str | None) -> Table:
+    """Read a .json array (or the array at records_path) or .jsonl, one object per record."""
+    try:
+        text = path.read_text(encoding="utf-8-sig")
+    except UnicodeDecodeError as e:
+        fail(f"{role} file is not UTF-8 ({e.reason} at byte {e.start}): {path}")
+
+    def parse(source: str, where: str) -> object:
+        try:
+            return json.loads(source, parse_constant=reject_constant)
+        except ValueError as e:  # JSONDecodeError is a ValueError
+            fail(f"{role} file {path}, {where}: invalid JSON ({e})")
+
+    records: list[tuple[str, object]] = []
+    if path.suffix.lower() == ".jsonl":
+        # split("\n"), not splitlines(): JSON strings may contain U+2028 and friends.
+        for line_no, line in enumerate(text.split("\n"), start=1):
+            if line.strip():
+                records.append((f"line {line_no}", parse(line, f"line {line_no}")))
+    else:
+        node = parse(text, "document")
+        if records_path:
+            walked = []
+            for key in records_path.split("."):
+                walked.append(key)
+                if not isinstance(node, dict) or key not in node:
+                    fail(f"{role} file {path}: records_path {records_path!r} not found "
+                         f"(no key {'.'.join(walked)!r})")
+                node = node[key]
+        if not isinstance(node, list):
+            hint = "" if records_path else (
+                "; if the records are under a key, set config.data.records_path"
+                + (f" (top-level keys: {sorted(node)})" if isinstance(node, dict) else ""))
+            fail(f"{role} file {path}: expected an array of records, got "
+                 f"{type(node).__name__}{hint}")
+        records = [(f"record {i}", rec) for i, rec in enumerate(node, start=1)]
+
+    headers: dict[str, None] = {}
+    flat_rows = []
+    for where, rec in records:
+        if not isinstance(rec, dict):
+            fail(f"{role} file {path}, {where}: a record must be a JSON object, "
+                 f"got {type(rec).__name__}")
+        flat: dict[str, object] = {}
+        flatten(rec, "", flat, f"{role} file {path}, {where}")
+        headers.update(dict.fromkeys(flat))
+        flat_rows.append(flat)
+    if not records:
+        fail(f"{role} file has no records: {path}")
+    names = list(headers)
+    # A key missing from a record is an empty cell, as in a CSV.
+    rows = [{h: flat.get(h, "") for h in names} for flat in flat_rows]
+    return Table(path=path, headers=names, rows=rows, locations=[w for w, _ in records])
+
+
+def flatten(obj: dict, prefix: str, out: dict[str, object], where: str) -> None:
+    """Nested non-empty objects become "parent.child" columns; other values stay as is."""
+    for key, value in obj.items():
+        name = prefix + key
+        if isinstance(value, dict) and value:
+            flatten(value, name + ".", out, where)
+        elif name in out:
+            fail(f"{where}: column {name!r} appears twice after flattening nested objects")
+        else:
+            out[name] = value
+
+
+def cell_text(value: object) -> str:
+    """A scalar cell as the CSV text it stands for. Must match toCell() in app.js."""
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return repr(value)
+    return value
 
 
 def configured_columns(cfg: dict) -> list[str]:
@@ -205,47 +312,61 @@ def configured_columns(cfg: dict) -> list[str]:
 
 
 def validate_table(table: Table, cfg: dict, role: str) -> None:
+    where = f"{role} file {table.path}"
     missing = [c for c in configured_columns(cfg) if c not in table.headers]
     if missing:
-        fail(f"{role} CSV {table.path}: configured column(s) {missing} not in header "
-             f"{table.headers}")
+        fail(f"{where}: configured column(s) {missing} not in header {table.headers}")
     if "review" in cfg["tabs"]:
         clash = [c for c in REVIEW_EXPORT_COLUMNS if c in table.headers]
         if clash:
-            fail(f"{role} CSV {table.path}: column(s) {clash} are reserved for review export")
+            fail(f"{where}: column(s) {clash} are reserved for review export")
 
-    id_col = cfg["columns"]["id"]
-    seen: dict[str, int] = {}
-    for line_no, row in enumerate(table.rows, start=2):
-        rid = row[id_col].strip()
+    # Only text columns may hold JSON arrays / objects; the others are compared and counted.
+    cols = cfg["columns"]
+    scalar_cols = set(configured_columns(cfg)) - set(cols["text"])
+    for loc, row in zip(table.locations, table.rows):
+        for col in scalar_cols:
+            if isinstance(row[col], (list, dict)):
+                fail(f"{where}, {loc}: column {col!r} holds a JSON array or object; only "
+                     "columns.text columns may")
+
+    id_col = cols["id"]
+    seen: dict[str, str] = {}
+    for loc, row in zip(table.locations, table.rows):
+        value = row[id_col]
+        if isinstance(value, (int, float)) and not isinstance(value, bool) \
+                and abs(value) > MAX_SAFE_INTEGER:
+            fail(f"{where}, {loc}: id {value!r} is beyond 2^53-1 and would change in the "
+                 "browser; store ids as strings")
+        rid = cell_text(value).strip()
         if not rid:
-            fail(f"{role} CSV {table.path}, row {line_no}: empty id in column {id_col!r}")
+            fail(f"{where}, {loc}: empty id in column {id_col!r}")
         if rid in seen:
-            fail(f"{role} CSV {table.path}: duplicate id {rid!r} (rows {seen[rid]} and {line_no})")
-        seen[rid] = line_no
+            fail(f"{where}: duplicate id {rid!r} ({seen[rid]} and {loc})")
+        seen[rid] = loc
 
-    for m in cfg["columns"]["metrics"]:
+    for m in cols["metrics"]:
         col = m["column"]
-        for line_no, row in enumerate(table.rows, start=2):
-            raw = row[col].strip()
+        for loc, row in zip(table.locations, table.rows):
+            raw = cell_text(row[col]).strip()
             if not raw:
                 continue  # empty means "no value"; excluded from n
             if m["aggregate"] == "rate":
                 if raw.lower() not in TRUE_VALUES | FALSE_VALUES:
-                    fail(f"{role} CSV {table.path}, row {line_no}: {col}={raw!r} is not a "
-                         f"boolean (use one of {sorted(TRUE_VALUES | FALSE_VALUES)})")
+                    fail(f"{where}, {loc}: {col}={raw!r} is not a boolean "
+                         f"(use one of {sorted(TRUE_VALUES | FALSE_VALUES)})")
             else:
                 try:
                     value = float(raw)
                 except ValueError:
                     value = math.nan
                 if not math.isfinite(value):
-                    fail(f"{role} CSV {table.path}, row {line_no}: {col}={raw!r} is not a number")
+                    fail(f"{where}, {loc}: {col}={raw!r} is not a number")
 
 
 def id_mismatch(a: Table, b: Table, id_col: str) -> dict[str, list[str]]:
-    ids_a = [r[id_col].strip() for r in a.rows]
-    ids_b = [r[id_col].strip() for r in b.rows]
+    ids_a = [cell_text(r[id_col]).strip() for r in a.rows]
+    ids_b = [cell_text(r[id_col]).strip() for r in b.rows]
     set_a, set_b = set(ids_a), set(ids_b)
     return {
         "only_a": [i for i in ids_a if i not in set_b],
@@ -313,7 +434,7 @@ def render(cfg: dict, payload: dict) -> str:
 
 
 def relative_to_html(csv_path: Path, out_path: Path) -> str | None:
-    """The CSV's path relative to the HTML's folder, in posix form.
+    """The data file's path relative to the HTML's folder, in posix form.
 
     None when the two share no folder below the filesystem root: such a path climbs to
     the root and spells out the absolute location, which the HTML must not carry.
@@ -347,8 +468,9 @@ def build(config_path: Path, out_path: Path, csv_override: Path | None,
         data["mode"] = mode_override
     base = config_path.resolve().parent
 
+    records_path = data.get("records_path")
     path_a = csv_override.resolve() if csv_override else base / data["csv"]
-    table_a = read_csv(path_a, "A" if data.get("csv_b") else "data")
+    table_a = read_table(path_a, "A" if data.get("csv_b") else "data", records_path)
     validate_table(table_a, cfg, "A" if data.get("csv_b") else "data")
 
     table_b = None
@@ -356,7 +478,7 @@ def build(config_path: Path, out_path: Path, csv_override: Path | None,
         fail("--csv-b was given but config.data.csv_b is not set")
     if data.get("csv_b"):
         path_b = csv_b_override.resolve() if csv_b_override else base / data["csv_b"]
-        table_b = read_csv(path_b, "B")
+        table_b = read_table(path_b, "B", records_path)
         validate_table(table_b, cfg, "B")
 
     warnings: list[str] = []
@@ -375,7 +497,7 @@ def build(config_path: Path, out_path: Path, csv_override: Path | None,
     if table_b is not None:
         data["csv_b"] = table_b.path.name
     if data["mode"] == "load":
-        # Relative to the HTML, so a page served over http fetches the CSV beside it.
+        # Relative to the HTML, so a page served over http fetches the file beside it.
         defaults = {}
         for side, table in (("a", table_a), ("b", table_b)):
             if table is None:
@@ -384,7 +506,7 @@ def build(config_path: Path, out_path: Path, csv_override: Path | None,
             if rel is None:
                 rel = table.path.name
                 warnings.append(f"{table.path} shares no folder with {out_path}, so the default "
-                                f"path is just {rel!r}; put the HTML next to the CSV to auto-load it")
+                                f"path is just {rel!r}; put the HTML next to the data file to auto-load it")
             defaults[side] = rel
         payload = {"config": cfg, "a": None, "b": None, "default_paths": defaults}
     else:
@@ -403,7 +525,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--config", required=True, type=Path, help="config JSON file")
     parser.add_argument("--out", required=True, type=Path, help="output HTML file")
-    parser.add_argument("--csv", type=Path, help="override config.data.csv")
+    parser.add_argument("--csv", type=Path, help="override config.data.csv (.csv, .json or .jsonl)")
     parser.add_argument("--csv-b", type=Path, help="override config.data.csv_b")
     parser.add_argument("--mode", choices=MODES, help="override config.data.mode")
     args = parser.parse_args()

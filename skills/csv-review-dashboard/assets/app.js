@@ -1,4 +1,4 @@
-/* csv-review-dashboard runtime. CSV text is only ever inserted with textContent. */
+/* csv-review-dashboard runtime. Data values are only ever inserted with textContent. */
 (function () {
   "use strict";
 
@@ -25,18 +25,25 @@
       keys: "← → 移動 · 1–{n} 判定 · N メモ · Esc メモから戻る",
       storageOk: "このブラウザに自動保存しています", storageNo: "このブラウザには保存できません。閉じる前に CSV を書き出してください",
       noItems: "条件に合う項目はありません", groupBy: "カテゴリでまとめる", download: "表示中の行を CSV でダウンロード",
-      loadA: "CSV を読み込む", loadSide: "{label} の CSV を読み込む", dropHint: "ドロップした CSV で {label} のデータを置き換えます",
+      loadA: "データを読み込む", loadSide: "{label} のデータを読み込む", dropHint: "ドロップしたファイルで {label} のデータを置き換えます",
+      badExt: "{name} の拡張子に対応していません（.csv / .json / .jsonl）", badJson: "{where}: JSON として読めません（{msg}）",
+      notObject: "{where}: レコードは JSON オブジェクトである必要があります", notArray: "レコードの配列がありません（records_path を設定してください）",
+      recordsMissing: "records_path {path} が見つかりません", recordsPathOnlyJson: "records_path は .json ファイルにだけ使えます",
+      dupKey: "{where}: ネストを展開すると列 {col} が重複します", noRecords: "レコードがありません",
+      nestedValue: "データ {r} 行目: 列 {col} が JSON の配列かオブジェクトです（columns.text の列だけが許されます）",
+      unsafeId: "データ {r} 行目: id {id} は 2^53-1 を超え、ブラウザで値が変わります。id は文字列にしてください",
+      line: "{n} 行目", record: "{n} 件目", document: "ファイル全体",
       loadErr: "{name} を読み込めませんでした", missingCols: "設定した列 {cols} がヘッダーにありません",
       dupId: "id {id} が重複しています（データ {r1} 行目と {r2} 行目）", emptyId: "データ {r} 行目の id が空です",
       badValue: "データ {r} 行目: {col}={v} は{kind}ではありません", number: "数値", boolean: "真偽値 (true/false)",
       parseErr: "データ {r} 行目: {msg}", reserved: "列 {cols} はレビューの書き出し用に予約されています",
       noData: "データがありません",
-      loadTitle: "CSV を選択 / ドロップ",
-      loadIntro: "この HTML にはデータが入っていません。http で配信していれば既定の場所の CSV を開いたときに自動で読み込みます。それ以外は CSV を選ぶかページにドロップしてください。データを更新したら「読み込み直す」で反映できます。",
+      loadTitle: "データファイルを選択 / ドロップ",
+      loadIntro: "この HTML にはデータが入っていません。http で配信していれば既定の場所のファイル（CSV / JSON / JSONL）を開いたときに自動で読み込みます。それ以外はファイルを選ぶかページにドロップしてください。データを更新したら「読み込み直す」で反映できます。",
       expectedFile: "想定するファイル: {name}", requiredCols: "必須の列: {cols}", defaultPath: "既定の場所（HTML からの相対パス）: {path}",
       chooseFile: "ファイルを選ぶ", notLoaded: "未読み込み", reload: "読み込み直す",
       lastFile: "前回のファイルを読み込む ({name})", loadedAt: "{time} に読み込み",
-      dropHintLoad: "ドロップした CSV を読み込みます",
+      dropHintLoad: "ドロップしたファイルを読み込みます",
       autoLoading: "{path} を読み込んでいます…",
       autoFile: "file:// で開いているため自動では読み込みません。ブラウザは隣にあるファイルの読み取りを禁止しています。フォルダを http で配信すると（例: python3 -m http.server）開いたときに自動で読み込みます。",
       autoFail: "{path} を自動で読み込めませんでした（{msg}）。ファイルを選ぶかドロップしてください。"
@@ -63,18 +70,25 @@
       keys: "← → move · 1–{n} judgment · N note · Esc leave note",
       storageOk: "Auto-saved in this browser", storageNo: "Cannot save in this browser. Export the CSV before closing.",
       noItems: "No items match the filters", groupBy: "Group by category", download: "Download shown rows as CSV",
-      loadA: "Load CSV", loadSide: "Load {label} CSV", dropHint: "Dropped CSV replaces the {label} data",
+      loadA: "Load data", loadSide: "Load {label} data", dropHint: "Dropped file replaces the {label} data",
+      badExt: "{name}: unsupported extension (use .csv, .json or .jsonl)", badJson: "{where}: invalid JSON ({msg})",
+      notObject: "{where}: a record must be a JSON object", notArray: "no array of records (set records_path)",
+      recordsMissing: "records_path {path} not found", recordsPathOnlyJson: "records_path only applies to .json files",
+      dupKey: "{where}: column {col} appears twice after flattening nested objects", noRecords: "no records",
+      nestedValue: "data row {r}: column {col} holds a JSON array or object (only columns.text columns may)",
+      unsafeId: "data row {r}: id {id} is beyond 2^53-1 and changes in the browser; store ids as strings",
+      line: "line {n}", record: "record {n}", document: "document",
       loadErr: "Could not load {name}", missingCols: "configured column(s) {cols} not in header",
       dupId: "duplicate id {id} (data rows {r1} and {r2})", emptyId: "data row {r}: empty id",
       badValue: "data row {r}: {col}={v} is not a {kind}", number: "number", boolean: "boolean (true/false)",
       parseErr: "data row {r}: {msg}", reserved: "column(s) {cols} are reserved for review export",
       noData: "No data",
-      loadTitle: "Choose or drop CSV",
-      loadIntro: "This HTML contains no data. Served over http, it loads the CSV from its default location when it opens. Otherwise choose a CSV or drop it on the page. When the data changes, use Reload to pick it up.",
+      loadTitle: "Choose or drop the data file",
+      loadIntro: "This HTML contains no data. Served over http, it loads the file (CSV, JSON or JSONL) from its default location when it opens. Otherwise choose the file or drop it on the page. When the data changes, use Reload to pick it up.",
       expectedFile: "Expected file: {name}", requiredCols: "Required columns: {cols}", defaultPath: "Default location (relative to the HTML): {path}",
       chooseFile: "Choose file", notLoaded: "Not loaded", reload: "Reload",
       lastFile: "Load previous file ({name})", loadedAt: "loaded {time}",
-      dropHintLoad: "Drop to load the CSV",
+      dropHintLoad: "Drop to load the file",
       autoLoading: "Loading {path}…",
       autoFile: "Opened from file://, so nothing is loaded automatically: browsers block reading neighbouring files. Serve the folder over http (for example python3 -m http.server) to load it on open.",
       autoFail: "Could not load {path} automatically ({msg}). Choose the file or drop it."
@@ -85,6 +99,8 @@
   const TRUE_VALUES = new Set(["true", "1", "yes", "y", "t"]);
   const FALSE_VALUES = new Set(["false", "0", "no", "n", "f"]);
   const REVIEW_EXPORT_COLUMNS = ["human_label", "human_note"];
+  // Must match MAX_SAFE_INTEGER in build_dashboard.py.
+  const MAX_SAFE_ID = Number.MAX_SAFE_INTEGER;
   const SERIES_SLOTS = 8;
   const STORAGE_PREFIX = "csv-review-dashboard:v1:";
 
@@ -135,9 +151,32 @@
 
   // ---------- small helpers ----------
 
+  // Embedded JSON rows keep their JSON scalars; normalize them as a loaded file would be.
   function withOrigin(table, origin) {
-    return { name: table.name, headers: table.headers, rows: table.rows, origin: origin, loadedAt: null };
+    return { name: table.name, headers: table.headers, rows: table.rows.map(normalizeRow), origin: origin, loadedAt: null };
   }
+
+  // A JSON scalar as the CSV text it stands for, so metrics, filters and ids behave as with
+  // a CSV. Arrays and objects stay as values. Must match cell_text() in build_dashboard.py.
+  function toCell(v) {
+    if (v === null || v === undefined) return "";
+    if (typeof v === "boolean") return v ? "true" : "false";
+    if (typeof v === "number") return String(v);
+    return v;
+  }
+
+  function normalizeRow(row) {
+    return Object.fromEntries(Object.entries(row).map(([k, v]) => [k, toCell(v)]));
+  }
+
+  function isObject(v) { return v !== null && typeof v === "object"; }
+  function isPlainObject(v) { return isObject(v) && !Array.isArray(v); }
+
+  // One-line text for search, comparison, the table and CSV export.
+  function cellText(v) { return isObject(v) ? JSON.stringify(v) : (v ?? ""); }
+
+  // Multi-line text for the review and compare detail views.
+  function prettyText(v) { return isObject(v) ? JSON.stringify(v, null, 2) : (v ?? ""); }
 
   // True while load mode still waits for a CSV on some side.
   function needsLoad() {
@@ -342,7 +381,7 @@
   function hayOf(row) {
     if (!row) return "";
     const parts = [row[cols.id]];
-    for (const c of cols.text) parts.push(row[c]);
+    for (const c of cols.text) parts.push(cellText(row[c]));
     for (const k of ["category", "status", "verdict"]) if (cols[k]) parts.push(row[cols[k]]);
     return parts.join("\n").toLowerCase();
   }
@@ -431,6 +470,12 @@
       const clash = REVIEW_EXPORT_COLUMNS.filter((c) => headers.includes(c));
       if (clash.length) errors.push(fmt(T.reserved, { cols: JSON.stringify(clash) }));
     }
+    if (errors.length) return errors;
+    // Only text columns may hold JSON arrays / objects; the others are compared and counted.
+    const scalarCols = requiredColumns().filter((c) => !cols.text.includes(c));
+    rows.forEach((r, i) => {
+      for (const c of scalarCols) if (isObject(r[c])) errors.push(fmt(T.nestedValue, { r: i + 1, col: c }));
+    });
     if (errors.length) return errors;
     const seen = new Map();
     rows.forEach((r, i) => {
@@ -667,7 +712,7 @@
       return;
     }
     for (const side of SIDES) {
-      const input = el("input", { type: "file", accept: ".csv,text/csv", onchange: (e) => { if (e.target.files[0]) loadFile(e.target.files[0], side); e.target.value = ""; } });
+      const input = el("input", { type: "file", accept: FILE_ACCEPT, onchange: (e) => { if (e.target.files[0]) loadFile(e.target.files[0], side); e.target.value = ""; } });
       loader.appendChild(el("label", null, [hasB ? fmt(T.loadSide, { label: sideLabel[side] }) : T.loadA, input]));
     }
   }
@@ -872,7 +917,7 @@
   }
 
   function textBlock(title, value) {
-    return el("div", { class: "text-block" }, [el("h3", { text: title }), el("pre", { class: "longtext", text: value ?? "" })]);
+    return el("div", { class: "text-block" }, [el("h3", { text: title }), el("pre", { class: "longtext", text: prettyText(value) })]);
   }
 
   function renderPairDetail(p) {
@@ -889,7 +934,7 @@
       el("thead", null, el("tr", null, [el("th", { text: T.metric }), el("th", { text: sideLabel.a }), el("th", { text: sideLabel.b }), el("th", { text: T.delta })])),
       el("tbody", null, metricRows)])));
     const shared = [], differing = [];
-    for (const c of cols.text) ((p.a[c] ?? "") === (p.b[c] ?? "") ? shared : differing).push(c);
+    for (const c of cols.text) (cellText(p.a[c]) === cellText(p.b[c]) ? shared : differing).push(c);
     for (const c of shared) card.appendChild(textBlock(c + " (" + T.shared + ")", p.a[c]));
     for (const c of differing) {
       card.appendChild(el("div", { class: "side-by-side" }, [textBlock(c + " — " + sideLabel.a, p.a[c]), textBlock(c + " — " + sideLabel.b, p.b[c])]));
@@ -938,7 +983,7 @@
         el("td", { text: x.p.id, style: "white-space:nowrap" }),
         cols.category ? el("td", { text: x.p.a[cols.category] }) : null,
         el("td", null, el("div", { style: "display:flex;flex-wrap:wrap;gap:4px" }, reasonNodes(x.c))),
-        preview ? el("td", { class: "muted preview-col", text: truncateToWidth((x.p.a[preview] || "").replace(/\s+/g, " "), 260, 13) }) : null
+        preview ? el("td", { class: "muted preview-col", text: truncateToWidth(cellText(x.p.a[preview]).replace(/\s+/g, " "), 260, 13) }) : null
       ])));
       card.appendChild(el("div", { class: "scroll-x" }, el("table", { class: "list" }, [
         el("thead", null, el("tr", null, [el("th", { text: cols.id }), cols.category ? el("th", { text: cols.category }) : null, el("th", { text: T.reason }), preview ? el("th", { class: "preview-col", text: preview }) : null])),
@@ -985,10 +1030,10 @@
     const fields = a.headers.concat(REVIEW_EXPORT_COLUMNS);
     const data = a.rows.map((r) => {
       const rv = reviewOf(r[cols.id]);
-      return a.headers.map((h) => r[h] ?? "").concat([rv.label, rv.note]);
+      return a.headers.map((h) => cellText(r[h])).concat([rv.label, rv.note]);
     });
     const csvText = "\uFEFF" + Papa.unparse({ fields: fields, data: data });
-    download(csvText, a.name.replace(/\.csv$/i, "") + "_reviewed.csv");
+    download(csvText, baseName(a.name) + "_reviewed.csv");
   }
 
   function download(text, filename) {
@@ -1109,7 +1154,7 @@
       const obj = {};
       const rv = withReview ? reviewOf(r[cols.id]) : null;
       headers.forEach((h, i) => {
-        obj[field(i)] = i < d.headers.length ? (r[h] ?? "") : (h === "human_label" ? rv.label : rv.note);
+        obj[field(i)] = i < d.headers.length ? cellText(r[h]) :(h === "human_label" ? rv.label : rv.note);
       });
       return obj;
     });
@@ -1128,7 +1173,7 @@
     const groupField = cols.category ? field(headers.indexOf(cols.category)) : null;
     const toolbar = el("div", { class: "table-toolbar" }, [
       groupField ? el("label", { class: "check" }, [el("input", { type: "checkbox", checked: state.groupBy, onchange: (e) => { state.groupBy = e.target.checked; renderContent(); } }), T.groupBy]) : null,
-      el("button", { class: "btn", text: T.download, onclick: () => state.table && state.table.download("csv", d.name.replace(/\.csv$/i, "") + "_filtered.csv", { bom: true }, "active") })
+      el("button", { class: "btn", text: T.download, onclick: () => state.table && state.table.download("csv", baseName(d.name) + "_filtered.csv", { bom: true }, "active") })
     ]);
     root.appendChild(toolbar);
     const holder = el("div");
@@ -1173,6 +1218,97 @@
   // ---------- loading CSV in the browser ----------
 
   function errorText(err) { return String(err && err.message ? err.message : err); }
+
+  // Input format by extension. Must match FORMATS in build_dashboard.py.
+  function formatOf(name) {
+    const m = /\.(csv|json|jsonl)$/i.exec(name);
+    if (!m) throw new Error(fmt(T.badExt, { name: name }));
+    return m[1].toLowerCase();
+  }
+
+  // Strips the input extension for export file names; exports are always CSV.
+  function baseName(name) { return name.replace(/\.(csv|json|jsonl)$/i, ""); }
+
+  const FILE_ACCEPT = ".csv,.json,.jsonl,text/csv,application/json";
+
+  // Parse a File or text by the extension of `name`; resolves to { headers, rows }.
+  async function parseData(input, name) {
+    const format = formatOf(name);
+    if (format === "csv") return parseCsv(input);
+    return parseJson(typeof input === "string" ? input : await input.text(), format);
+  }
+
+  function rejectWith(errors) {
+    const err = new Error(errors.join("; "));
+    err.details = errors;
+    throw err;
+  }
+
+  function parseJsonText(source, where) {
+    try {
+      return JSON.parse(source);
+    } catch (e) {
+      throw new Error(fmt(T.badJson, { where: where, msg: errorText(e) }));
+    }
+  }
+
+  // Nested non-empty objects become "parent.child" columns; other values stay as is.
+  // A Map, so a key such as "__proto__" is an ordinary column name.
+  function flattenRecord(obj, prefix, out, where) {
+    for (const [k, v] of Object.entries(obj)) {
+      const name = prefix + k;
+      if (isPlainObject(v) && Object.keys(v).length) flattenRecord(v, name + ".", out, where);
+      else if (out.has(name)) throw new Error(fmt(T.dupKey, { where: where, col: name }));
+      else out.set(name, v);
+    }
+  }
+
+  // Same rules as read_json() in build_dashboard.py: a .json array (or the array at
+  // data.records_path) or .jsonl with one object per line; then the CSV checks.
+  function parseJson(text, format) {
+    const recordsPath = cfg.data.records_path || null;
+    const records = [];
+    if (format === "jsonl") {
+      if (recordsPath) throw new Error(T.recordsPathOnlyJson);
+      text.split("\n").forEach((line, i) => {
+        const where = fmt(T.line, { n: i + 1 });
+        if (line.trim()) records.push({ where: where, value: parseJsonText(line, where) });
+      });
+    } else {
+      let node = parseJsonText(text, T.document);
+      if (recordsPath) {
+        for (const key of recordsPath.split(".")) {
+          if (!isPlainObject(node) || !Object.prototype.hasOwnProperty.call(node, key)) {
+            throw new Error(fmt(T.recordsMissing, { path: recordsPath }));
+          }
+          node = node[key];
+        }
+      }
+      if (!Array.isArray(node)) throw new Error(T.notArray);
+      node.forEach((v, i) => records.push({ where: fmt(T.record, { n: i + 1 }), value: v }));
+    }
+    if (!records.length) throw new Error(T.noRecords);
+    const headerSet = new Set();
+    const flats = records.map(({ where, value }) => {
+      if (!isPlainObject(value)) throw new Error(fmt(T.notObject, { where: where }));
+      const flat = new Map();
+      flattenRecord(value, "", flat, where);
+      for (const k of flat.keys()) headerSet.add(k);
+      return flat;
+    });
+    const headers = [...headerSet];
+    const errors = [];
+    flats.forEach((flat, i) => {
+      const id = flat.get(cols.id);
+      if (typeof id === "number" && Math.abs(id) > MAX_SAFE_ID) errors.push(fmt(T.unsafeId, { r: i + 1, id: id }));
+    });
+    if (errors.length) rejectWith(errors);
+    // A key missing from a record is an empty cell, as in a CSV.
+    const rows = flats.map((flat) => Object.fromEntries(headers.map((h) => [h, toCell(flat.get(h))])));
+    errors.push(...validateTable(headers, rows).slice(0, 10));
+    if (errors.length) rejectWith(errors);
+    return { headers: headers, rows: rows };
+  }
 
   // Parse a File or CSV text and run the same checks as the build script. Resolves to
   // { headers, rows }; rejects with an Error whose `details` lists every problem found.
@@ -1221,7 +1357,7 @@
   async function loadFile(file, side, handle) {
     let table;
     try {
-      table = await parseCsv(file);
+      table = await parseData(file, file.name);
     } catch (err) {
       showLoadError(file.name, err);
       return;
@@ -1242,7 +1378,7 @@
     const url = new URL(path.split("/").map(encodeURIComponent).join("/"), location.href);
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) throw new Error("HTTP " + res.status);
-    return parseCsv(await res.text());
+    return parseData(await res.text(), path);
   }
 
   // On open, a failure only adds a note and leaves the side to the picker; on Reload it
@@ -1296,7 +1432,7 @@
         el("div", { class: "load-actions" }, [
           canPick
             ? el("button", { class: "btn", type: "button", text: T.chooseFile, onclick: () => pickFile(side) })
-            : el("label", { class: "btn" }, [T.chooseFile, el("input", { type: "file", accept: ".csv,text/csv",
+            : el("label", { class: "btn" }, [T.chooseFile, el("input", { type: "file", accept: FILE_ACCEPT,
                 onchange: (e) => { if (e.target.files[0]) loadFile(e.target.files[0], side); e.target.value = ""; } })]),
           saved && !d ? el("button", { class: "btn", type: "button", text: fmt(T.lastFile, { name: saved.name }), onclick: () => readHandle(side, saved) }) : null
         ])
@@ -1308,7 +1444,7 @@
   async function pickFile(side) {
     let picked;
     try {
-      picked = await window.showOpenFilePicker({ types: [{ description: "CSV", accept: { "text/csv": [".csv"] } }] });
+      picked = await window.showOpenFilePicker({ types: [{ description: "CSV / JSON / JSONL", accept: { "text/csv": [".csv"], "application/json": [".json", ".jsonl"] } }] });
     } catch (e) {
       if (e.name !== "AbortError") showLoadError(expectedName[side], e);
       return;
