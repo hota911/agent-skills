@@ -2,8 +2,10 @@
 
 A release report is a Markdown file that explains the release decision to people who
 did not do the review. It is shown in the dashboard's `report` tab, next to the release
-tab that holds the numbers. Write it only after a human has reviewed the regressed items
-and exported the record from the release tab.
+tab that holds the numbers; "Markdown を書き出す" / "Export Markdown" there downloads the
+report body (without the frontmatter). Write it only after a human has reviewed the
+regressed items and exported the record from the release tab. For an experiment that
+tests a hypothesis, see [experiment-report.md](experiment-report.md) instead.
 
 ## Flow
 

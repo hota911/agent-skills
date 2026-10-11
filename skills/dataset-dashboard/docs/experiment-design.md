@@ -1,6 +1,6 @@
 # 実験結果の共有（仮説検証）の設計メモ
 
-状態：方針は決定済み（2026-10-11）。実装はこれから。
+状態：実装済み（2026-10-11）。キーと記録の形式は [references/config.md](../references/config.md) の `experiment`、レポートの書き方は [references/experiment-report.md](../references/experiment-report.md) にある。実装時に次の2点を加えた。記録には `hypothesis` に加えて `verdict_labels` も入れ、ビルド時に設定と照合する。1つの設定に `release` タブと `experiment` タブを同時に書くことはできない（レポートと記録がどちらの判定のものかを一意にするため）。
 
 ## ユースケース
 

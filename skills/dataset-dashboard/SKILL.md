@@ -1,6 +1,6 @@
 ---
 name: dataset-dashboard
-description: Turn local CSV, JSON, or JSONL datasets into one self-contained offline HTML dashboard for reviewing LLM or evaluation results - compare a current model against one or more candidates on a golden dataset (regressions first), decide which candidates can be released against stated criteria with a human review of regressed items and a written report, let a human review and label items (for example fact-check) with keyboard shortcuts and export the labels as CSV, or triage feedback by category and status. Use when the user has a CSV / JSON / JSONL dataset or evaluation results (for example LLM eval outputs as JSONL) and asks to visualize, explore, compare, review, label, or triage them, or says CSV を可視化, JSON を可視化, JSONL を確認, データセットを見たい, A/B 比較, リリース判定, 出してよいか, レビュー画面, ファクトチェックの確認. Not for live databases, BI dashboards, or charts meant for slides.
+description: Turn local CSV, JSON, or JSONL datasets into one self-contained offline HTML dashboard for reviewing LLM or evaluation results - compare a current model against one or more candidates on a golden dataset (regressions first), decide which candidates can be released against stated criteria with a human review of regressed items and a written report, share an experiment's result against a hypothesis with a written report, let a human review and label items (for example fact-check) with keyboard shortcuts and export the labels as CSV, or triage feedback by category and status. Use when the user has a CSV / JSON / JSONL dataset or evaluation results (for example LLM eval outputs as JSONL) and asks to visualize, explore, compare, review, label, or triage them, or says CSV を可視化, JSON を可視化, JSONL を確認, データセットを見たい, A/B 比較, リリース判定, 出してよいか, 実験結果の共有, 仮説検証, レビュー画面, ファクトチェックの確認. Not for live databases, BI dashboards, or charts meant for slides.
 ---
 
 # Dataset Dashboard
@@ -9,7 +9,8 @@ Build a single HTML file from one or more data files plus a small JSON config. T
 opens from disk with no server and no network: Tabulator, PapaParse, the app code, and
 the data are all inlined (or, in load mode, the data is read from the data file when
 the page opens). The user can then sort, filter, read long text, compare the
-current model with candidates, decide releases, record review labels, and export CSV.
+current model with candidates, decide releases, share experiment results, record
+review labels, and export CSV.
 
 Input formats, chosen by file extension (anything else is an error):
 
@@ -26,12 +27,13 @@ after flattening are allowed only in `columns.text` columns; they are shown as
 pretty-printed JSON in review and compare details and as compact JSON in the table.
 Exports are always CSV.
 
-Four jobs, selected by `tabs` in the config:
+Five jobs, selected by `tabs` in the config:
 
 | Job | Tabs | What the reader gets |
 |-----|------|----------------------|
 | Model A vs B on a golden set | `compare`, `overview`, `table` | Counts of regressed / improved / unchanged items, metric deltas, a regressions-first list, and a side-by-side A/B detail view; with several candidates, a picker |
 | Release decision | `release` (+ `report`), `compare`, `overview`, `table` | Per candidate a verdict (出してよい / 要レビュー / 出さない) against the config's criteria, a candidate x criteria table, a review of regressed items, a record to export, and later the written report |
+| Sharing experiment results (hypothesis test) | `experiment` (+ `report`), `compare`, `overview`, `table` | The hypothesis and criteria, per condition a verdict against the baseline in words chosen for the experiment, each metric's difference and 95% interval with how to read it, a review of regressed items, a record to export, and later the written report with a Markdown download |
 | Fact-check human review | `review`, `overview`, `table` | One item at a time, keys 1-9 to label, N for a note, autosave in the browser, CSV export with `human_label` and `human_note` |
 | Feedback triage | `overview`, `table` | Category x status stacked bars, filters, and a full table with header filters and CSV download |
 
@@ -112,6 +114,17 @@ Four jobs, selected by `tabs` in the config:
   every number copied from the record (never recomputed from the data), set
   `release.record` and `release.report`, add the `report` tab, and build again; the
   build checks the report's frontmatter verdicts against the record.
+- "Did my experiment improve things? / Share the experiment result" -> `experiment`
+  first, then `compare`, `overview`, `table`. Put the baseline in `data.csv` and each
+  condition in `data.candidates`. Write the user's hypothesis in
+  `experiment.hypothesis` and their conditions in `experiment.criteria` (the same
+  types as release; do not invent any). Pick `experiment.verdict_labels` yourself to
+  fit the experiment, for example 改善した / 要レビュー / 改善しなかった for a feature
+  change, or 仮説を支持 / 要レビュー / 支持しない when the hypothesis is explicit. Never
+  combine `experiment` and `release` in one config. The report comes later, as for
+  release, from
+  [references/experiment-report.md](references/experiment-report.md): five headings,
+  and the conclusion is the human's reading of the intervals, not the verdict alone.
 - "I need to check the LLM's fact-check verdicts" -> `review` first, with the verdict
   column as `columns.verdict` and the labels the user wants (`["正しい","誤り","保留"]`).
   Put the claim, the evidence, and the rationale in `columns.text` in reading order.
@@ -148,10 +161,16 @@ Four jobs, selected by `tabs` in the config:
   The review of regressed items works like the review tab (arrows, 1-9, N, Esc) and is
   saved per candidate in localStorage. "記録を書き出す" downloads the record as JSON
   or Markdown, without reviewer names or times.
-- **Report:** the Markdown report from `release.report`, rendered as headings,
-  paragraphs, flat lists, tables, and bold / italic only, with HTML shown as text. If
-  the viewer's reviews change a verdict from the record, a warning on top says the
-  report is out of date.
+- **Experiment:** the release tab with the hypothesis on top and the verdicts in the
+  words of `experiment.verdict_labels` (codes `pass` / `review` / `fail`, decided by
+  the same rules). Each metric row says how to read its 95% interval (区間が0を含まない：
+  差は誤差の範囲を超えている可能性が高い / 区間が0を含む：差は誤差の範囲かもしれない); the
+  interval never changes a verdict. The record adds `hypothesis` and `verdict_labels`.
+- **Report:** the Markdown report from `release.report` or `experiment.report`,
+  rendered as headings, paragraphs, flat lists, tables, and bold / italic only, with
+  HTML shown as text. "Markdown を書き出す" downloads the report body. If the viewer's
+  reviews change a verdict from the record, a warning on top says the report is out of
+  date.
 - **Table:** Tabulator with sort, header filters (drop-downs for category / status /
   verdict), long text truncated with an expand button, optional grouping by category,
   and download of the currently filtered rows.
@@ -184,8 +203,8 @@ Four jobs, selected by `tabs` in the config:
   element builder or `textContent`, never `innerHTML`.
 - Review labels, including release reviews, live only in that browser's localStorage.
   Clearing site data, another browser, or another machine starts empty. Export to keep
-  them; for release reviews, export the record and set it as `release.record` so the
-  rebuilt HTML carries them.
+  them; for release (or experiment) reviews, export the record and set it as
+  `release.record` (`experiment.record`) so the rebuilt HTML carries them.
 
 ## Gotchas
 
@@ -208,13 +227,18 @@ Four jobs, selected by `tabs` in the config:
 - `assets/template.html`, `assets/app.js`, `assets/app.css` - the dashboard itself.
 - `assets/vendor/` - PapaParse 5.4.1 and Tabulator 6.3.1 (MIT); see
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-- `references/config.md` - every config key, including `release`, and the record format.
+- `references/config.md` - every config key, including `release` and `experiment`, and
+  the record format.
 - `references/release-report.md` - the release report's frontmatter, structure, and
   the Markdown the report tab renders.
+- `references/experiment-report.md` - the experiment report's frontmatter and five
+  headings, and who writes the conclusion.
 - `references/extra-tabs.md` - the extra tab API, an example, and the security rule.
 - `examples/` - synthetic CSVs and a config for each job (the release decision has a
   current model and three candidates, plus `release_record.json`, `release_report.md`,
-  and `release_report.config.json`), plus `factcheck.jsonl` with
+  and `release_report.config.json`; the experiment has a baseline and three conditions,
+  plus `experiment_record.json`, `experiment_report.md`, and
+  `experiment_report.config.json`), plus `factcheck.jsonl` with
   `factcheck_jsonl.config.json` (nested keys and an array column) and
   `feedback_weekly.js` (an extra tab used by `feedback.config.json`). Build one to see the result:
   `python3 scripts/build_dashboard.py --config examples/golden.config.json --out /tmp/golden.html`.
