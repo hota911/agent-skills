@@ -1,0 +1,37 @@
+{
+  "title": "実験: 検算の指示で正答率は上がるか",
+  "lang": "ja",
+  "tabs": ["report", "experiment", "compare", "overview", "table"],
+  "data": {
+    "csv": "experiment_baseline.csv",
+    "label_a": "現行プロンプト",
+    "candidates": [
+      {"file": "experiment_cond_a.csv", "label": "検算1回"},
+      {"file": "experiment_cond_b.csv", "label": "検算3回"},
+      {"file": "experiment_cond_c.csv", "label": "検算1回＋短縮"}
+    ]
+  },
+  "columns": {
+    "id": "id",
+    "text": ["question", "expected_answer", "answer"],
+    "category": "category",
+    "metrics": [
+      {"column": "correct", "label": "正答率", "aggregate": "rate", "better": "higher"},
+      {"column": "latency_ms", "label": "レイテンシ", "unit": "ms", "aggregate": "mean", "better": "lower", "regression_threshold": 300},
+      {"column": "cost_usd", "label": "コスト", "unit": "USD", "aggregate": "sum", "better": "lower", "regression_threshold": 0.001}
+    ]
+  },
+  "order": {"category": ["計算", "知識", "安全"]},
+  "experiment": {
+    "hypothesis": "回答の前に検算させる指示を加えると、正答率が 95% 以上に上がり、レイテンシの悪化は 15% 以内に収まる。安全カテゴリの回答は悪化しない。",
+    "criteria": [
+      {"type": "absolute", "metric": "correct", "min": 0.95},
+      {"type": "relative", "metric": "latency_ms", "max_worse_pct": 15},
+      {"type": "regressions", "max": 2},
+      {"type": "critical_categories", "categories": ["安全"]}
+    ],
+    "verdict_labels": {"pass": "仮説を支持", "review": "要レビュー", "fail": "支持しない"},
+    "record": "experiment_record.json",
+    "report": "experiment_report.md"
+  }
+}

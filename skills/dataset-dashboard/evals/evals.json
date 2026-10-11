@@ -89,6 +89,30 @@
         "95% 区間は参考情報で判定には使わないこと、件数が 20 件と少ないことを注意点として伝える",
         "生成物をブラウザで開いて確認したか、確認できなかったかを正直に述べる"
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "プロンプトに「回答の前に検算する」指示を足す実験をしました。experiment_baseline.csv が現行プロンプト、experiment_cond_a.csv（検算1回）・experiment_cond_b.csv（検算3回）・experiment_cond_c.csv（検算1回＋短縮）が3つの条件の結果です（すべて examples/ にあります）。チームに結果を共有したいので HTML を作ってください。仮説は「検算させると正答率が 95% 以上に上がり、レイテンシの悪化は 15% 以内に収まる。安全カテゴリの回答は悪化しない」です。悪化した項目は 2 件までとします。latency_ms は 300ms、cost_usd は 0.001 USD 以上の悪化を悪化項目とします。",
+      "expected_output": "experiment タブを先頭にした設定で、現行プロンプトを data.csv、3条件を data.candidates に並べ、仮説を experiment.hypothesis、依頼の4つの基準を experiment.criteria に書き、実験に合った verdict_labels を選んで HTML を生成する。条件ごとの判定（検算1回は基準をすべて満たす、検算3回はレイテンシの悪化で満たさない、検算1回＋短縮は悪化項目のレビューが必要）と、95% 区間は目安で結論は人が出すこと、悪化項目のレビュー、記録の書き出し、レポートの流れを説明する。",
+      "files": [
+        "examples/experiment_baseline.csv",
+        "examples/experiment_cond_a.csv",
+        "examples/experiment_cond_b.csv",
+        "examples/experiment_cond_c.csv"
+      ],
+      "assertions": [
+        "設定を書く前に CSV のヘッダーを確認し、id・correct・latency_ms・cost_usd・category を実在する列名で使う",
+        "tabs に experiment を含め release は含めず、data.csv に現行プロンプト、data.candidates に3条件を file と label で指定している",
+        "experiment.hypothesis に依頼の仮説を書いている",
+        "experiment.criteria に absolute（correct の min 0.95）、relative（latency_ms の max_worse_pct 15）、regressions（max 2）、critical_categories（[\"安全\"]）を書き、依頼にない基準を足していない",
+        "experiment.verdict_labels に pass・review・fail の3つを、実験の内容に合う別々の言葉（たとえば「仮説を支持／要レビュー／支持しない」）で書いている",
+        "latency_ms に regression_threshold 300、cost_usd に regression_threshold 0.001 を指定している",
+        "build_dashboard.py が exit 0 で HTML を出力したことを、パスとサイズとともに示す",
+        "検算1回は基準をすべて満たす、検算3回はレイテンシの悪化（約 25%）で基準を満たさない、検算1回＋短縮は悪化項目（e13, e09）が未レビューのため要レビューになると、verdict_labels の言葉で伝える",
+        "95% 区間は判定に使わない目安であり、正答率の差の区間が 0 を含むことなどの解釈と結論は人が行うと伝える",
+        "悪化項目をレビューして記録を JSON で書き出し、その後に5つの見出し（背景と仮説、方法、結果、考察、結論と次にやること）のレポートを書けること、レポートは「Markdown を書き出す」で書き出せることを説明する",
+        "生成物をブラウザで開いて確認したか、確認できなかったかを正直に述べる"
+      ]
     }
   ]
 }
