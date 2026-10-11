@@ -2,14 +2,14 @@
 
 An experiment report is a Markdown file that shares the result of an experiment with
 people who did not see the data: what was tested, how, what came out, how to read it,
-and what the experimenter concluded. It is shown in the dashboard's `report` tab, next
+and what the experimenter concluded. It is shown in the page's `report` tab, next
 to the experiment tab that holds the numbers, and "Markdown を書き出す" / "Export
 Markdown" downloads it for pasting into Google Docs or Notion. Write it only after a
 human has reviewed the regressed items and exported the record from the experiment tab.
 
 ## Flow
 
-1. Build the dashboard with the `experiment` tab, have a human review the regressed
+1. Build the page with the `experiment` tab, have a human review the regressed
    items, and export the record as JSON ("記録を書き出す (JSON)").
 2. Read the record (and the data when an item needs explaining) and draft the report.
    Cite every number from the record; do not recompute it from the data.
@@ -22,7 +22,7 @@ human has reviewed the regressed items and exported the record from the experime
 
 ## Who decides what
 
-The dashboard computes each condition's verdict from the criteria in the config. The
+The page computes each condition's verdict from the criteria in the config. The
 95% interval of each metric's difference is shown as a guide only and never changes a
 verdict. A human interprets the intervals and writes the conclusion. Draft the 考察
 and 結論 sections from what the experimenter said, mark anything they have not
@@ -53,7 +53,7 @@ report or of the Markdown download.
 
 ## Structure
 
-Use these five headings in this order, in the language of the dashboard:
+Use these five headings in this order, in the language of the page:
 
 | Heading | Content |
 |---------|---------|

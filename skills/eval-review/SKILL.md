@@ -1,11 +1,11 @@
 ---
 name: eval-review
-description: Turn local CSV, JSON, or JSONL datasets into one self-contained offline HTML page for reviewing evaluation results (also called a review dashboard) - compare a current model against one or more candidates on a golden dataset (regressions first), decide which candidates can be released against stated criteria with a human review of regressed items and a written report, share an experiment's result against a hypothesis with a written report, let a human review and label items (for example fact-check) with keyboard shortcuts and export the labels as CSV, or triage feedback by category and status. Use when the user has a CSV / JSON / JSONL dataset or evaluation results (for example LLM eval outputs as JSONL) and asks to visualize, explore, compare, review, label, or triage them, or says CSV を可視化, JSON を可視化, JSONL を確認, データセットを見たい, A/B 比較, リリース判定, 出してよいか, 実験結果の共有, 仮説検証, レビュー画面, ファクトチェックの確認. Not for live databases, BI dashboards, or charts meant for slides.
+description: Turn local CSV, JSON, or JSONL datasets into one self-contained offline HTML page for reviewing evaluation results - compare a current model against one or more candidates on a golden dataset (regressions first), decide which candidates can be released against stated criteria with a human review of regressed items and a written report, share an experiment's result against a hypothesis with a written report, let a human review and label items (for example fact-check) with keyboard shortcuts and export the labels as CSV, or triage feedback by category and status. Use when the user has a CSV / JSON / JSONL dataset or evaluation results (for example LLM eval outputs as JSONL) and asks to visualize, explore, compare, review, label, or triage them, or says CSV を可視化, JSON を可視化, JSONL を確認, データセットを見たい, A/B 比較, リリース判定, 出してよいか, 実験結果の共有, 仮説検証, レビュー画面, ファクトチェックの確認. Not for live databases, BI dashboards, or charts meant for slides.
 ---
 
 # Eval Review
 
-Build a single offline HTML page for reviewing evaluation results (a review dashboard, not live monitoring) from one or more data files plus a small JSON config. The file
+Build a single offline HTML page for reviewing evaluation results (a review page, not live monitoring) from one or more data files plus a small JSON config. The file
 opens from disk with no server and no network: Tabulator, PapaParse, the app code, and
 the data are all inlined (or, in load mode, the data is read from the data file when
 the page opens). The user can then sort, filter, read long text, compare the
@@ -64,7 +64,7 @@ Five jobs, selected by `tabs` in the config:
 4. **Build:**
 
    ```bash
-   python3 <skill-dir>/scripts/build_dashboard.py --config review.config.json --out review.html [--mode load]
+   python3 <skill-dir>/scripts/build.py --config review.config.json --out review.html [--mode load]
    ```
 
    Python 3 standard library only; nothing to install. `--csv` overrides the main
@@ -75,7 +75,7 @@ Five jobs, selected by `tabs` in the config:
    next to the CSV (or where that relative path stays valid).
 5. **Read the build output.** It prints `wrote <path> (<bytes> bytes)` on success, or
    `error: ...` and exits 1. A warning such as `ids only in A (1): [...]` is not
-   fatal; the same notice appears as a banner in the dashboard. Fix errors by
+   fatal; the same notice appears as a banner in the page. Fix errors by
    correcting the config or telling the user what is wrong with the CSV; never edit
    the user's CSV silently.
 6. **Verify before handing over.** If a browser tool is available, open the file and
@@ -136,7 +136,7 @@ Five jobs, selected by `tabs` in the config:
 
 ## Where to apply feedback
 
-- On one dashboard (tabs, criteria, thresholds, labels, wording, columns) -> change the
+- On one page (tabs, criteria, thresholds, labels, wording, columns) -> change the
   config and build again.
 - On a written report (structure, wording, a missing caveat) -> edit the report
   Markdown, keeping every number copied from the record, and build again (the build
@@ -149,7 +149,7 @@ Five jobs, selected by `tabs` in the config:
   skill's source repository through a pull request, then reinstall. Never in the
   installed copy, and never for one request.
 
-## What the dashboard does (so you can explain it)
+## What the page does (so you can explain it)
 
 - **Overview:** stat tiles per metric (rate as % and k/n, mean with p50/p95, sum with
   per-item), horizontal bars of items per category stacked by status or verdict, and
@@ -216,7 +216,7 @@ Five jobs, selected by `tabs` in the config:
   remote images, and network requests except, in load mode, reading the CSV from the
   same server (`connect-src 'self'`). Nothing is uploaded anywhere.
 - **In embed mode the CSV data is in the HTML.** Anyone who receives the file can read
-  every row, including columns the dashboard does not show. Tell the user this before
+  every row, including columns the page does not show. Tell the user this before
   they share it; drop sensitive columns from the CSV first, or use load mode. A
   load-mode file holds only the config (title, column names, labels, `order` values)
   and each CSV's path relative to the HTML, never absolute paths or rows.
@@ -245,8 +245,8 @@ Five jobs, selected by `tabs` in the config:
 
 ## Files
 
-- `scripts/build_dashboard.py` - validates the config and data files, inlines everything.
-- `assets/template.html`, `assets/app.js`, `assets/app.css` - the dashboard itself.
+- `scripts/build.py` - validates the config and data files, inlines everything.
+- `assets/template.html`, `assets/app.js`, `assets/app.css` - the page itself.
 - `assets/vendor/` - PapaParse 5.4.1 and Tabulator 6.3.1 (MIT); see
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - `references/config.md` - every config key, including `release` and `experiment`, and
@@ -263,4 +263,4 @@ Five jobs, selected by `tabs` in the config:
   `experiment_report.config.json`), plus `factcheck.jsonl` with
   `factcheck_jsonl.config.json` (nested keys and an array column) and
   `feedback_weekly.js` (an extra tab used by `feedback.config.json`). Build one to see the result:
-  `python3 scripts/build_dashboard.py --config examples/golden.config.json --out /tmp/golden.html`.
+  `python3 scripts/build.py --config examples/golden.config.json --out /tmp/golden.html`.

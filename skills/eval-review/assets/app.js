@@ -165,22 +165,22 @@
     }
   };
 
-  // Must match TRUE_VALUES / FALSE_VALUES in build_dashboard.py.
+  // Must match TRUE_VALUES / FALSE_VALUES in build.py.
   const TRUE_VALUES = new Set(["true", "1", "yes", "y", "t"]);
   const FALSE_VALUES = new Set(["false", "0", "no", "n", "f"]);
   const REVIEW_EXPORT_COLUMNS = ["human_label", "human_note"];
-  // Must match MAX_SAFE_INTEGER in build_dashboard.py.
+  // Must match MAX_SAFE_INTEGER in build.py.
   const MAX_SAFE_ID = Number.MAX_SAFE_INTEGER;
   const SERIES_SLOTS = 8;
-  const STORAGE_PREFIX = "dataset-dashboard:v1:";
+  const STORAGE_PREFIX = "eval-review:v1:";
 
-  const payload = JSON.parse(document.getElementById("dashboard-data").textContent);
+  const payload = JSON.parse(document.getElementById("page-data").textContent);
   const cfg = payload.config;
   const T = STRINGS[cfg.lang] || STRINGS.ja;
   const cols = cfg.columns;
   const metrics = cols.metrics;
   // Side keys: "a" is data.csv (the current model when comparing), "c1", "c2", ... are
-  // data.candidates in config order. Must match build() in build_dashboard.py.
+  // data.candidates in config order. Must match build() in build.py.
   const candidates = cfg.data.candidates || [];
   const CAND_SIDES = candidates.map((_, i) => "c" + (i + 1));
   const SIDES = ["a"].concat(CAND_SIDES);
@@ -194,10 +194,10 @@
   const defaultPath = payload.default_paths || {};
   const canFetch = location.protocol === "http:" || location.protocol === "https:";
   // config.release or config.experiment (a config has at most one): verdicts on the
-  // candidates, their record and the report. Must match DECISIONS in build_dashboard.py.
+  // candidates, their record and the report. Must match DECISIONS in build.py.
   const DECISIONS = {
-    release: { kind: "dataset-dashboard/release-record", verdicts: ["go", "review", "no-go"] },
-    experiment: { kind: "dataset-dashboard/experiment-record", verdicts: ["pass", "review", "fail"] }
+    release: { kind: "eval-review/release-record", verdicts: ["go", "review", "no-go"] },
+    experiment: { kind: "eval-review/experiment-record", verdicts: ["pass", "review", "fail"] }
   };
   const decisionTab = cfg.tabs.find((t) => Object.prototype.hasOwnProperty.call(DECISIONS, t)) || null;
   const decision = decisionTab ? cfg[decisionTab] : null;
@@ -207,8 +207,8 @@
   const stackCol = cols.status || cols.verdict || null;
   const numFmtCache = {};
   const canPick = typeof window.showOpenFilePicker === "function";
-  // Tabs written for one dashboard (config.extra_tabs); their scripts run after this file
-  // and call DatasetDashboard.registerTab().
+  // Tabs written for one page (config.extra_tabs); their scripts run after this file
+  // and call EvalReview.registerTab().
   const extraTabs = cfg.extra_tabs || [];
   const extraTitle = new Map(extraTabs.map((t) => [t.id, t.title]));
   const extraRenderers = new Map();
@@ -262,7 +262,7 @@
   }
 
   // A JSON scalar as the CSV text it stands for, so metrics, filters and ids behave as with
-  // a CSV. Arrays and objects stay as values. Must match cell_text() in build_dashboard.py.
+  // a CSV. Arrays and objects stay as values. Must match cell_text() in build.py.
   function toCell(v) {
     if (v === null || v === undefined) return "";
     if (typeof v === "boolean") return v ? "true" : "false";
@@ -517,7 +517,7 @@
   }
 
   // A paired with one candidate side by id. Pairs keep the key `b` for the candidate row,
-  // which extra tabs read as ctx.pairs. Must match pair_rows() in build_dashboard.py.
+  // which extra tabs read as ctx.pairs. Must match pair_rows() in build.py.
   function pairs(side) {
     const byId = new Map(rowsOf(side).map((r) => [r[cols.id], r]));
     const out = [];
@@ -562,7 +562,7 @@
     };
   }
 
-  // Must match configured_columns() in build_dashboard.py.
+  // Must match configured_columns() in build.py.
   function requiredColumns() {
     const needed = [cols.id, ...cols.text, ...metrics.map((m) => m.column)];
     for (const k of ["category", "status", "verdict"]) if (cols[k]) needed.push(cols[k]);
@@ -883,7 +883,7 @@
     banner.replaceChildren(...lines.map((l) => el("p", { text: "✕ " + l })), ...warn.map((w) => el("p", { text: "⚠ " + w })));
   }
 
-  // Only meaningful when a second CSV is loaded; single-CSV dashboards get nothing.
+  // Only meaningful when a second CSV is loaded; single-CSV pages get nothing.
   function appendSideToggle(root) {
     if (!hasB) return;
     root.appendChild(el("div", { class: "segmented", role: "group", "aria-label": T.dataSide }, SIDES.map((s) =>
@@ -1251,7 +1251,7 @@
   // ---------- release / experiment decision ----------
 
   const REVIEW_LABELS = decision ? decision.review_labels : [];
-  // The last review label rejects the candidate. Must match candidate_verdict() in build_dashboard.py.
+  // The last review label rejects the candidate. Must match candidate_verdict() in build.py.
   const REJECT = REVIEW_LABELS.length ? REVIEW_LABELS[REVIEW_LABELS.length - 1] : null;
   // Verdict codes in the order: met / regressions left unreviewed / not met.
   const VERDICTS = decision ? DECISIONS[decisionTab].verdicts : [];
@@ -1308,7 +1308,7 @@
     }
   }
 
-  // Must match evaluate_criterion() in build_dashboard.py. `value` is what the threshold
+  // Must match evaluate_criterion() in build.py. `value` is what the threshold
   // is compared with: the candidate's aggregate, its worsening from A (in the metric's
   // unit or in percent), or a count of items. `regressed` is [{ p, c }] from classifyPair.
   // The other fields (the counted items, n, both aggregates and their sums) are what the
@@ -1771,7 +1771,7 @@
   }
 
   // The JSON record that config.release.record / config.experiment.record reads back.
-  // read_record() in build_dashboard.py checks kind, version, criteria, review_labels (and
+  // read_record() in build.py checks kind, version, criteria, review_labels (and
   // an experiment's hypothesis and verdict_labels), files, candidates and their verdicts.
   function recordData(results) {
     const num = (v) => (v === null || !Number.isFinite(v) ? null : v);
@@ -2111,7 +2111,7 @@
 
   function errorText(err) { return String(err && err.message ? err.message : err); }
 
-  // Input format by extension. Must match FORMATS in build_dashboard.py.
+  // Input format by extension. Must match FORMATS in build.py.
   function formatOf(name) {
     const m = /\.(csv|json|jsonl)$/i.exec(name);
     if (!m) throw new Error(fmt(T.badExt, { name: name }));
@@ -2155,7 +2155,7 @@
     }
   }
 
-  // Same rules as read_json() in build_dashboard.py: a .json array (or the array at
+  // Same rules as read_json() in build.py: a .json array (or the array at
   // data.records_path) or .jsonl with one object per line; then the CSV checks.
   function parseJson(text, format) {
     const recordsPath = cfg.data.records_path || null;
@@ -2379,7 +2379,7 @@
 
   // Remembered handles are a convenience only: IndexedDB can be missing or blocked
   // (private windows, file:// in some browsers), so every failure is ignored on purpose.
-  const IDB_NAME = "dataset-dashboard", IDB_STORE = "handles";
+  const IDB_NAME = "eval-review", IDB_STORE = "handles";
 
   function idbRequest(mode, makeRequest) {
     return new Promise((resolve, reject) => {
@@ -2449,7 +2449,7 @@
     resizeTimer = setTimeout(renderContent, 150);
   });
 
-  window.DatasetDashboard = Object.freeze({ registerTab: registerTab });
+  window.EvalReview = Object.freeze({ registerTab: registerTab });
 
   initReview();
   initDecisionReview();

@@ -1,7 +1,7 @@
 # Release report
 
 A release report is a Markdown file that explains the release decision to people who
-did not do the review. It is shown in the dashboard's `report` tab, next to the release
+did not do the review. It is shown in the page's `report` tab, next to the release
 tab that holds the numbers; "Markdown を書き出す" / "Export Markdown" there downloads the
 report body (without the frontmatter). Write it only after a human has reviewed the
 regressed items and exported the record from the release tab. For an experiment that
@@ -9,7 +9,7 @@ tests a hypothesis, see [experiment-report.md](experiment-report.md) instead.
 
 ## Flow
 
-1. Build the dashboard with the `release` tab, have a human review the regressed items,
+1. Build the page with the `release` tab, have a human review the regressed items,
    and export the record as JSON ("記録を書き出す (JSON)").
 2. Read the record (and the data when an item needs explaining) and write the report.
    Cite every number from the record; do not recompute it from the data.
@@ -44,7 +44,7 @@ not checked, which is why they must be copied from the record.
 
 ## Structure
 
-Use these four headings in this order, in the language of the dashboard:
+Use these four headings in this order, in the language of the page:
 
 | Heading | Content |
 |---------|---------|

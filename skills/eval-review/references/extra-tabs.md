@@ -6,7 +6,7 @@ user described, a chart of a column the config has no role for. Check the built-
 and the config keys first; a filter, `order`, or the table often already answers it.
 
 An extra tab is a small JavaScript file next to the config. The build inlines it after
-the dashboard code, so the HTML stays one offline file. Do not edit `assets/` or write a
+the page code, so the HTML stays one offline file. Do not edit `assets/` or write a
 separate HTML page instead.
 
 ## Config
@@ -29,7 +29,7 @@ missing file, a non-`.js` path, a repeated id, or an id of a built-in tab. Only 
 
 ## API
 
-Each script calls `DatasetDashboard.registerTab(id, render)` once. `render(ctx)` runs
+Each script calls `EvalReview.registerTab(id, render)` once. `render(ctx)` runs
 every time the tab is drawn: when it is opened, when the data is loaded or reloaded
 (load mode, a picked or dropped file), when a filter changes, and on window resize.
 The container is new and empty each time, so `render` builds the whole tab from `ctx`.
@@ -77,7 +77,7 @@ register" and the error in the console. `registerTab` throws for an id not in
 Insert data only with `ctx.el` (`text` or string children) or `textContent`. Never
 assign data to `innerHTML`, `outerHTML`, or `insertAdjacentHTML`, and never build
 attribute values such as `href` or `style` from data. The data may contain markup, and
-the dashboard's guarantee that it is shown literally depends on every tab keeping this
+the page's guarantee that it is shown literally depends on every tab keeping this
 rule. The Content-Security-Policy is unchanged: the script cannot load anything from the
 network, and should not try.
 
@@ -88,7 +88,7 @@ feedback per week (weeks starting on Monday) stacked by status, with the counts 
 table and a CSV download. Its core:
 
 ```js
-DatasetDashboard.registerTab("weekly", (ctx) => {
+EvalReview.registerTab("weekly", (ctx) => {
   const status = ctx.columns.status;
   if (ctx.rows.length && !("date" in ctx.rows[0])) throw new Error("column date is missing");
   const counts = new Map();          // week -> Map(status -> n)
@@ -110,7 +110,7 @@ DatasetDashboard.registerTab("weekly", (ctx) => {
 ```
 
 Build it as any example and open the "週ごとの件数" tab:
-`python3 scripts/build_dashboard.py --config examples/feedback.config.json --out /tmp/feedback.html`.
+`python3 scripts/build.py --config examples/feedback.config.json --out /tmp/feedback.html`.
 
 The page's CSS classes `card`, `empty`, `small`, `muted`, `btn`, `grid`, and
 `two-col` are available for layout, so an extra tab looks like the built-in ones.

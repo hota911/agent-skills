@@ -1,5 +1,5 @@
 {
-  "kind": "dataset-dashboard/experiment-record",
+  "kind": "eval-review/experiment-record",
   "version": 1,
   "title": "実験: 検算の指示で正答率は上がるか",
   "exported_at": "2026-10-11T10:13:21.900Z",

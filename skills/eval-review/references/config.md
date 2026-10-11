@@ -10,7 +10,7 @@ file.
 |-----|----------|------|---------|
 | `title` | yes | string | Page title and heading. Also part of the review storage key. |
 | `lang` | no (default `"ja"`) | `"ja"` \| `"en"` | Language of all UI text. |
-| `tabs` | yes | list | Non-empty, no repeats, from `overview`, `compare`, `review`, `table`, `release`, `experiment`, `report`. The first entry is the tab shown on open. `release` and `experiment` cannot both appear; build a separate dashboard for each. |
+| `tabs` | yes | list | Non-empty, no repeats, from `overview`, `compare`, `review`, `table`, `release`, `experiment`, `report`. The first entry is the tab shown on open. `release` and `experiment` cannot both appear; build a separate page for each. |
 | `data` | yes | object | Which CSV files to use and whether to embed them. See below. |
 | `columns` | yes | object | Roles of CSV columns. See below. |
 | `order` | no | object | `{ "<column>": ["value", ...] }` - display order for category / status / verdict values. |
@@ -18,7 +18,7 @@ file.
 | `review` | only with the `review` tab | object | `{ "labels": [...] }`. See below. |
 | `release` | only with the `release` tab | object | Release criteria, review labels, and the optional record and report. See below. |
 | `experiment` | only with the `experiment` tab | object | The hypothesis, criteria, verdict labels, review labels, and the optional record and report. See below. |
-| `extra_tabs` | no | list | `[{"id": "...", "title": "...", "script": "tab.js"}]` - tabs written for this dashboard when the built-in ones do not cover the request. They follow the `tabs` entries. `script` is a `.js` file resolved relative to the config file. Ids are unique and must not be a built-in tab name. See [extra-tabs.md](extra-tabs.md). |
+| `extra_tabs` | no | list | `[{"id": "...", "title": "...", "script": "tab.js"}]` - tabs written for this page when the built-in ones do not cover the request. They follow the `tabs` entries. `script` is a `.js` file resolved relative to the config file. Ids are unique and must not be a built-in tab name. See [extra-tabs.md](extra-tabs.md). |
 
 ## `data`
 
@@ -206,7 +206,7 @@ built HTML sees the reviews that the record was exported with.
 
 "記録を書き出す (JSON)" and "(Markdown)" on the release tab download
 `release_record_YYYYMMDD-HHMM.json` / `.md`. Neither holds reviewer names or review
-times. The JSON holds `kind` (`"dataset-dashboard/release-record"`), `version` (1; the kind keeps the old skill name `dataset-dashboard` for compatibility with exported records),
+times. The JSON holds `kind` (`"eval-review/release-record"`), `version` (1),
 `title`, `exported_at`, `files.current` (label and file name), `criteria`,
 `review_labels`, and per candidate: `label`, `file`, `verdict`, the counts `paired`,
 `regressed`, `unreviewed`, `rejected`, each criterion's `value` and `pass`, each
@@ -247,7 +247,7 @@ Each metric row also says how to read its 95% interval: "区間が0を含まな�
 the difference may be within noise"). As in release, the interval never changes a
 verdict; a human interprets it in the report.
 
-The record is the release record with `kind` `"dataset-dashboard/experiment-record"`,
+The record is the release record with `kind` `"eval-review/experiment-record"`,
 plus `hypothesis` and `verdict_labels`; the files are named
 `experiment_record_YYYYMMDD-HHMM.json` / `.md`. When `experiment.record` is set, the
 build also fails unless the record's `hypothesis` and `verdict_labels` equal the config.

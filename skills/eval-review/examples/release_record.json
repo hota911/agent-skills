@@ -1,5 +1,5 @@
 {
-  "kind": "dataset-dashboard/release-record",
+  "kind": "eval-review/release-record",
   "version": 1,
   "title": "リリース判定: 現行モデルと候補3つ",
   "exported_at": "2026-10-11T07:03:52.374Z",
