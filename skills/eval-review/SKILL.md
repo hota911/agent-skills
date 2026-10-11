@@ -1,11 +1,11 @@
 ---
-name: dataset-dashboard
-description: Turn local CSV, JSON, or JSONL datasets into one self-contained offline HTML dashboard for reviewing LLM or evaluation results - compare a current model against one or more candidates on a golden dataset (regressions first), decide which candidates can be released against stated criteria with a human review of regressed items and a written report, share an experiment's result against a hypothesis with a written report, let a human review and label items (for example fact-check) with keyboard shortcuts and export the labels as CSV, or triage feedback by category and status. Use when the user has a CSV / JSON / JSONL dataset or evaluation results (for example LLM eval outputs as JSONL) and asks to visualize, explore, compare, review, label, or triage them, or says CSV を可視化, JSON を可視化, JSONL を確認, データセットを見たい, A/B 比較, リリース判定, 出してよいか, 実験結果の共有, 仮説検証, レビュー画面, ファクトチェックの確認. Not for live databases, BI dashboards, or charts meant for slides.
+name: eval-review
+description: Turn local CSV, JSON, or JSONL datasets into one self-contained offline HTML page for reviewing evaluation results (also called a review dashboard) - compare a current model against one or more candidates on a golden dataset (regressions first), decide which candidates can be released against stated criteria with a human review of regressed items and a written report, share an experiment's result against a hypothesis with a written report, let a human review and label items (for example fact-check) with keyboard shortcuts and export the labels as CSV, or triage feedback by category and status. Use when the user has a CSV / JSON / JSONL dataset or evaluation results (for example LLM eval outputs as JSONL) and asks to visualize, explore, compare, review, label, or triage them, or says CSV を可視化, JSON を可視化, JSONL を確認, データセットを見たい, A/B 比較, リリース判定, 出してよいか, 実験結果の共有, 仮説検証, レビュー画面, ファクトチェックの確認. Not for live databases, BI dashboards, or charts meant for slides.
 ---
 
-# Dataset Dashboard
+# Eval Review
 
-Build a single HTML file from one or more data files plus a small JSON config. The file
+Build a single offline HTML page for reviewing evaluation results (a review dashboard, not live monitoring) from one or more data files plus a small JSON config. The file
 opens from disk with no server and no network: Tabulator, PapaParse, the app code, and
 the data are all inlined (or, in load mode, the data is read from the data file when
 the page opens). The user can then sort, filter, read long text, compare the

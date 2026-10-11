@@ -206,7 +206,7 @@ built HTML sees the reviews that the record was exported with.
 
 "記録を書き出す (JSON)" and "(Markdown)" on the release tab download
 `release_record_YYYYMMDD-HHMM.json` / `.md`. Neither holds reviewer names or review
-times. The JSON holds `kind` (`"dataset-dashboard/release-record"`), `version` (1),
+times. The JSON holds `kind` (`"dataset-dashboard/release-record"`), `version` (1; the kind keeps the old skill name `dataset-dashboard` for compatibility with exported records),
 `title`, `exported_at`, `files.current` (label and file name), `criteria`,
 `review_labels`, and per candidate: `label`, `file`, `verdict`, the counts `paired`,
 `regressed`, `unreviewed`, `rejected`, each criterion's `value` and `pass`, each
