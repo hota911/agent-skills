@@ -1,0 +1,20 @@
+{
+  "title": "ファクトチェックのレビュー",
+  "lang": "ja",
+  "tabs": ["review", "overview", "table"],
+  "data": {
+    "csv": "factcheck.csv"
+  },
+  "columns": {
+    "id": "id",
+    "text": ["claim", "source_excerpt", "llm_rationale"],
+    "category": "category",
+    "verdict": "llm_verdict"
+  },
+  "order": {
+    "llm_verdict": ["supported", "contradicted", "unverifiable"]
+  },
+  "review": {
+    "labels": ["正しい", "誤り", "保留"]
+  }
+}
