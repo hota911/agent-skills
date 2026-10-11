@@ -46,7 +46,9 @@
       dropHintLoad: "ドロップしたファイルを読み込みます",
       autoLoading: "{path} を読み込んでいます…",
       autoFile: "file:// で開いているため自動では読み込みません。ブラウザは隣にあるファイルの読み取りを禁止しています。フォルダを http で配信すると（例: python3 -m http.server）開いたときに自動で読み込みます。",
-      autoFail: "{path} を自動で読み込めませんでした（{msg}）。ファイルを選ぶかドロップしてください。"
+      autoFail: "{path} を自動で読み込めませんでした（{msg}）。ファイルを選ぶかドロップしてください。",
+      extraError: "このタブの表示でエラーが発生しました: {msg}",
+      extraMissing: "タブ {id} のスクリプトが登録されていません（ブラウザのコンソールを確認してください）"
     },
     en: {
       tabs: { overview: "Overview", compare: "Compare", review: "Review", table: "Table" },
@@ -91,7 +93,9 @@
       dropHintLoad: "Drop to load the file",
       autoLoading: "Loading {path}…",
       autoFile: "Opened from file://, so nothing is loaded automatically: browsers block reading neighbouring files. Serve the folder over http (for example python3 -m http.server) to load it on open.",
-      autoFail: "Could not load {path} automatically ({msg}). Choose the file or drop it."
+      autoFail: "Could not load {path} automatically ({msg}). Choose the file or drop it.",
+      extraError: "This tab failed to render: {msg}",
+      extraMissing: "The script for tab {id} did not register (see the browser console)"
     }
   };
 
@@ -121,6 +125,12 @@
   const stackCol = cols.status || cols.verdict || null;
   const numFmtCache = {};
   const canPick = typeof window.showOpenFilePicker === "function";
+  // Tabs written for one dashboard (config.extra_tabs); their scripts run after this file
+  // and call DatasetDashboard.registerTab().
+  const extraTabs = cfg.extra_tabs || [];
+  const extraTitle = new Map(extraTabs.map((t) => [t.id, t.title]));
+  const extraRenderers = new Map();
+  const allTabs = cfg.tabs.concat(extraTabs.map((t) => t.id));
 
   const state = {
     data: { a: payload.a ? withOrigin(payload.a, "embedded") : null, b: payload.b ? withOrigin(payload.b, "embedded") : null },
@@ -573,9 +583,9 @@
 
   // ---------- charts ----------
 
-  function legend(values) {
+  function legend(values, colorOf = seriesVar) {
     return el("ul", { class: "legend" }, values.map((v) =>
-      el("li", null, [el("span", { class: "swatch", style: "background:var(" + seriesVar(v) + ")" }), v])));
+      el("li", null, [el("span", { class: "swatch", style: "background:var(" + colorOf(v) + ")" }), v])));
   }
 
   // Path for a horizontal bar segment: square at the left, 4px rounded right end when `roundEnd`.
@@ -593,7 +603,8 @@
   }
 
   // Horizontal bars per category. With `single`, segValues is ["_"] and slot 1 colors every bar.
-  function stackedBars(container, categories, segValues, counts, single) {
+  // `colorOf` maps a segment value to a CSS color variable name.
+  function stackedBars(container, categories, segValues, counts, single, colorOf = seriesVar) {
     const width = Math.max(280, container.clientWidth || 600);
     const longest = Math.max(...categories.map((c) => textWidth(c, 12)), 40);
     const labelW = Math.min(longest + 8, width * 0.32);
@@ -623,7 +634,7 @@
         const xa = sx(acc), full = sx(acc + n) - xa;
         const w = Math.max(1, isLast ? full : full - 2);
         acc += n;
-        const varName = single ? "--series-1" : seriesVar(v);
+        const varName = single ? "--series-1" : colorOf(v);
         const g = svgEl("g", { class: "hov", tabindex: 0, "aria-label": cat + (single ? "" : " · " + v) + ": " + n });
         g.appendChild(svgEl("rect", { class: "hit", x: xa, y: top + i * rowH, width: Math.max(full, 6), height: rowH }));
         g.appendChild(svgEl("path", { class: "mark", d: hBarPath(xa, y, w, barH, isLast), style: "fill:var(" + varName + ")" }));
@@ -725,8 +736,8 @@
 
   function renderTabs() {
     const nav = document.getElementById("tabs");
-    nav.replaceChildren(...cfg.tabs.map((t) => el("button", {
-      role: "tab", "aria-selected": String(state.tab === t), text: T.tabs[t],
+    nav.replaceChildren(...allTabs.map((t) => el("button", {
+      role: "tab", "aria-selected": String(state.tab === t), text: extraTitle.get(t) || T.tabs[t],
       onclick: () => { state.tab = t; renderTabs(); renderContent(); }
     })));
   }
@@ -1030,10 +1041,15 @@
     const fields = a.headers.concat(REVIEW_EXPORT_COLUMNS);
     const data = a.rows.map((r) => {
       const rv = reviewOf(r[cols.id]);
-      return a.headers.map((h) => cellText(r[h])).concat([rv.label, rv.note]);
+      return a.headers.map((h) => r[h]).concat([rv.label, rv.note]);
     });
-    const csvText = "\uFEFF" + Papa.unparse({ fields: fields, data: data });
-    download(csvText, baseName(a.name) + "_reviewed.csv");
+    downloadCsv(baseName(a.name) + "_reviewed.csv", fields, data);
+  }
+
+  // UTF-8 with BOM so Excel opens it correctly. `data` is a list of rows, each a list of cells.
+  function downloadCsv(filename, fields, data) {
+    const csvText = "\uFEFF" + Papa.unparse({ fields: fields, data: data.map((row) => row.map(cellText)) });
+    download(csvText, filename);
   }
 
   function download(text, filename) {
@@ -1189,6 +1205,75 @@
     });
   }
 
+  // ---------- extra tabs ----------
+
+  // Segments that are status / verdict values keep the overview's colors; others get slots in order.
+  function segmentColors(segments) {
+    if (segments.every((v) => state.colorIndex.has(v))) return seriesVar;
+    const slots = new Map(segments.map((v, i) => [v, i < SERIES_SLOTS ? "--series-" + (i + 1) : "--series-other"]));
+    return (v) => slots.get(v) || "--series-other";
+  }
+
+  // `countOf(category, segment)` returns the count; the result is a legend plus the chart.
+  function stackedBarChart(holder, categories, segments, countOf) {
+    const counts = new Map();
+    for (const c of categories) for (const s of segments) counts.set(c + "\u0000" + s, countOf(c, s) || 0);
+    const colorOf = segmentColors(segments);
+    return el("div", null, [legend(segments, colorOf), stackedBars(holder, categories, segments, counts, false, colorOf)]);
+  }
+
+  function histogramChart(holder, values, unit) {
+    if (!values.length) return el("div", { class: "empty", text: T.noItems });
+    return histogram(holder, values, { aggregate: "mean", unit: unit || "" }).svg;
+  }
+
+  // Rows follow the filter bar, like the built-in tabs.
+  function extraContext(container) {
+    return {
+      container: container,
+      lang: cfg.lang,
+      columns: cols,
+      order: cfg.order,
+      labels: { a: sideLabel.a, b: sideLabel.b },
+      rows: filteredRows("a"),
+      rowsB: hasB ? filteredRows("b") : null,
+      pairs: hasB ? filteredPairs() : null,
+      el: el,
+      cellText: cellText,
+      formatNumber: fmtNum,
+      barChart: singleBars,
+      stackedBarChart: stackedBarChart,
+      histogramChart: histogramChart,
+      dataTable: dataTable,
+      downloadCsv: downloadCsv
+    };
+  }
+
+  function renderExtra(root, id) {
+    const render = extraRenderers.get(id);
+    if (!render) {
+      root.appendChild(el("div", { class: "banner error", text: fmt(T.extraMissing, { id: id }) }));
+      return;
+    }
+    const container = el("div", { class: "extra-tab" });
+    root.appendChild(container);
+    try {
+      render(extraContext(container));
+    } catch (err) {
+      console.error("dataset-dashboard: extra tab " + JSON.stringify(id) + " failed", err);
+      container.replaceChildren(el("div", { class: "banner error", text: fmt(T.extraError, { msg: errorText(err) }) }));
+    }
+  }
+
+  function registerTab(id, render) {
+    if (!extraTitle.has(id)) throw new Error("registerTab: " + JSON.stringify(id) + " is not in config.extra_tabs");
+    if (typeof render !== "function") throw new Error("registerTab: render for " + JSON.stringify(id) + " must be a function");
+    if (extraRenderers.has(id)) throw new Error("registerTab: " + JSON.stringify(id) + " is already registered");
+    extraRenderers.set(id, render);
+    // Scripts run after the first render, so redraw if this tab is already showing.
+    if (state.tab === id) renderContent();
+  }
+
   // ---------- main render ----------
 
   function renderContent() {
@@ -1204,6 +1289,7 @@
     else if (state.tab === "compare") renderCompare(root);
     else if (state.tab === "review") renderReview(root);
     else if (state.tab === "table") renderTable(root);
+    else if (extraTitle.has(state.tab)) renderExtra(root, state.tab);
     updateCount();
   }
 
@@ -1548,11 +1634,14 @@
   let resizeTimer = null;
   let lastWidth = window.innerWidth;
   window.addEventListener("resize", () => {
-    if (window.innerWidth === lastWidth || state.tab !== "overview") return;
+    // Charts are sized once when drawn, so tabs that may hold charts redraw on resize.
+    if (window.innerWidth === lastWidth || !(state.tab === "overview" || extraTitle.has(state.tab))) return;
     lastWidth = window.innerWidth;
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(renderContent, 150);
   });
+
+  window.DatasetDashboard = Object.freeze({ registerTab: registerTab });
 
   initReview();
   renderAll();

@@ -34,11 +34,12 @@ BETTER = ("higher", "lower")
 LANGS = ("ja", "en")
 MODES = ("embed", "load")
 
-TOP_KEYS = {"title", "lang", "tabs", "data", "columns", "order", "histogram", "review"}
+TOP_KEYS = {"title", "lang", "tabs", "data", "columns", "order", "histogram", "review", "extra_tabs"}
 DATA_KEYS = {"csv", "csv_b", "label_a", "label_b", "mode", "records_path"}
 COLUMN_KEYS = {"id", "text", "category", "status", "verdict", "metrics"}
 METRIC_KEYS = {"column", "label", "unit", "aggregate", "better", "regression_threshold"}
 REVIEW_KEYS = {"labels"}
+EXTRA_TAB_KEYS = {"id", "title", "script"}
 
 # Boolean spellings accepted for aggregate "rate". Must match parseBool() in app.js.
 TRUE_VALUES = {"true", "1", "yes", "y", "t"}
@@ -179,7 +180,40 @@ def validate_config(cfg: object) -> dict:
                  "(number keys 1-9 select them)")
     elif "review" in cfg:
         fail('config.review is set but "review" is not in config.tabs')
+
+    extra_tabs = cfg.setdefault("extra_tabs", [])
+    if not isinstance(extra_tabs, list):
+        fail("config.extra_tabs must be a list of {id, title, script} objects")
+    seen_ids: set[str] = set()
+    for i, tab in enumerate(extra_tabs):
+        where = f"config.extra_tabs[{i}]"
+        check_keys(tab, EXTRA_TAB_KEYS, where)
+        tab_id = require_str(tab, "id", where)
+        require_str(tab, "title", where)
+        script = require_str(tab, "script", where)
+        if tab_id in TABS:
+            fail(f"{where}.id {tab_id!r} collides with a built-in tab {list(TABS)}")
+        if tab_id in seen_ids:
+            fail(f"{where}.id {tab_id!r} is used by another extra tab")
+        seen_ids.add(tab_id)
+        if not script.lower().endswith(".js"):
+            fail(f"{where}.script must be a .js file, got {script!r}")
     return cfg
+
+
+def read_extra_scripts(cfg: dict, base: Path) -> list[tuple[str, str]]:
+    """Read each extra tab script (relative to the config file) as (file name, code)."""
+    scripts = []
+    for i, tab in enumerate(cfg["extra_tabs"]):
+        path = base / tab["script"]
+        if not path.is_file():
+            fail(f"config.extra_tabs[{i}].script not found: {path}")
+        try:
+            code = path.read_text(encoding="utf-8-sig")
+        except UnicodeDecodeError as e:
+            fail(f"extra tab script is not UTF-8 ({e.reason} at byte {e.start}): {path}")
+        scripts.append((path.name, code))
+    return scripts
 
 
 def read_table(path: Path, role: str, records_path: str | None) -> Table:
@@ -384,7 +418,7 @@ def read_asset(name: str) -> str:
 def inline_script(code: str, name: str) -> str:
     # A literal "</script" would terminate the inline <script> element early.
     if re.search(r"</script", code, re.IGNORECASE):
-        fail(f"asset {name} contains '</script' and cannot be inlined safely")
+        fail(f"script {name} contains '</script' and cannot be inlined safely")
     return code
 
 
@@ -412,8 +446,10 @@ def json_for_script(payload: dict) -> str:
     return text.replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
 
 
-def render(cfg: dict, payload: dict) -> str:
+def render(cfg: dict, payload: dict, extra_scripts: list[tuple[str, str]]) -> str:
     template = read_asset("template.html")
+    # One <script> per extra tab, after app.js, so one failing at top level leaves the rest working.
+    extra_js = "".join(f"<script>{inline_script(code, name)}</script>\n" for name, code in extra_scripts)
     parts = {
         "CSP": CSP_LOAD if cfg["data"]["mode"] == "load" else CSP_EMBED,
         "TITLE": html_escape(cfg["title"]),
@@ -424,6 +460,7 @@ def render(cfg: dict, payload: dict) -> str:
         "VENDOR_PAPAPARSE": inline_script(read_asset("vendor/papaparse.min.js"), "papaparse.min.js"),
         "VENDOR_TABULATOR": inline_script(read_asset("vendor/tabulator.min.js"), "tabulator.min.js"),
         "APP_JS": inline_script(read_asset("app.js"), "app.js"),
+        "EXTRA_SCRIPTS": extra_js,
         "DATA_JSON": json_for_script(payload),
     }
     found = set(re.findall(r"\{\{([A-Z_]+)\}\}", template))
@@ -467,6 +504,7 @@ def build(config_path: Path, out_path: Path, csv_override: Path | None,
     if mode_override:
         data["mode"] = mode_override
     base = config_path.resolve().parent
+    extra_scripts = read_extra_scripts(cfg, base)
 
     records_path = data.get("records_path")
     path_a = csv_override.resolve() if csv_override else base / data["csv"]
@@ -496,6 +534,8 @@ def build(config_path: Path, out_path: Path, csv_override: Path | None,
     data["csv"] = table_a.path.name
     if table_b is not None:
         data["csv_b"] = table_b.path.name
+    # The scripts are inlined; the page only needs each tab's id and title.
+    cfg["extra_tabs"] = [{"id": t["id"], "title": t["title"]} for t in cfg["extra_tabs"]]
     if data["mode"] == "load":
         # Relative to the HTML, so a page served over http fetches the file beside it.
         defaults = {}
@@ -516,8 +556,9 @@ def build(config_path: Path, out_path: Path, csv_override: Path | None,
             "b": None if table_b is None else {
                 "name": table_b.path.name, "headers": table_b.headers, "rows": table_b.rows},
         }
+    html = render(cfg, payload, extra_scripts)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(render(cfg, payload), encoding="utf-8")
+    out_path.write_text(html, encoding="utf-8")
     return warnings
 
 

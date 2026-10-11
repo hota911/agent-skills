@@ -53,6 +53,11 @@ Three jobs, selected by `tabs` in the config:
 3. **Write the config** next to the CSVs (paths in it resolve relative to the config
    file). Read [references/config.md](references/config.md) for every key and one
    example per job. Keep it minimal; unknown keys are an error by design.
+   Prefer the built-in tabs and keys. When the request needs a view they do not give
+   (counts per week, rows matching a rule the user described), write a small extra tab
+   script and list it in `extra_tabs`; read
+   [references/extra-tabs.md](references/extra-tabs.md) first. Never edit `assets/` or
+   hand-write a separate HTML page for one request.
 4. **Build:**
 
    ```bash
@@ -148,7 +153,8 @@ Three jobs, selected by `tabs` in the config:
   load-mode file holds only the config (title, column names, labels, `order` values)
   and each CSV's path relative to the HTML, never absolute paths or rows.
 - CSV values are inserted as text, never as HTML, so markup in the data is displayed
-  literally.
+  literally. Extra tab scripts must keep this: data goes in only through the provided
+  element builder or `textContent`, never `innerHTML`.
 - Review labels live only in that browser's localStorage. Clearing site data, another
   browser, or another machine starts empty. Export to keep them.
 
@@ -173,6 +179,8 @@ Three jobs, selected by `tabs` in the config:
 - `assets/template.html`, `assets/app.js`, `assets/app.css` - the dashboard itself.
 - `assets/vendor/` - PapaParse 5.4.1 and Tabulator 6.3.1 (MIT); see
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- `references/extra-tabs.md` - the extra tab API, an example, and the security rule.
 - `examples/` - synthetic CSVs and a config for each job, plus `factcheck.jsonl` with
-  `factcheck_jsonl.config.json` (nested keys and an array column). Build one to see the result:
+  `factcheck_jsonl.config.json` (nested keys and an array column) and
+  `feedback_weekly.js` (an extra tab used by `feedback.config.json`). Build one to see the result:
   `python3 scripts/build_dashboard.py --config examples/golden.config.json --out /tmp/golden.html`.

@@ -16,6 +16,7 @@ file.
 | `order` | no | object | `{ "<column>": ["value", ...] }` - display order for category / status / verdict values. |
 | `histogram` | no | string | A metric column with `aggregate` `mean` or `sum` to plot as a histogram in the overview. Defaults to the first such metric. |
 | `review` | only with the `review` tab | object | `{ "labels": [...] }`. See below. |
+| `extra_tabs` | no | list | `[{"id": "...", "title": "...", "script": "tab.js"}]` - tabs written for this dashboard when the built-in ones do not cover the request. They follow the `tabs` entries. `script` is a `.js` file resolved relative to the config file. Ids are unique and must not be a built-in tab name. See [extra-tabs.md](extra-tabs.md). |
 
 ## `data`
 
@@ -151,7 +152,8 @@ original columns, in the original row order, as UTF-8 with BOM.
 
 ## Examples
 
-All three are in `examples/` with synthetic CSVs. `examples/factcheck_jsonl.config.json`
+All three are in `examples/` with synthetic CSVs; the feedback example there also has
+an extra tab (`feedback_weekly.js`, counts per week). `examples/factcheck_jsonl.config.json`
 is the fact-check review on `factcheck.jsonl`, using flattened names
 (`llm.verdict`, `llm.confidence`) and an array column (`citations`) in `text`.
 
