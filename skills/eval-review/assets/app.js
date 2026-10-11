@@ -1,4 +1,4 @@
-/* dataset-dashboard runtime. Data values are only ever inserted with textContent. */
+/* eval-review runtime. Data values are only ever inserted with textContent. */
 (function () {
   "use strict";
 
@@ -2063,7 +2063,7 @@
     try {
       render(extraContext(container));
     } catch (err) {
-      console.error("dataset-dashboard: extra tab " + JSON.stringify(id) + " failed", err);
+      console.error("eval-review: extra tab " + JSON.stringify(id) + " failed", err);
       container.replaceChildren(el("div", { class: "banner error", text: fmt(T.extraError, { msg: errorText(err) }) }));
     }
   }
