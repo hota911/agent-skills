@@ -4,7 +4,7 @@ The skill's own code (`SKILL.md`, `references/`, `scripts/`, `assets/template.ht
 `assets/app.js`, `assets/app.css`, `examples/`, `evals/`) is distributed under the
 repository MIT license. The files in `assets/vendor/` are unmodified copies of the
 packages below, taken from their npm tarballs on 2026-10-08. They are inlined into
-every generated dashboard, so the build script embeds this whole file in each
+every generated page, so the build script embeds this whole file in each
 generated HTML file as a comment at the top. Keep it free of HTML comment delimiters;
 the build fails if it contains them.
 

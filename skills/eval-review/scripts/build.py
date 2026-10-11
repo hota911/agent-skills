@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Build a single self-contained HTML dashboard from local CSV, JSON, or JSONL files.
+"""Build a single self-contained HTML page from local CSV, JSON, or JSONL files.
 
 Usage:
-    python3 build_dashboard.py --config cfg.json --out out.html [--csv a.csv]
+    python3 build.py --config cfg.json --out out.html [--csv a.csv]
         [--mode embed|load]
 
 Data paths in the config are resolved relative to the config file; --csv overrides the
@@ -65,10 +65,10 @@ class Decision:
 
 
 DECISIONS = {
-    "release": Decision("release", frozenset(RELEASE_KEYS), "dataset-dashboard/release-record",
+    "release": Decision("release", frozenset(RELEASE_KEYS), "eval-review/release-record",
                         ("go", "review", "no-go")),
     "experiment": Decision("experiment", frozenset(EXPERIMENT_KEYS),
-                           "dataset-dashboard/experiment-record", ("pass", "review", "fail")),
+                           "eval-review/experiment-record", ("pass", "review", "fail")),
 }
 DATA_KEYS = {"csv", "candidates", "label_a", "mode", "records_path"}
 CANDIDATE_KEYS = {"file", "label"}
@@ -274,7 +274,7 @@ def decision_of(cfg: dict) -> Decision | None:
     found = [DECISIONS[t] for t in cfg["tabs"] if t in DECISIONS]
     if len(found) > 1:
         fail('config.tabs may include "release" or "experiment", not both; build a separate '
-             "dashboard for each")
+             "page for each")
     return found[0] if found else None
 
 
@@ -705,7 +705,7 @@ def read_record(path: Path, cfg: dict, decision: Decision,
         fail(f"{where} is not a record exported from the {tab} tab "
              f"(expected kind {decision.record_kind!r}, version 1)")
     section = cfg[tab]
-    again = "; export the record again from a dashboard built with this config and data"
+    again = "; export the record again from a page built with this config and data"
     compared = ["criteria", "review_labels"]
     if tab == "experiment":
         compared += ["hypothesis", "verdict_labels"]
@@ -859,7 +859,7 @@ def inline_style(code: str, name: str) -> str:
 
 def notices_comment() -> str:
     # The vendored MIT licenses require their notices in every copy, and every
-    # dashboard is a copy, so the notices file is embedded as an HTML comment.
+    # generated page is a copy, so the notices file is embedded as an HTML comment.
     path = SKILL_DIR / "THIRD_PARTY_NOTICES.md"
     if not path.is_file():
         fail(f"skill file missing: {path}")
@@ -949,7 +949,7 @@ def build(config_path: Path, out_path: Path, csv_override: Path | None,
 
     warnings: list[str] = []
     id_col = cfg["columns"]["id"]
-    banner = "(also shown as a banner in the dashboard)"
+    banner = "(also shown as a banner in the page)"
     for i, cand in enumerate(candidates, start=1):
         mismatch = id_mismatch(tables["a"], tables[f"c{i}"], id_col)
         if mismatch["only_a"]:

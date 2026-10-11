@@ -1,5 +1,5 @@
 {
-  "skill_name": "dataset-dashboard",
+  "skill_name": "eval-review",
   "evals": [
     {
       "id": 1,
@@ -10,7 +10,7 @@
         "設定を書く前に CSV のヘッダーを確認し、id・question・answer・correct・latency_ms・cost_usd・category を実在する列名で使う",
         "tabs の先頭が compare で、data.candidates に B の CSV とラベルを指定している（廃止された data.csv_b は使わない）",
         "correct を aggregate rate・better higher、latency_ms を better lower・regression_threshold 300 で定義している",
-        "build_dashboard.py を実行し、出力された HTML のパスとサイズを示す",
+        "build.py を実行し、出力された HTML のパスとサイズを示す",
         "g037 が A にだけある警告を伝え、比較から除外されることを説明する",
         "悪化した 7 件の id として g004, g018, g034, g052（correct）と g009, g023, g046（latency）を挙げる（cost_usd に閾値を置いた場合は、その閾値で加わる id を別に示す）",
         "生成物を開いて確認したか、ブラウザで確認できなかったかを正直に述べる"
@@ -33,7 +33,7 @@
     {
       "id": 3,
       "prompt": "Here is feedback.csv from our support inbox (in examples/). Make me something I can open offline to see how many items are still open per category, and filter the list.",
-      "expected_output": "An English overview+table dashboard with category x status bars, status ordered by workflow, and a short how-to.",
+      "expected_output": "An English overview+table page with category x status bars, status ordered by workflow, and a short how-to.",
       "files": ["examples/feedback.csv"],
       "assertions": [
         "Sets lang to en because the request is in English",
@@ -52,7 +52,7 @@
       "assertions": [
         "embed と load のどちらにするかを質問せずに load を選び、その根拠として依頼文の言葉（「毎週更新」「データ自体は HTML に入れたくない」など）を引用する",
         "HTML を CSV の隣に置く（または相対パスを保つ）必要があり、http で配信すれば開いたときに CSV を自動で読み込み、file:// で開いた場合は Chromium での1クリック（前回のファイルを読み込む）かファイルの選択・ドロップが必要だと説明する",
-        "config の data.mode を \"load\" にするか、build_dashboard.py に --mode load を渡している",
+        "config の data.mode を \"load\" にするか、build.py に --mode load を渡している",
         "生成した HTML に CSV の行が含まれていないことを確認するか、含まれないと説明する",
         "データ更新後は「読み込み直す」で反映できることを説明する",
         "受け取った人も同じ CSV を手元に持っている必要があることを伝える"
@@ -65,11 +65,11 @@
       "files": ["examples/golden_model_a.csv", "examples/golden_model_b.csv"],
       "assertions": [
         "組み込みのタブ（compare・overview・table）ではカテゴリ別の A/B 正答率を並べて見られないと判断し、config の extra_tabs に id・title・script を指定している",
-        "extra tab のスクリプトを config からの相対パスで .js として置き、DatasetDashboard.registerTab で登録している",
+        "extra tab のスクリプトを config からの相対パスで .js として置き、EvalReview.registerTab で登録している",
         "スクリプトは ctx.pairs（または ctx.rows と ctx.rowsB）と ctx.columns を使い、使う列がなければ Error を投げる",
         "データの挿入は ctx.el または textContent だけで行い、innerHTML などで HTML として挿入していない",
         "skill の assets/（template.html・app.js・app.css）を編集しておらず、別の HTML ページを手書きしていない",
-        "tabs に compare を残し、build_dashboard.py が exit 0 で HTML を出力したことを示す",
+        "tabs に compare を残し、build.py が exit 0 で HTML を出力したことを示す",
         "追加したタブをブラウザで開いてコンソールエラーがないことを確認したか、確認できなかったことを正直に述べる"
       ]
     },
@@ -83,7 +83,7 @@
         "tabs に release を含め、data.csv に現行、data.candidates に3候補を file と label で指定している（data.csv_b は使わない）",
         "release.criteria に absolute（correct の min 0.85）、relative（latency_ms の max_worse_pct 10）、relative（cost_usd の max_worse 0.005）、regressions（max 3）、critical_categories（[\"安全\"]）を書いている",
         "latency_ms に regression_threshold 300、cost_usd に regression_threshold 0.001 を指定している",
-        "build_dashboard.py が exit 0 で HTML を出力したことを、パスとサイズとともに示す",
+        "build.py が exit 0 で HTML を出力したことを、パスとサイズとともに示す",
         "候補B は出してよい、候補C は安全カテゴリの r17 が悪化して出さない、候補D は悪化項目（r02, r10）が未レビューのため要レビューになると伝える",
         "判定は人が悪化項目を「許容／不可」でレビューして確定すること、レビューはブラウザに保存され、共有するには記録を JSON か Markdown で書き出すことを説明する",
         "95% 区間は参考情報で判定には使わないこと、件数が 20 件と少ないことを注意点として伝える",
@@ -107,7 +107,7 @@
         "experiment.criteria に absolute（correct の min 0.95）、relative（latency_ms の max_worse_pct 15）、regressions（max 2）、critical_categories（[\"安全\"]）を書き、依頼にない基準を足していない",
         "experiment.verdict_labels に pass・review・fail の3つを、実験の内容に合う別々の言葉（たとえば「仮説を支持／要レビュー／支持しない」）で書いている",
         "latency_ms に regression_threshold 300、cost_usd に regression_threshold 0.001 を指定している",
-        "build_dashboard.py が exit 0 で HTML を出力したことを、パスとサイズとともに示す",
+        "build.py が exit 0 で HTML を出力したことを、パスとサイズとともに示す",
         "検算1回は基準をすべて満たす、検算3回はレイテンシの悪化（約 25%）で基準を満たさない、検算1回＋短縮は悪化項目（e13, e09）が未レビューのため要レビューになると、verdict_labels の言葉で伝える",
         "95% 区間は判定に使わない目安であり、正答率の差の区間が 0 を含むことなどの解釈と結論は人が行うと伝える",
         "悪化項目をレビューして記録を JSON で書き出し、その後に5つの見出し（背景と仮説、方法、結果、考察、結論と次にやること）のレポートを書けること、レポートは「Markdown を書き出す」で書き出せることを説明する",

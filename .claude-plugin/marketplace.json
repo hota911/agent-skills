@@ -55,12 +55,12 @@
       ]
     },
     {
-      "name": "dataset-dashboard",
-      "description": "Turn local CSV, JSON, or JSONL files into one self-contained offline HTML dashboard: compare model A vs B with regressions first, label fact-check items with keyboard shortcuts and export CSV, or triage feedback by category and status.",
+      "name": "eval-review",
+      "description": "Turn local CSV, JSON, or JSONL files into one self-contained offline HTML page for reviewing evaluation results: compare model A vs B with regressions first, decide releases against stated criteria, share an experiment's result against a hypothesis with a written report, label fact-check items with keyboard shortcuts and export CSV, or triage feedback by category and status.",
       "source": "./",
       "strict": false,
       "skills": [
-        "./skills/dataset-dashboard"
+        "./skills/eval-review"
       ]
     }
   ]

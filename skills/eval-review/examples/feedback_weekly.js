@@ -1,6 +1,6 @@
 // Extra tab for feedback.config.json: feedback received per week (Monday start), stacked by status.
 // Data is inserted only through ctx.el / textContent, never innerHTML.
-DatasetDashboard.registerTab("weekly", (ctx) => {
+EvalReview.registerTab("weekly", (ctx) => {
   const DATE = "date";
   const status = ctx.columns.status;
   if (ctx.rows.length && !(DATE in ctx.rows[0])) throw new Error("column " + DATE + " is missing");
