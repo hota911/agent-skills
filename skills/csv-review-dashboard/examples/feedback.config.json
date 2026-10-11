@@ -1,0 +1,17 @@
+{
+  "title": "フィードバックの対応状況",
+  "lang": "ja",
+  "tabs": ["overview", "table"],
+  "data": {
+    "csv": "feedback.csv"
+  },
+  "columns": {
+    "id": "id",
+    "text": ["feedback_text"],
+    "category": "category",
+    "status": "status"
+  },
+  "order": {
+    "status": ["未対応", "対応中", "対応済"]
+  }
+}
