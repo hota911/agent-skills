@@ -194,6 +194,10 @@ button, select, input, textarea { font: inherit; color: inherit; }
 textarea.note { width: 100%; min-height: 72px; border: 1px solid var(--axis); border-radius: 6px; padding: 6px 8px; background: var(--surface); resize: vertical; }
 .check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
 
+/* Copy buttons: the status after a copy, and the fallback when the clipboard is refused. */
+.copy-status { color: var(--good-text); }
+textarea.copy-text { width: 100%; border: 1px solid var(--axis); border-radius: 6px; padding: 6px 8px; background: var(--surface); color: var(--text-primary); font: 12px/1.5 ui-monospace, monospace; resize: vertical; }
+
 /* Release and experiment decisions: the verdict is always written out, the color only repeats it. */
 .verdict-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); margin-bottom: 4px; }
 .verdict-card { border-left-width: 4px; display: flex; flex-direction: column; gap: 4px; }

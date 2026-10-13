@@ -86,7 +86,9 @@ Five jobs, selected by `tabs` in the config:
 7. **Hand the HTML file to the user** with a short reply covering:
    - the HTML path and size (from the build output);
    - what is in it and how to use it: which tab answers their question, keyboard keys
-     for review, where the export / download buttons are;
+     for review, where the export / download buttons are. When the page will be opened
+     in a pane where downloads do nothing (for example a browser pane inside a desktop
+     app), point the user to the copy buttons next to each export instead;
    - any build warning;
    - data anomalies noticed in step 1, one line each, without fixing them;
    - in load mode: the words in the request that led to load; the CSV file(s) the page
@@ -171,7 +173,8 @@ Five jobs, selected by `tabs` in the config:
   resumes. Picking a label moves to the next item. Keys: left/right arrows move, 1-9
   pick a label, N focuses the note, Esc leaves the note. "Unreviewed only" filters the
   queue. Export writes the original columns plus `human_label` and `human_note`
-  (UTF-8 with BOM so Excel opens it correctly).
+  (UTF-8 with BOM so Excel opens it correctly); "CSV をコピー" copies the same CSV
+  without the BOM.
 - **Release:** one card per candidate with its verdict, the criteria it did not meet,
   and links to its review and to the compare view; a candidate x criteria table with
   each value and ✓ / ✕ plus text; and each metric's n and 95% interval, for reference
@@ -186,7 +189,7 @@ Five jobs, selected by `tabs` in the config:
   label (default 不可), 要レビュー if a regressed item is unreviewed, otherwise 出してよい.
   The review of regressed items works like the review tab (arrows, 1-9, N, Esc) and is
   saved per candidate in localStorage. "記録を書き出す" downloads the record as JSON
-  or Markdown, without reviewer names or times.
+  or Markdown, without reviewer names or times; "記録の … をコピー" copies the same text.
 - **Experiment:** the release tab with the hypothesis on top and the verdicts in the
   words of `experiment.verdict_labels` (codes `pass` / `review` / `fail`, decided by
   the same rules), including the same detail panel. Each metric row says how to read
@@ -195,7 +198,8 @@ Five jobs, selected by `tabs` in the config:
   interval never changes a verdict. The record adds `hypothesis` and `verdict_labels`.
 - **Report:** the Markdown report from `release.report` or `experiment.report`,
   rendered as headings, paragraphs, flat lists, tables, and bold / italic only, with
-  HTML shown as text. "Markdown を書き出す" downloads the report body. If the viewer's
+  HTML shown as text. "Markdown を書き出す" downloads the report body and "Markdown
+  をコピー" copies it. If the viewer's
   reviews change a verdict from the record, a warning on top says the report is out of
   date.
 - **Table:** Tabulator with sort, header filters (drop-downs for category / status /

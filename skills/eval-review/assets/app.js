@@ -75,7 +75,10 @@
       experimentRule: "判定の順: 自動の基準を1つでも満たさないか「{reject}」が1件でもあれば「{fail}」、悪化項目にレビューしていないものが残れば「{review}」、それ以外は「{pass}」。95% 区間は判定に使わない。集計はフィルタにかかわらず全件。",
       ciGuide: "区間の読み方", ciExcludesZero: "区間が0を含まない：差は誤差の範囲を超えている可能性が高い",
       ciIncludesZero: "区間が0を含む：差は誤差の範囲かもしれない",
-      exportReport: "Markdown を書き出す",
+      exportReport: "Markdown を書き出す", copyReport: "Markdown をコピー",
+      copyCsv: "CSV をコピー", copyMd: "記録の Markdown をコピー", copyJson: "記録の JSON をコピー",
+      copied: "✓ クリップボードにコピーしました",
+      copyFallback: "クリップボードに書き込めませんでした。下の欄を選択してコピーしてください（全選択してから Ctrl+C / ⌘C）。",
       detailHint: "値・判定・理由を押すと、判断の根拠を表の下に表示します（もう一度押すか Esc で閉じる）。",
       close: "閉じる", verdictReasons: "判定の理由", result: "結果", aggregation: "集計方法",
       aggRate: "割合（true の件数 / 値のある件数）", pairedN: "n（両方に値がある同じ id の項目）", valueOf: "{label} の値",
@@ -162,7 +165,10 @@
       experimentRule: "Order: any criterion not met or any \"{reject}\" item means \"{fail}\"; otherwise any regressed item left unreviewed means \"{review}\"; otherwise \"{pass}\". The 95% interval is not used in the verdict. Computed on all items, regardless of the filters.",
       ciGuide: "Reading the interval", ciExcludesZero: "Interval excludes 0: the difference is likely beyond noise",
       ciIncludesZero: "Interval includes 0: the difference may be within noise",
-      exportReport: "Export Markdown",
+      exportReport: "Export Markdown", copyReport: "Copy Markdown",
+      copyCsv: "Copy CSV", copyMd: "Copy record (Markdown)", copyJson: "Copy record (JSON)",
+      copied: "✓ Copied to the clipboard",
+      copyFallback: "Could not write to the clipboard. Select the text below and copy it (select all, then Ctrl+C / ⌘C).",
       detailHint: "Click a value, a verdict, or a reason to see what decided it below the table (click again or press Esc to close).",
       close: "Close", verdictReasons: "Why this verdict", result: "Result", aggregation: "Aggregation",
       aggRate: "rate (true count / items with a value)", pairedN: "n (items with the same id and a value on both sides)", valueOf: "{label} value",
@@ -1243,20 +1249,60 @@
     renderContent();
   }
 
-  function exportReview() {
+  // The reviewed data as CSV, shared by the download and the copy button.
+  function reviewCsvText() {
     const a = state.data.a;
     const fields = a.headers.concat(REVIEW_EXPORT_COLUMNS);
     const data = a.rows.map((r) => {
       const rv = reviewOf(r[cols.id]);
-      return a.headers.map((h) => r[h]).concat([rv.label, rv.note]);
+      return a.headers.map((h) => cellText(r[h])).concat([rv.label, rv.note]);
     });
-    downloadCsv(baseName(a.name) + "_reviewed.csv", fields, data);
+    return Papa.unparse({ fields: fields, data: data });
   }
 
-  // UTF-8 with BOM so Excel opens it correctly. `data` is a list of rows, each a list of cells.
-  function downloadCsv(filename, fields, data) {
-    const csvText = "\uFEFF" + Papa.unparse({ fields: fields, data: data.map((row) => row.map(cellText)) });
-    download(csvText, filename, "text/csv;charset=utf-8");
+  // The download gets a BOM so Excel opens the UTF-8 correctly; the copy does not.
+  function exportReview() {
+    download("\uFEFF" + reviewCsvText(), baseName(state.data.a.name) + "_reviewed.csv", "text/csv;charset=utf-8");
+  }
+
+  // Some embedded browser panes ignore downloads without any sign the page can see, so
+  // every export has a copy button next to it. When the clipboard is unavailable or
+  // refused, the text is shown in a read-only textarea, selected, below the button's bar.
+  function copyButton(label, makeText) {
+    return el("button", { class: "btn", type: "button", text: label, onclick: (e) => copyText(makeText(), e.currentTarget) });
+  }
+
+  async function copyText(text, button) {
+    const bar = button.parentElement;
+    try {
+      if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") throw new Error("no clipboard API");
+      await navigator.clipboard.writeText(text);
+      showCopied(bar);
+    } catch (err) {
+      showCopyFallback(bar, text);
+    }
+  }
+
+  function showCopied(bar) {
+    const old = bar.querySelector(".copy-status");
+    if (old) old.remove();
+    const status = el("span", { class: "small copy-status", role: "status", text: T.copied });
+    bar.appendChild(status);
+    setTimeout(() => status.remove(), 2500);
+  }
+
+  function showCopyFallback(bar, text) {
+    const old = bar.nextElementSibling;
+    if (old && old.classList.contains("copy-fallback")) old.remove();
+    const area = el("textarea", { class: "copy-text", readonly: true, rows: 12, spellcheck: "false" });
+    area.value = text; // a value, never markup
+    const panel = el("div", { class: "card copy-fallback", role: "region" }, [
+      el("div", { class: "verdict-head" }, [el("p", { class: "small", text: T.copyFallback }),
+        el("button", { type: "button", class: "btn", text: T.close, onclick: () => panel.remove() })]),
+      area]);
+    bar.after(panel);
+    area.focus();
+    area.select();
   }
 
   function download(text, filename, type) {
@@ -1282,7 +1328,8 @@
         el("span", { style: "width:" + (filtered.length ? (reviewedCount / filtered.length) * 100 : 0) + "%" })),
       el("span", { class: "small muted", text: fmt(T.reviewed, { n: reviewedCount, total: filtered.length }) }),
       el("label", { class: "check" }, [el("input", { type: "checkbox", checked: state.unreviewedOnly, onchange: (e) => { state.unreviewedOnly = e.target.checked; renderContent(); } }), T.unreviewedOnly]),
-      el("button", { class: "btn", text: T.exportCsv, onclick: exportReview })
+      el("button", { class: "btn", text: T.exportCsv, onclick: exportReview }),
+      copyButton(T.copyCsv, reviewCsvText)
     ]);
     root.appendChild(bar);
     root.appendChild(el("p", { class: "small muted", text: (state.storageOk ? "✓ " + T.storageOk : "⚠ " + T.storageNo) + " · " + fmt(T.keys, { n: labels.length }) }));
@@ -1544,7 +1591,9 @@
   function renderDecisionSummary(root, results) {
     root.appendChild(el("div", { class: "table-toolbar" }, [
       el("button", { class: "btn", text: T.exportMd, onclick: () => download(recordMarkdown(results), recordFileName("md"), "text/markdown;charset=utf-8") }),
-      el("button", { class: "btn", text: T.exportJson, onclick: () => download(JSON.stringify(recordData(results), null, 2) + "\n", recordFileName("json"), "application/json") }),
+      copyButton(T.copyMd, () => recordMarkdown(results)),
+      el("button", { class: "btn", text: T.exportJson, onclick: () => download(recordJson(results), recordFileName("json"), "application/json") }),
+      copyButton(T.copyJson, () => recordJson(results)),
       el("span", { class: "small muted", text: state.decisionStorageOk ? "✓ " + T.storageOk : "⚠ " + T.storageNo })
     ]));
 
@@ -1941,6 +1990,8 @@
     return out;
   }
 
+  function recordJson(results) { return JSON.stringify(recordData(results), null, 2) + "\n"; }
+
   function mdCell(s) { return String(s).replace(/\|/g, "\\|").replace(/\s*\n\s*/g, " "); }
   function mdRow(cells) { return "| " + cells.map(mdCell).join(" | ") + " |"; }
   function mdTable(headers, rows) {
@@ -1998,10 +2049,11 @@
     const diffs = now.filter((r) => decisionRecord.verdicts[r.label] !== r.verdict)
       .map((r) => fmt(T.staleItem, { label: r.label, was: verdictText(decisionRecord.verdicts[r.label]), now: verdictText(r.verdict) }));
     if (diffs.length) root.appendChild(el("div", { class: "banner" }, el("p", { text: "⚠ " + fmt(T.reportStale, { diffs: diffs.join(", ") }) })));
-    // The download is the report body as embedded at build time (without the frontmatter),
-    // for pasting into other documents.
-    root.appendChild(el("div", { class: "table-toolbar" }, el("button", { class: "btn", text: T.exportReport,
-      onclick: () => download(payload.report + "\n", decision.report, "text/markdown;charset=utf-8") })));
+    // The download and the copy are the report body as embedded at build time (without the
+    // frontmatter), for pasting into other documents.
+    root.appendChild(el("div", { class: "table-toolbar" }, [
+      el("button", { class: "btn", text: T.exportReport, onclick: () => download(payload.report + "\n", decision.report, "text/markdown;charset=utf-8") }),
+      copyButton(T.copyReport, () => payload.report + "\n")]));
     root.appendChild(el("div", { class: "card report" }, renderMarkdown(payload.report)));
   }
 
