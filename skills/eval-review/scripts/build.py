@@ -34,8 +34,8 @@ BETTER = ("higher", "lower")
 LANGS = ("ja", "en")
 MODES = ("embed", "load")
 
-TOP_KEYS = {"title", "lang", "tabs", "data", "columns", "order", "histogram", "review",
-            "extra_tabs", "release", "experiment"}
+TOP_KEYS = {"title", "lang", "item_label", "tabs", "data", "columns", "order", "histogram",
+            "review", "extra_tabs", "release", "experiment"}
 RELEASE_KEYS = {"criteria", "review_labels", "record", "report"}
 EXPERIMENT_KEYS = RELEASE_KEYS | {"hypothesis", "verdict_labels"}
 CRITERION_KEYS = {
@@ -146,6 +146,11 @@ def validate_config(cfg: object) -> dict:
     lang = cfg.setdefault("lang", "ja")
     if lang not in LANGS:
         fail(f"config.lang must be one of {list(LANGS)}, got {lang!r}")
+    item_label = optional_str(cfg, "item_label", "config")
+    if item_label is not None and (item_label != item_label.strip() or "{" in item_label
+                                   or "}" in item_label):
+        fail(f"config.item_label {item_label!r} must have no leading or trailing spaces and "
+             "no braces; it names one row, for example \"質問\" or \"questions\"")
 
     tabs = cfg.get("tabs")
     if not isinstance(tabs, list) or not tabs:

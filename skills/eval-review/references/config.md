@@ -10,6 +10,7 @@ file.
 |-----|----------|------|---------|
 | `title` | yes | string | Page title and heading. Also part of the review storage key. |
 | `lang` | no (default `"ja"`) | `"ja"` \| `"en"` | Language of all UI text. |
+| `item_label` | no | string | What one row is, for example `"質問"` or (English, plural) `"questions"`. Every count on the page uses it instead of 件 / items: 「表示 60 / 60 質問」, 「比較した質問の数」, 「悪化した質問」. Without it the page keeps the generic wording. English always uses the plural ("1 questions"). No leading or trailing spaces, no braces. |
 | `tabs` | yes | list | Non-empty, no repeats, from `overview`, `compare`, `review`, `table`, `release`, `experiment`, `report`. The first entry is the tab shown on open. `release` and `experiment` cannot both appear; build a separate page for each. |
 | `data` | yes | object | Which CSV files to use and whether to embed them. See below. |
 | `columns` | yes | object | Roles of CSV columns. See below. |

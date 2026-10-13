@@ -165,6 +165,43 @@
     }
   };
 
+  // Strings that count items, rewritten with {unit} (config.item_label). They replace the
+  // STRINGS entries only when item_label is set, so pages without it read as before.
+  const ITEM_STRINGS = {
+    ja: {
+      shown: "表示 {n} / {total} {unit}", items: "{unit}", perItem: "1{unit}あたり",
+      countsTitle: "{cat} × {stack} の{unit}の数", countsTitleSingle: "{cat} 別の{unit}の数", count: "{unit}の数",
+      onlyIn: "{label} にだけあり {other} にない id（{n} {unit}、比較から除外）: {ids}",
+      paired: "比較した{unit}の数", regressedTitle: "悪化した{unit}", improvedTitle: "改善した{unit}",
+      noRegressions: "条件に合う悪化した{unit}はありません", noImprovements: "条件に合う改善した{unit}はありません",
+      reviewed: "レビュー済み {n} / {total} {unit}", noItems: "条件に合う{unit}はありません",
+      verdictRule: "判定の順: 自動の基準を1つでも満たさないか「{reject}」が1件でもあれば出さない、悪化した{unit}にレビューしていないものが残れば要レビュー、それ以外は出してよい。集計はフィルタにかかわらず全件。",
+      experimentRule: "判定の順: 自動の基準を1つでも満たさないか「{reject}」が1件でもあれば「{fail}」、悪化した{unit}にレビューしていないものが残れば「{review}」、それ以外は「{pass}」。95% 区間は判定に使わない。集計はフィルタにかかわらず全件。",
+      rejectedItems: "「{reject}」の{unit}: {n}", unreviewedItems: "未レビューの悪化した{unit}: {n} / {total}",
+      reviewRegressed: "悪化した{unit}をレビュー ({n})", critRegressions: "悪化した{unit}の数",
+      critCritical: "重要カテゴリ（{cats}）で悪化した{unit}", nItems: "{n} {unit}",
+      reviewTitle: "{label} の悪化した{unit}のレビュー", allRegressed: "悪化した{unit}の一覧",
+      noRegressedItems: "この候補に悪化した{unit}はありません", reviewsH: "悪化した{unit}のレビュー",
+      pairedN: "n（両方に値がある同じ id の{unit}）", regCount: "悪化した{unit} {n}（上限 {max}）"
+    },
+    en: {
+      shown: "Showing {n} of {total} {unit}", items: "{unit}",
+      countsTitle: "Number of {unit} by {cat} × {stack}", countsTitleSingle: "Number of {unit} by {cat}", count: "Number of {unit}",
+      onlyIn: "ids in {label} but not in {other} ({n} {unit}, excluded from comparison): {ids}",
+      paired: "Compared {unit}", regressedTitle: "Regressed {unit}", improvedTitle: "Improved {unit}",
+      noRegressions: "No regressed {unit} match the filters", noImprovements: "No improved {unit} match the filters",
+      reviewed: "Reviewed {n} / {total} {unit}", noItems: "No {unit} match the filters",
+      verdictRule: "Order: any criterion not met or any \"{reject}\" item means do not release; otherwise any regressed {unit} left unreviewed means needs review; otherwise release. Computed on all items, regardless of the filters.",
+      experimentRule: "Order: any criterion not met or any \"{reject}\" item means \"{fail}\"; otherwise any regressed {unit} left unreviewed means \"{review}\"; otherwise \"{pass}\". The 95% interval is not used in the verdict. Computed on all items, regardless of the filters.",
+      rejectedItems: "\"{reject}\" {unit}: {n}", unreviewedItems: "Unreviewed regressed {unit}: {n} / {total}",
+      reviewRegressed: "Review regressed {unit} ({n})", critRegressions: "Regressed {unit}",
+      critCritical: "Regressed {unit} in critical categories ({cats})", nItems: "{n} {unit}",
+      reviewTitle: "Review regressed {unit} of {label}", allRegressed: "All regressed {unit}",
+      noRegressedItems: "This candidate has no regressed {unit}", reviewsH: "Reviews of regressed {unit}",
+      pairedN: "n ({unit} with the same id and a value on both sides)", regCount: "{n} regressed {unit} (at most {max})"
+    }
+  };
+
   // Must match TRUE_VALUES / FALSE_VALUES in build.py.
   const TRUE_VALUES = new Set(["true", "1", "yes", "y", "t"]);
   const FALSE_VALUES = new Set(["false", "0", "no", "n", "f"]);
@@ -176,7 +213,13 @@
 
   const payload = JSON.parse(document.getElementById("page-data").textContent);
   const cfg = payload.config;
-  const T = STRINGS[cfg.lang] || STRINGS.ja;
+  const LANG = STRINGS[cfg.lang] ? cfg.lang : "ja";
+  // What one row is (config.item_label, plural in English), or the generic word.
+  const itemLabel = cfg.item_label || null;
+  const UNIT = itemLabel || (LANG === "en" ? "items" : "件");
+  // {unit} is filled in once here, so every string reads with item_label wherever it is used.
+  const T = Object.fromEntries(Object.entries(Object.assign({}, STRINGS[LANG], itemLabel ? ITEM_STRINGS[LANG] : {}))
+    .map(([k, v]) => [k, typeof v === "string" ? v.split("{unit}").join(UNIT) : v]));
   const cols = cfg.columns;
   const metrics = cols.metrics;
   // Side keys: "a" is data.csv (the current model when comparing), "c1", "c2", ... are
