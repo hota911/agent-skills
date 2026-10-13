@@ -82,6 +82,11 @@ labels and the metric labels from the config, not new names.
   "（出典：runs.jsonl の合計）". Never put them in 結果 or mix them into the criteria.
 - When the experimenter has not decided whether to adopt the hypothesis or what to do
   next, write 未決 (undecided) there and add no proposals of your own.
+- A criterion that the record marks `"added_after_results": true` (the page says
+  「（結果を見た後に追加）」) was added after the results were seen, so it does not
+  test the hypothesis as written before. In 方法, list it apart from the criteria
+  written before and say when and why it was added; in 結果 and 考察, keep its outcome
+  apart too.
 
 ## Markdown and staleness
 

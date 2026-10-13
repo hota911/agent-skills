@@ -62,6 +62,10 @@ so put nothing before it.
   them in 理由 or mix them into the criteria.
 - When the human has not decided the next steps, write 未決 (undecided) under
   次にやること and add no proposals of your own.
+- A criterion that the record marks `"added_after_results": true` (the page says
+  「（結果を見た後に追加）」) was added after the results were seen. In 理由, write it
+  after the other criteria and say that it was added after the results, for example
+  "結果を見た後に追加した基準：…". Never present it as a criterion written before.
 
 ## Markdown that the report tab renders
 

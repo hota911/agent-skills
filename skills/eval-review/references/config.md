@@ -68,14 +68,17 @@ The file picker and drop work in every case. A file loaded in the browser is che
 against the same rules as the build; a file that fails stays unloaded and the error is
 shown.
 
-### Review storage key in load mode
+### Review storage key
 
-Embed mode keys review labels by the title plus the full data, so a different snapshot
-starts with no labels. Load mode exists so the same CSV can be reloaded after it
-changes, so it keys labels by the title plus the sorted set of ids instead: labels
-survive a reload as long as the ids are the same, even when the text or metrics
-changed. Adding or removing an id gives a new key and an empty review; export the
-labels before changing the id set.
+Review labels are keyed by the title plus the sorted set of ids, in both modes: labels
+survive a rebuild with new values or an added column, and a reload of changed data in
+load mode, as long as the ids are the same. Each label also keeps a fingerprint of the
+values it was made against (the configured columns of the row; for a review of
+regressed items, the compared metric values). When they differ, the item shows
+「データが変わった」 / "data changed" until it is labelled again or its note is edited.
+Adding or removing an id, or changing the title, gives a new key and an empty review;
+export the labels before changing either. Pages built before the fingerprint existed
+keyed embed-mode labels by the full data, so those saved labels are not found again.
 
 Data requirements, checked at build time and again when a file is loaded in the browser.
 For CSV:
@@ -222,28 +225,41 @@ verdict.
 ### Review of regressed items
 
 Each candidate has its own review of its regressed items, stored in the browser's
-localStorage. The key is the title, the candidate label, and the current and candidate
-data (in load mode, their sorted ids), plus the embedded record's reviews when there
-is one. Reviews in `release.record` are the starting values, so a teammate opening the
-built HTML sees the reviews that the record was exported with.
+localStorage. The key is the title, the candidate label, and the sorted ids of the
+current and candidate data, plus the embedded record's reviews when there is one. As in
+the review tab, each review keeps a fingerprint of the item's metric values and is
+marked 「データが変わった」 when they changed. Reviews in `release.record` are the
+starting values, so a teammate opening the built HTML sees the reviews that the record
+was exported with.
 
 ### Record
 
 "記録を書き出す (JSON)" and "(Markdown)" on the release tab download
 `release_record_YYYYMMDD-HHMM.json` / `.md`. Neither holds reviewer names or review
 times. The JSON holds `kind` (`"eval-review/release-record"`), `version` (1),
-`title`, `exported_at`, `files.current` (label and file name), `criteria`,
+`title`, `exported_at`, `files.current` (label and file name), `criteria` (with
+`"added_after_results": true` on a criterion added after the results; see below),
 `review_labels`, and per candidate: `label`, `file`, `verdict`, the counts `paired`,
 `regressed`, `unreviewed`, `rejected`, each criterion's `value` and `pass` (plus
 `"pending": true` for a criterion awaiting review), each
 metric's n, aggregates, difference and `ci95`, and `reviews` for every regressed item
 (label `""` when unreviewed).
 
-When `release.record` is set, the build fails unless the record's criteria,
-review labels, current file, and candidate labels and files equal the config; every
-review is for a regressed item and uses a review label; and each verdict equals the one
-recomputed from the data and the record's reviews. A changed config or data file
-therefore means exporting the record again.
+When `release.record` is set, the build fails unless the record's review labels,
+current file, and candidate labels and files equal the config; the record's criteria are
+the first criteria of the config; every review is for a regressed item and uses a review
+label; and each verdict equals the one recomputed from the data, the record's reviews
+and the record's criteria. A changed config or data file therefore means exporting the
+record again.
+
+The one exception is a criterion added after the results: appending criteria to the
+end of the config keeps the record valid. The build prints a warning, the page judges
+by every criterion and marks the added ones 「（結果を見た後に追加）」 / "(added after
+the results)", and a record exported from that page lists them with
+`"added_after_results": true`, so the mark survives later exports. Changing, removing
+or reordering a criterion that the record has is an error. Keep the added criteria
+apart in the report (see [release-report.md](release-report.md#structure) and
+[experiment-report.md](experiment-report.md)).
 
 ## `experiment`
 

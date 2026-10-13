@@ -129,6 +129,7 @@ button, select, input, textarea { font: inherit; color: inherit; }
 .delta.flat { color: var(--text-secondary); }
 .delta.neutral { color: var(--text-primary); font-weight: 400; }
 .delta.pending { color: var(--text-primary); }
+.badge.stale { margin-left: 6px; border-color: var(--warning); white-space: nowrap; }
 
 /* Charts */
 .chart { width: 100%; display: block; overflow: visible; }

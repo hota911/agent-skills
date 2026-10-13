@@ -175,9 +175,9 @@ Five jobs, selected by `tabs` in the config:
   guide for better or worse (悪化・改善の目安). Selecting a row shows metrics side by
   side, text that is identical once, and text that differs as two columns.
 - **Review:** applies to the first CSV (A). Labels and notes are stored in the
-  browser's localStorage, keyed by the title and the data (in load mode, the title and
-  the set of ids, so labels survive a data refresh), so reopening the same file
-  resumes. Picking a label moves to the next item. Keys: left/right arrows move, 1-9
+  browser's localStorage, keyed by the title and the set of ids, so reopening the file
+  or a rebuild with changed values resumes; an item whose values changed since it was
+  labelled shows 「データが変わった」. Picking a label moves to the next item. Keys: left/right arrows move, 1-9
   pick a label, N focuses the note, Esc leaves the note. "Unreviewed only" filters the
   queue. Export writes the original columns plus `human_label` and `human_note`
   (UTF-8 with BOM so Excel opens it correctly); "CSV をコピー" copies the same CSV

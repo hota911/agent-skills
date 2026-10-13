@@ -712,8 +712,9 @@ def metric_criterion_met(c: dict, m: dict, pairs: list) -> bool:
 
 
 def candidate_verdict(cfg: dict, decision: Decision, a: Table, b: Table,
-                      reviews: dict[str, dict]) -> tuple[str, set[str]]:
-    """The verdict code and the ids of regressed items for one candidate."""
+                      reviews: dict[str, dict], criteria: list[dict] | None = None) -> tuple[str, set[str]]:
+    """The verdict code and the ids of regressed items for one candidate, judged by
+    `criteria` (default: every criterion in the config)."""
     cols = cfg["columns"]
     section = cfg[decision.tab]
     pairs = pair_rows(a, b, cols["id"])
@@ -724,7 +725,7 @@ def candidate_verdict(cfg: dict, decision: Decision, a: Table, b: Table,
     # A pending criterion is not failed; it implies an unreviewed item, so the verdict is
     # the middle one.
     failed = any(evaluate_criterion(c, metrics, pairs, regressed, cols.get("category"), by_id, reject) == "fail"
-                 for c in section["criteria"])
+                 for c in (section["criteria"] if criteria is None else criteria))
     labels = list(by_id.values())
     met, unreviewed, not_met = decision.verdicts
     if failed or reject in labels:
@@ -736,9 +737,36 @@ def candidate_verdict(cfg: dict, decision: Decision, a: Table, b: Table,
     return verdict, {rid for rid, _, _ in regressed}
 
 
+# Marks a criterion that was added to the config after a record was exported, that is,
+# after the results were seen. Must match ADDED_KEY in app.js.
+ADDED_KEY = "added_after_results"
+
+
+def record_criteria(where: str, tab: str, rec_criteria, criteria: list[dict], again: str) -> list[int]:
+    """Check the record's criteria against config.<tab>.criteria; returns the indexes of
+    the criteria added after the results.
+
+    The record's criteria (without their ADDED_KEY marks) must be the first criteria of
+    the config. The config's later criteria, and those the record already marks, were
+    added after the results; they must all come after the ones written before."""
+    if not isinstance(rec_criteria, list) or not all(isinstance(c, dict) for c in rec_criteria):
+        fail(f"{where}: criteria must be a list of objects")
+    stated = [{k: v for k, v in c.items() if k != ADDED_KEY} for c in rec_criteria]
+    if stated != criteria[:len(stated)]:
+        fail(f"{where}: the record's criteria are not the first criteria of config.{tab}.criteria. "
+             "Criteria added after the results go after the existing ones; a changed or removed "
+             f"criterion needs a new record{again}")
+    added = [i for i, c in enumerate(rec_criteria) if c.get(ADDED_KEY) is True]
+    added += list(range(len(rec_criteria), len(criteria)))
+    if added and added != list(range(added[0], len(criteria))):
+        fail(f"{where}: the criteria marked {ADDED_KEY} must be the last ones of config.{tab}.criteria{again}")
+    return added
+
+
 def read_record(path: Path, cfg: dict, decision: Decision,
-                tables: dict[str, Table]) -> tuple[dict, dict]:
-    """Validate an exported record; returns (verdicts, reviews) keyed by candidate label."""
+                tables: dict[str, Table]) -> tuple[dict, dict, list[int]]:
+    """Validate an exported record; returns (verdicts, reviews) keyed by candidate label, and
+    the indexes of the criteria added after the results."""
     tab = decision.tab
     where = f"{tab} record {path}"
     if not path.is_file():
@@ -754,12 +782,16 @@ def read_record(path: Path, cfg: dict, decision: Decision,
              f"(expected kind {decision.record_kind!r}, version 1)")
     section = cfg[tab]
     again = "; export the record again from a page built with this config and data"
-    compared = ["criteria", "review_labels"]
+    compared = ["review_labels"]
     if tab == "experiment":
         compared += ["hypothesis", "verdict_labels"]
     for key in compared:
         if rec.get(key) != section[key]:
             fail(f"{where}: the record's {key} and config.{tab}.{key} are different{again}")
+    added = record_criteria(where, tab, rec.get("criteria"), section["criteria"], again)
+    # The record's verdicts were judged by the criteria it lists; the page and the report
+    # use every criterion in the config.
+    stated_criteria = section["criteria"][:len(rec["criteria"])]
     files = rec.get("files")
     if not isinstance(files, dict) or not isinstance(files.get("current"), dict) \
             or files["current"].get("file") != tables["a"].path.name:
@@ -798,17 +830,17 @@ def read_record(path: Path, cfg: dict, decision: Decision,
                      f"not one of {section['review_labels']}")
             if item.get("label") or item.get("note"):
                 per_id[item["id"]] = {"label": item.get("label", ""), "note": item.get("note", "")}
-        verdict, regressed = candidate_verdict(cfg, decision, tables["a"], table, per_id)
+        stated_verdict, regressed = candidate_verdict(cfg, decision, tables["a"], table, per_id, stated_criteria)
         stray = sorted(set(per_id) - regressed)
         if stray:
             fail(f"{where} does not match the data: candidate {label!r} has reviews for {stray}, "
                  "which are not regressed items")
-        if verdict != entry["verdict"]:
+        if stated_verdict != entry["verdict"]:
             fail(f"{where} does not match the data: candidate {label!r} is {entry['verdict']!r} in "
-                 f"the record but {verdict!r} from the data and the record's reviews{again}")
-        verdicts[label] = verdict
+                 f"the record but {stated_verdict!r} from the data and the record's reviews{again}")
+        verdicts[label] = candidate_verdict(cfg, decision, tables["a"], table, per_id)[0]
         reviews[label] = per_id
-    return verdicts, reviews
+    return verdicts, reviews, added
 
 
 def read_report(path: Path, decision: Decision, verdicts: dict[str, str]) -> str:
@@ -880,9 +912,9 @@ def check_decision(cfg: dict, decision: Decision, tables: dict[str, Table],
                      f"{cat_col!r} of {tables['a'].path.name}; values: {present}")
     if not section.get("record"):
         return None, None
-    verdicts, reviews = read_record(base / section["record"], cfg, decision, tables)
+    verdicts, reviews, added = read_record(base / section["record"], cfg, decision, tables)
     report = read_report(base / section["report"], decision, verdicts) if section.get("report") else None
-    return {"verdicts": verdicts, "reviews": reviews}, report
+    return {"verdicts": verdicts, "reviews": reviews, "added_after_results": added}, report
 
 
 def read_asset(name: str) -> str:
@@ -1012,6 +1044,11 @@ def build(config_path: Path, out_path: Path, csv_override: Path | None,
     report = None
     if decision:
         record, report = check_decision(cfg, decision, tables, base)
+        if record and record["added_after_results"]:
+            names = ", ".join(f"criteria[{i}]" for i in record["added_after_results"])
+            warnings.append(f"config.{decision.tab}.{names}: added after the results (the page and its "
+                            f"exported record mark {ADDED_KEY}); the report must keep them apart from "
+                            "the criteria written before")
 
     # The HTML may be shared, so it never carries the build machine's absolute paths. The
     # config keeps file names, which load mode shows as the files to pick.

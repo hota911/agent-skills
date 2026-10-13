@@ -30,6 +30,7 @@
       thresholdNote: "悪化・改善の目安", noThreshold: "目安なし（悪化・改善の判断に使わない）",
       infoNote: "参考（悪化・改善の判断に使わない）", rulesInfo: "{list} は参考として表示し、悪化・改善の判断には使わない。", listSep: "、",
       reviewed: "レビュー済み {n} / {total}", unreviewedOnly: "未レビューのみ", exportCsv: "CSV を書き出す",
+      dataChanged: "データが変わった", dataChangedHint: "レビューした後で、この項目の値が変わった。見直して、ラベルを付け直すかメモを直すと消える。",
       prev: "← 前へ", next: "次へ →", note: "メモ", humanLabel: "あなたの判定",
       keys: "← → 移動 · 1–{n} 判定 · N メモ · Esc メモから戻る",
       storageOk: "このブラウザに自動保存しています", storageNo: "このブラウザには保存できません。閉じる前に CSV を書き出してください",
@@ -66,6 +67,8 @@
       reviewRegressed: "悪化項目をレビュー ({n})", openCompare: "比較ビューで見る",
       criteriaTitle: "候補 × 基準", criterion: "基準", thresholdCol: "基準値", verdictRow: "判定",
       critAbsolute: "{metric}", critRelative: "{metric}の{a}からの悪化", critRegressions: "悪化した項目の数",
+      addedAfter: "（結果を見た後に追加）",
+      addedAfterNote: "「結果を見た後に追加」の基準は、記録を書き出した後で設定に加えたもの。判定には含めるが、報告では前からある基準と分けて書く。",
       critCritical: "重要カテゴリ（{cats}）で悪化した項目",
       worsePos: "（悪化）", worseNeg: "（改善）", nItems: "{n} 件",
       metricsTitle: "指標ごとの差と 95% 区間（参考）",
@@ -128,6 +131,7 @@
       thresholdNote: "threshold for better or worse", noThreshold: "no threshold (not used to call a change better or worse)",
       infoNote: "reference only (not used to call a change better or worse)", rulesInfo: "{list} are shown for reference only and are not used to call a change better or worse.", listSep: ", ",
       reviewed: "Reviewed {n} / {total}", unreviewedOnly: "Unreviewed only", exportCsv: "Export CSV",
+      dataChanged: "data changed", dataChangedHint: "This item's values changed after it was reviewed. Check it again; setting the label or editing the note clears this mark.",
       prev: "← Prev", next: "Next →", note: "Note", humanLabel: "Your judgment",
       keys: "← → move · 1–{n} judgment · N note · Esc leave note",
       storageOk: "Auto-saved in this browser", storageNo: "Cannot save in this browser. Export the CSV before closing.",
@@ -164,6 +168,8 @@
       reviewRegressed: "Review regressed items ({n})", openCompare: "Open in compare",
       criteriaTitle: "Candidates × criteria", criterion: "Criterion", thresholdCol: "Threshold", verdictRow: "Verdict",
       critAbsolute: "{metric}", critRelative: "{metric} worse than {a}", critRegressions: "Regressed items",
+      addedAfter: " (added after the results)",
+      addedAfterNote: "Criteria marked \"added after the results\" were added to the config after the record was exported. They count toward the verdict, but the report keeps them apart from the criteria written before.",
       critCritical: "Regressed items in critical categories ({cats})",
       worsePos: " (worse)", worseNeg: " (better)", nItems: "{n}",
       metricsTitle: "Difference per metric with 95% interval (reference)",
@@ -297,6 +303,10 @@
   const decision = decisionTab ? cfg[decisionTab] : null;
   const isExperiment = decisionTab === "experiment";
   const decisionRecord = payload.record || null;
+  // Indexes of the criteria added to the config after the record was exported, that is,
+  // after the results were seen. The key must match ADDED_KEY in build.py.
+  const ADDED_KEY = "added_after_results";
+  const addedAfter = new Set(decisionRecord ? decisionRecord[ADDED_KEY] : []);
   function perSide(make) { return Object.fromEntries(SIDES.map((s) => [s, make(s)])); }
   const stackCol = cols.status || cols.verdict || null;
   const numFmtCache = {};
@@ -719,11 +729,10 @@
     state.reviewCursor = null;
     const a = state.data.a;
     if (!a) { state.storageKey = null; state.storageOk = false; return; }
-    // Embed mode keys by the full data, so a different snapshot starts empty. Load mode
-    // keys by title + id set, so labels survive reloading updated data with the same ids.
-    state.storageKey = loadMode
-      ? STORAGE_PREFIX + "ids:" + fnv1a(JSON.stringify([cfg.title, a.rows.map((r) => r[cols.id]).sort()]))
-      : STORAGE_PREFIX + fnv1a(JSON.stringify([cfg.title, a.headers, a.rows]));
+    // Both modes key by title + id set, so labels survive a rebuild or reload with an added
+    // column or changed values; each review keeps a fingerprint of its row (fp) instead,
+    // and an item whose row changed since is marked.
+    state.storageKey = STORAGE_PREFIX + "ids:" + fnv1a(JSON.stringify([cfg.title, a.rows.map((r) => r[cols.id]).sort()]));
     try {
       const raw = window.localStorage.getItem(state.storageKey);
       if (raw) state.review = JSON.parse(raw) || {};
@@ -745,8 +754,21 @@
 
   function reviewOf(id) { return state.review[id] || { label: "", note: "" }; }
 
+  // The configured columns of a row, which a review of the row was made against.
+  function rowFingerprint(row) {
+    return fnv1a(JSON.stringify(requiredColumns().map((c) => cellText(row[c]))));
+  }
+
+  // True when a stored review has a fingerprint and the data has changed since.
+  function reviewIsStale(rv, fp) { return Boolean(rv.fp && (rv.label || rv.note) && rv.fp !== fp); }
+
+  function staleBadge() {
+    return el("span", { class: "badge stale", title: T.dataChangedHint, text: "⚠ " + T.dataChanged });
+  }
+
   function setReview(id, patch) {
-    const next = Object.assign({}, reviewOf(id), patch);
+    const row = state.data.a.rows.find((r) => r[cols.id] === id);
+    const next = Object.assign({}, reviewOf(id), patch, row ? { fp: rowFingerprint(row) } : {});
     if (!next.label && !next.note) delete state.review[id];
     else state.review[id] = next;
     saveReview();
@@ -1424,7 +1446,8 @@
     const rv = reviewOf(id);
     const card = el("div", { class: "card" });
     root.appendChild(card);
-    const meta = el("div", { class: "review-meta" }, [el("strong", { text: cols.id + ": " + id })]);
+    const meta = el("div", { class: "review-meta" }, [el("strong", { text: cols.id + ": " + id }),
+      reviewIsStale(rv, rowFingerprint(row)) ? staleBadge() : null]);
     for (const k of ["category", "status", "verdict"]) {
       const c = cols[k];
       if (!c) continue;
@@ -1483,11 +1506,15 @@
   const VERDICT_MARKS = ["✓", "△", "✕"];
   const metricByColumn = new Map(metrics.map((m) => [m.column, m]));
 
-  // What a candidate's stored review belongs to: like the review tab, embed mode uses the
-  // full data and load mode the id set.
+  // What a candidate's stored review belongs to: like the review tab, the id set, so an
+  // added column or changed values keep the reviews (see pairFingerprint).
   function tableSignature(side) {
-    const d = state.data[side];
-    return loadMode ? d.rows.map((r) => r[cols.id]).sort() : [d.headers, d.rows];
+    return state.data[side].rows.map((r) => r[cols.id]).sort();
+  }
+
+  // The compared metric values of a pair, which a review of the regressed item was made against.
+  function pairFingerprint(p) {
+    return fnv1a(JSON.stringify(metrics.map((m) => [metricValue(p.a, m), metricValue(p.b, m)])));
   }
 
   // Per candidate: labels saved in this browser, else the reviews embedded from
@@ -1521,7 +1548,8 @@
 
   function setDecisionReview(side, id, patch) {
     const all = state.decisionReview[side] || (state.decisionReview[side] = {});
-    const next = Object.assign({}, decisionReviewOf(side, id), patch);
+    const pair = pairs(side).find((p) => p.id === id);
+    const next = Object.assign({}, decisionReviewOf(side, id), patch, pair ? { fp: pairFingerprint(pair) } : {});
     if (!next.label && !next.note) delete all[id];
     else all[id] = next;
     if (!state.decisionStorageOk) return;
@@ -1607,11 +1635,13 @@
     return { n: n, cur: cur, cand: cand, d: d, ci: [(mu - half) * k, (mu + half) * k] };
   }
 
+  // c is an element of decision.criteria; a criterion added after the results says so.
   function criterionName(c) {
-    if (c.type === "regressions") return c.count === "unaccepted" ? T.critUnaccepted : T.critRegressions;
-    if (c.type === "critical_categories") return fmt(T.critCritical, { cats: c.categories.join(", ") });
+    const added = addedAfter.has(decision.criteria.indexOf(c)) ? T.addedAfter : "";
+    if (c.type === "regressions") return (c.count === "unaccepted" ? T.critUnaccepted : T.critRegressions) + added;
+    if (c.type === "critical_categories") return fmt(T.critCritical, { cats: c.categories.join(", ") }) + added;
     const m = metricByColumn.get(c.metric);
-    return c.type === "absolute" ? fmt(T.critAbsolute, { metric: m.label }) : fmt(T.critRelative, { metric: m.label, a: sideLabel.a });
+    return (c.type === "absolute" ? fmt(T.critAbsolute, { metric: m.label }) : fmt(T.critRelative, { metric: m.label, a: sideLabel.a })) + added;
   }
 
   function criterionThreshold(c) {
@@ -1716,7 +1746,8 @@
       ]);
     })));
 
-    const card = el("div", { class: "card" }, [el("h2", { text: T.criteriaTitle }), el("p", { class: "small muted", text: T.detailHint })]);
+    const card = el("div", { class: "card" }, [el("h2", { text: T.criteriaTitle }), el("p", { class: "small muted", text: T.detailHint }),
+      addedAfter.size ? el("p", { class: "small muted", text: T.addedAfterNote }) : null]);
     root.appendChild(card);
     const head = [el("th", { text: T.criterion }), el("th", { text: T.thresholdCol })].concat(results.map((r) => el("th", { class: "num", text: r.label })));
     const body = decision.criteria.map((c, i) => el("tr", { style: "cursor:default" }, [
@@ -1833,7 +1864,8 @@
           el("td", { text: x.p.id, style: "white-space:nowrap" }),
           cols.category ? el("td", { text: x.p.a[cols.category] }) : null,
           el("td", null, el("div", { style: "display:flex;flex-wrap:wrap;gap:4px" }, reasonNodes(x.c))),
-          el("td", { class: rv.label === REJECT ? "delta bad" : rv.label ? "" : "muted", text: rv.label || T.unlabeled }),
+          el("td", null, [el("span", { class: rv.label === REJECT ? "delta bad" : rv.label ? "" : "muted", text: rv.label || T.unlabeled }),
+            reviewIsStale(rv, pairFingerprint(x.p)) ? staleBadge() : null]),
           el("td", { class: "longtext", text: rv.note || "" }),
           el("td", null, el("div", { class: "detail-links" }, [
             el("button", { type: "button", class: "link-btn", text: T.openInReview, onclick: () => openInReview(r.side, x.p.id) }),
@@ -2004,7 +2036,8 @@
             el("td", { text: x.p.id, style: "white-space:nowrap" }),
             cols.category ? el("td", { text: x.p.a[cols.category] }) : null,
             el("td", null, el("div", { style: "display:flex;flex-wrap:wrap;gap:4px" }, reasonNodes(x.c))),
-            el("td", { class: rv.label === REJECT ? "delta bad" : rv.label ? "" : "muted", text: rv.label || T.unlabeled }),
+            el("td", null, [el("span", { class: rv.label === REJECT ? "delta bad" : rv.label ? "" : "muted", text: rv.label || T.unlabeled }),
+              reviewIsStale(rv, pairFingerprint(x.p)) ? staleBadge() : null]),
             el("td", { class: "muted", text: truncateToWidth((rv.note || "").replace(/\s+/g, " "), 200, 13) })
           ]);
         }))])));
@@ -2015,7 +2048,8 @@
     const rv = decisionReviewOf(side, id);
     const card = el("div", { class: "card" });
     root.appendChild(card);
-    card.appendChild(el("div", { class: "review-meta" }, [el("strong", { text: (idx + 1) + " / " + items.length })]));
+    card.appendChild(el("div", { class: "review-meta" }, [el("strong", { text: (idx + 1) + " / " + items.length }),
+      reviewIsStale(rv, pairFingerprint(items[idx].p)) ? staleBadge() : null]));
     card.appendChild(el("h3", { text: T.humanLabel }));
     card.appendChild(el("div", { class: "label-buttons" }, REVIEW_LABELS.map((l, i) =>
       el("button", { "aria-pressed": String(rv.label === l), onclick: () => applyDecisionLabel(id, l) }, [el("kbd", { text: String(i + 1) }), l]))));
@@ -2049,7 +2083,7 @@
       files: { current: { label: sideLabel.a, file: state.data.a.name } }
     };
     if (isExperiment) out.hypothesis = decision.hypothesis;
-    out.criteria = decision.criteria;
+    out.criteria = decision.criteria.map((c, i) => (addedAfter.has(i) ? Object.assign({}, c, { [ADDED_KEY]: true }) : c));
     out.review_labels = REVIEW_LABELS;
     if (isExperiment) out.verdict_labels = decision.verdict_labels;
     out.candidates = results.map((r) => ({
@@ -2091,6 +2125,7 @@
     for (const r of results) out.push("- " + r.label + ": " + state.data[r.side].name);
     out.push("", "## " + T.criteriaH, "");
     decision.criteria.forEach((c) => out.push("- " + criterionName(c) + ": " + criterionThreshold(c)));
+    if (addedAfter.size) out.push("", T.addedAfterNote);
     out.push("", "## " + T.summaryH, "");
     const rows = decision.criteria.map((c, i) => [criterionName(c), criterionThreshold(c)]
       .concat(results.map((r) => criterionValue(c, r.results[i]) + " " + passText(r.results[i]))));
