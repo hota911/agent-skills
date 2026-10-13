@@ -54,7 +54,14 @@ Use these four headings in this order, in the language of the page:
 | 次にやること / Next steps | Concrete actions: review the remaining items, re-export, fix and compare again. |
 
 Write in plain sentences for readers who did not see the data. Use the candidate labels
-and the metric labels from the config, not new names.
+and the metric labels from the config, not new names. The 結論 section is the summary,
+so put nothing before it.
+
+- Numbers that did not decide anything and are not in the record (cost or time from
+  another source, another evaluation) may go in 注意点 with their source. Never put
+  them in 理由 or mix them into the criteria.
+- When the human has not decided the next steps, write 未決 (undecided) under
+  次にやること and add no proposals of your own.
 
 ## Markdown that the report tab renders
 

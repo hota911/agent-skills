@@ -61,7 +61,10 @@ report or of the Markdown download.
 
 ## Structure
 
-Use these five headings in this order, in the language of the page:
+Start the body, before the first heading, with a summary of three or four lines in
+plain sentences: what was tested, each condition's verdict, and what the experimenter
+concluded (or 未決 / undecided). A reader who stops there should know the outcome.
+Then use these five headings in this order, in the language of the page:
 
 | Heading | Content |
 |---------|---------|
@@ -73,6 +76,12 @@ Use these five headings in this order, in the language of the page:
 
 Write in plain sentences for readers who did not see the data. Use the condition
 labels and the metric labels from the config, not new names.
+
+- Numbers that did not decide anything and are not in the record (cost or time from
+  another source, another evaluation) may go in 考察 with their source, for example
+  "（出典：runs.jsonl の合計）". Never put them in 結果 or mix them into the criteria.
+- When the experimenter has not decided whether to adopt the hypothesis or what to do
+  next, write 未決 (undecided) there and add no proposals of your own.
 
 ## Markdown and staleness
 
