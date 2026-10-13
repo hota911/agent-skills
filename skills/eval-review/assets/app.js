@@ -82,6 +82,12 @@
       failMin: "下限 {v} を下回る", failMax: "上限 {v} を上回る", noValue: "両方に値がある項目がないため満たさない",
       whyFail: "満たさない理由", direction: "良い方向", higherBetter: "高いほど良い", lowerBetter: "低いほど良い",
       comparedValue: "基準値と比べる値", regCount: "悪化した項目 {n} 件（上限 {max} 件）",
+      pending: "△ レビュー待ち", pendingCriteria: "レビュー待ちの基準", critUnaccepted: "受け入れていない悪化した項目の数",
+      unacceptedRule: "「{name}」は、レビューで「{reject}」以外のラベルを付けた項目を数えず、未レビューの項目は数える。未レビューの項目を数えたために上限を超えるときは、その基準をレビュー待ちとし、判定は「{review}」にする。",
+      unacceptedCount: "受け入れていない悪化した項目 {n} 件（上限 {max} 件）。悪化した {total} 件のうち、レビューで受け入れた {accepted} 件を除き、未レビューの {unreviewed} 件を数えた",
+      unacceptedCountRejected: "受け入れていない悪化した項目 {n} 件（上限 {max} 件）。悪化した {total} 件のうち、レビューで受け入れた {accepted} 件を除き、未レビューの {unreviewed} 件と「{reject}」の {rejected} 件を数えた",
+      whyPending: "レビュー待ちの理由", pendingReason: "上限を超えるのは未レビューの項目を数えているため。レビューが済むまで判定は「{review}」になる。",
+      countedItems: "数えた項目（未レビュー・「{reject}」）: {n} 件", notCountedItems: "数えない項目（レビューで受け入れた）: {n} 件",
       openInReview: "レビューで開く", goTo: "移動"
     },
     en: {
@@ -163,6 +169,12 @@
       failMin: "below the minimum {v}", failMax: "above the maximum {v}", noValue: "not met: no item has a value on both sides",
       whyFail: "Why not met", direction: "Better when", higherBetter: "higher", lowerBetter: "lower",
       comparedValue: "Compared with the threshold", regCount: "{n} regressed items (at most {max})",
+      pending: "△ awaiting review", pendingCriteria: "Criteria awaiting review", critUnaccepted: "Regressed items not accepted",
+      unacceptedRule: "\"{name}\" does not count items reviewed with a label other than \"{reject}\", and counts unreviewed items. When it exceeds the maximum only because unreviewed items are counted, the criterion awaits review and the verdict is \"{review}\".",
+      unacceptedCount: "{n} regressed items not accepted (at most {max}). Of {total} regressed items, {accepted} accepted in review are left out and {unreviewed} unreviewed are counted",
+      unacceptedCountRejected: "{n} regressed items not accepted (at most {max}). Of {total} regressed items, {accepted} accepted in review are left out, and {unreviewed} unreviewed and {rejected} \"{reject}\" are counted",
+      whyPending: "Why awaiting review", pendingReason: "The maximum is exceeded only because unreviewed items are counted. Until they are reviewed, the verdict is \"{review}\".",
+      countedItems: "Counted items (unreviewed or \"{reject}\"): {n}", notCountedItems: "Items not counted (accepted in review): {n}",
       openInReview: "Open in review", goTo: "Go to"
     }
   };
@@ -184,7 +196,13 @@
       critCritical: "重要カテゴリ（{cats}）で悪化した{unit}", nItems: "{n} {unit}",
       reviewTitle: "{label} の悪化した{unit}のレビュー", allRegressed: "悪化した{unit}の一覧",
       noRegressedItems: "この候補に悪化した{unit}はありません", reviewsH: "悪化した{unit}のレビュー",
-      pairedN: "n（両方に値がある同じ id の{unit}）", regCount: "悪化した{unit} {n}（上限 {max}）"
+      pairedN: "n（両方に値がある同じ id の{unit}）", regCount: "悪化した{unit} {n}（上限 {max}）",
+      critUnaccepted: "受け入れていない悪化した{unit}の数",
+      unacceptedRule: "「{name}」は、レビューで「{reject}」以外のラベルを付けた{unit}を数えず、未レビューの{unit}は数える。未レビューの{unit}を数えたために上限を超えるときは、その基準をレビュー待ちとし、判定は「{review}」にする。",
+      unacceptedCount: "受け入れていない悪化した{unit} {n}（上限 {max}）。悪化した {total} {unit}のうち、レビューで受け入れた {accepted} {unit}を除き、未レビューの {unreviewed} {unit}を数えた",
+      unacceptedCountRejected: "受け入れていない悪化した{unit} {n}（上限 {max}）。悪化した {total} {unit}のうち、レビューで受け入れた {accepted} {unit}を除き、未レビューの {unreviewed} {unit}と「{reject}」の {rejected} {unit}を数えた",
+      pendingReason: "上限を超えるのは未レビューの{unit}を数えているため。レビューが済むまで判定は「{review}」になる。",
+      countedItems: "数えた{unit}（未レビュー・「{reject}」）: {n}", notCountedItems: "数えない{unit}（レビューで受け入れた）: {n}"
     },
     en: {
       shown: "Showing {n} of {total} {unit}", items: "{unit}",
@@ -200,7 +218,13 @@
       critCritical: "Regressed {unit} in critical categories ({cats})", nItems: "{n} {unit}",
       reviewTitle: "Review regressed {unit} of {label}", allRegressed: "All regressed {unit}",
       noRegressedItems: "This candidate has no regressed {unit}", reviewsH: "Reviews of regressed {unit}",
-      pairedN: "n ({unit} with the same id and a value on both sides)", regCount: "{n} regressed {unit} (at most {max})"
+      pairedN: "n ({unit} with the same id and a value on both sides)", regCount: "{n} regressed {unit} (at most {max})",
+      critUnaccepted: "Regressed {unit} not accepted",
+      unacceptedRule: "\"{name}\" does not count {unit} reviewed with a label other than \"{reject}\", and counts unreviewed {unit}. When it exceeds the maximum only because unreviewed {unit} are counted, the criterion awaits review and the verdict is \"{review}\".",
+      unacceptedCount: "{n} regressed {unit} not accepted (at most {max}). Of {total} regressed {unit}, {accepted} accepted in review are left out and {unreviewed} unreviewed are counted",
+      unacceptedCountRejected: "{n} regressed {unit} not accepted (at most {max}). Of {total} regressed {unit}, {accepted} accepted in review are left out, and {unreviewed} unreviewed and {rejected} \"{reject}\" are counted",
+      pendingReason: "The maximum is exceeded only because unreviewed {unit} are counted. Until they are reviewed, the verdict is \"{review}\".",
+      countedItems: "Counted {unit} (unreviewed or \"{reject}\"): {n}", notCountedItems: "{unit} not counted (accepted in review): {n}"
     }
   };
 
@@ -1382,9 +1406,21 @@
   // is compared with: the candidate's aggregate, its worsening from A (in the metric's
   // unit or in percent), or a count of items. `regressed` is [{ p, c }] from classifyPair.
   // The other fields (the counted items, n, both aggregates and their sums) are what the
-  // detail panel shows; the verdict and the record use only `value` and `pass`.
-  function evaluateCriterion(c, ps, regressed) {
-    if (c.type === "regressions") return { value: regressed.length, pass: regressed.length <= c.max, items: regressed };
+  // detail panel shows; the verdict and the record use only `value`, `pass` and `pending`.
+  // A regressions criterion with count "unaccepted" leaves out items accepted in review
+  // (any label but REJECT); it is `pending` (not failed) while only unreviewed items
+  // push it over the maximum.
+  function evaluateCriterion(c, ps, regressed, side) {
+    if (c.type === "regressions") {
+      if (c.count !== "unaccepted") return { value: regressed.length, pass: regressed.length <= c.max, items: regressed };
+      const labelOf = (x) => decisionReviewOf(side, x.p.id).label;
+      const items = regressed.filter((x) => !labelOf(x) || labelOf(x) === REJECT);
+      const accepted = regressed.filter((x) => labelOf(x) && labelOf(x) !== REJECT);
+      const rejected = items.filter((x) => labelOf(x) === REJECT).length;
+      const pass = items.length <= c.max;
+      return { value: items.length, pass: pass, pending: !pass && rejected <= c.max, items: items, accepted: accepted,
+        rejected: rejected, unreviewed: items.length - rejected, total: regressed.length };
+    }
     if (c.type === "critical_categories") {
       const cats = new Set(c.categories);
       const items = regressed.filter((x) => cats.has(cellText(x.p.a[cols.category])));
@@ -1411,14 +1447,17 @@
     const regressed = ps.map((p) => ({ p: p, c: classifyPair(p) })).filter((x) => x.c.kind === "regressed");
     regressed.sort(bySeverity);
     const regPairs = regressed.map((x) => x.p);
-    const results = decision.criteria.map((c) => evaluateCriterion(c, ps, regressed));
+    const results = decision.criteria.map((c) => evaluateCriterion(c, ps, regressed, side));
     const labels = regPairs.map((p) => decisionReviewOf(side, p.id).label);
     const rejected = labels.filter((l) => l === REJECT).length;
     const unreviewed = labels.filter((l) => !l).length;
-    const failed = decision.criteria.map((c, i) => i).filter((i) => !results[i].pass);
+    const idx = decision.criteria.map((c, i) => i);
+    // A pending criterion is not failed: it implies an unreviewed item, so the verdict is the middle one.
+    const failed = idx.filter((i) => !results[i].pass && !results[i].pending);
+    const pending = idx.filter((i) => results[i].pending);
     const verdict = VERDICTS[failed.length || rejected ? 2 : unreviewed ? 1 : 0];
     return { side: side, label: sideLabel[side], pairs: ps, regressed: regressed, results: results, failed: failed,
-      rejected: rejected, unreviewed: unreviewed, verdict: verdict };
+      pending: pending, rejected: rejected, unreviewed: unreviewed, verdict: verdict };
   }
 
   // Paired difference (candidate − A) per metric with a normal-approximation 95% interval:
@@ -1438,7 +1477,7 @@
   }
 
   function criterionName(c) {
-    if (c.type === "regressions") return T.critRegressions;
+    if (c.type === "regressions") return c.count === "unaccepted" ? T.critUnaccepted : T.critRegressions;
     if (c.type === "critical_categories") return fmt(T.critCritical, { cats: c.categories.join(", ") });
     const m = metricByColumn.get(c.metric);
     return c.type === "absolute" ? fmt(T.critAbsolute, { metric: m.label }) : fmt(T.critRelative, { metric: m.label, a: sideLabel.a });
@@ -1476,8 +1515,17 @@
     return el("span", { class: "verdict verdict-" + verdict, text: verdictText(verdict) });
   }
 
-  function passNode(pass) {
-    return el("span", { class: "delta " + (pass ? "good" : "bad"), text: pass ? T.pass : T.fail });
+  // `res` is an evaluateCriterion() result.
+  function passNode(res) {
+    if (res.pending) return el("span", { class: "delta pending", text: T.pending });
+    return el("span", { class: "delta " + (res.pass ? "good" : "bad"), text: res.pass ? T.pass : T.fail });
+  }
+
+  function passText(res) { return res.pending ? T.pending : res.pass ? T.pass : T.fail; }
+
+  // The verdict wording for "needs review", without the mark.
+  function reviewVerdictName() {
+    return isExperiment ? decision.verdict_labels.review : T.verdict.review.replace(/^\S+\s/, "");
   }
 
   function goTo(tab) {
@@ -1505,16 +1553,25 @@
     root.appendChild(el("p", { class: "small muted", text: isExperiment
       ? fmt(T.experimentRule, { reject: REJECT, pass: decision.verdict_labels.pass, review: decision.verdict_labels.review, fail: decision.verdict_labels.fail })
       : fmt(T.verdictRule, { reject: REJECT }) }));
+    for (const c of decision.criteria.filter((x) => x.type === "regressions" && x.count === "unaccepted")) {
+      root.appendChild(el("p", { class: "small muted", text: fmt(T.unacceptedRule, { name: criterionName(c), reject: REJECT, review: reviewVerdictName() }) }));
+    }
     root.appendChild(el("div", { class: "verdict-grid" }, results.map((r) => {
       const failedLinks = [];
       r.failed.forEach((i, k) => {
         if (k) failedLinks.push(" / ");
         failedLinks.push(detailButton({ side: r.side, kind: "criterion", index: i }, "link-btn", criterionName(decision.criteria[i])));
       });
+      const pendingLinks = [];
+      r.pending.forEach((i, k) => {
+        if (k) pendingLinks.push(" / ");
+        pendingLinks.push(detailButton({ side: r.side, kind: "criterion", index: i }, "link-btn", criterionName(decision.criteria[i])));
+      });
       const unreviewedText = fmt(T.unreviewedItems, { n: r.unreviewed, total: r.regressed.length });
       return el("div", { class: "card verdict-card verdict-card-" + r.verdict }, [
         el("div", { class: "verdict-head" }, [el("strong", { text: r.label }), detailButton({ side: r.side, kind: "verdict" }, "link-btn", verdictBadge(r.verdict))]),
         el("div", { class: "small" }, [T.failedCriteria + ": "].concat(failedLinks.length ? failedLinks : [T.none])),
+        pendingLinks.length ? el("div", { class: "small" }, [T.pendingCriteria + ": "].concat(pendingLinks)) : null,
         r.rejected ? el("div", { class: "small" }, detailButton({ side: r.side, kind: "rejected" }, "link-btn", fmt(T.rejectedItems, { reject: REJECT, n: r.rejected }))) : null,
         el("div", { class: "small" }, r.unreviewed ? detailButton({ side: r.side, kind: "unreviewed" }, "link-btn", unreviewedText) : unreviewedText),
         el("div", { class: "review-nav" }, [
@@ -1533,7 +1590,7 @@
       el("td", { text: criterionName(c), style: "min-width:10em" }),
       el("td", { class: "num", text: criterionThreshold(c) })
     ].concat(results.map((r) => el("td", { class: "num" }, detailButton({ side: r.side, kind: "criterion", index: i }, "cell-btn",
-      [el("span", { class: "cell-value", text: criterionValue(c, r.results[i]) }), passNode(r.results[i].pass)]))))));
+      [el("span", { class: "cell-value", text: criterionValue(c, r.results[i]) }), passNode(r.results[i])]))))));
     body.push(el("tr", { style: "cursor:default" }, [el("td", { text: T.verdictRow }), el("td")].concat(results.map((r) =>
       el("td", { class: "num" }, detailButton({ side: r.side, kind: "verdict" }, "cell-btn", verdictBadge(r.verdict)))))));
     card.appendChild(el("div", { class: "scroll-x" }, el("table", { class: "list" }, [el("thead", null, el("tr", null, head)), el("tbody", null, body)])));
@@ -1660,11 +1717,19 @@
   // Shows the values evaluateCriterion() computed for the verdict, never a recomputation.
   function criterionDetail(c, res, r) {
     if (c.type === "regressions") {
-      return [kvList([[T.result, passNode(res.pass)], [T.comparedValue, fmt(T.regCount, { n: res.value, max: c.max })]]),
-        regressedItemList(r, res.items)];
+      if (c.count !== "unaccepted") {
+        return [kvList([[T.result, passNode(res)], [T.comparedValue, fmt(T.regCount, { n: res.value, max: c.max })]]),
+          regressedItemList(r, res.items)];
+      }
+      const counts = { n: res.value, max: c.max, total: res.total, accepted: res.accepted.length, unreviewed: res.unreviewed, rejected: res.rejected, reject: REJECT };
+      const rows = [[T.result, passNode(res)], [T.comparedValue, fmt(res.rejected ? T.unacceptedCountRejected : T.unacceptedCount, counts)]];
+      if (res.pending) rows.push([T.whyPending, fmt(T.pendingReason, { review: reviewVerdictName() })]);
+      return [kvList(rows),
+        el("h3", { text: fmt(T.countedItems, { reject: REJECT, n: res.items.length }) }), regressedItemList(r, res.items),
+        el("h3", { text: fmt(T.notCountedItems, { n: res.accepted.length }) }), regressedItemList(r, res.accepted)];
     }
     if (c.type === "critical_categories") {
-      const out = [kvList([[T.result, passNode(res.pass)], [T.thresholdCol, criterionThreshold(c)]])];
+      const out = [kvList([[T.result, passNode(res)], [T.thresholdCol, criterionThreshold(c)]])];
       for (const cat of c.categories) {
         const xs = res.items.filter((x) => cellText(x.p.a[cols.category]) === cat);
         out.push(el("h3", { text: cols.category + " = " + cat + ": " + fmt(T.nItems, { n: xs.length }) }), regressedItemList(r, xs));
@@ -1674,7 +1739,7 @@
     const m = metricByColumn.get(c.metric);
     // Rates also show the count of true values over n.
     const show = (v, k) => fmtMetric(v, m) + (m.aggregate === "rate" && v !== null ? " (" + k + "/" + res.n + ")" : "");
-    const rows = [[T.result, passNode(res.pass)]];
+    const rows = [[T.result, passNode(res)]];
     if (c.type === "relative") rows.push([fmt(T.valueOf, { label: sideLabel.a }), show(res.cur, res.sumCur)]);
     rows.push([fmt(T.valueOf, { label: r.label }), show(res.cand, res.sumCand)],
       [T.aggregation, m.aggregate === "rate" ? T.aggRate : m.aggregate === "sum" ? T.sum : T.mean],
@@ -1703,9 +1768,13 @@
       ? el("ul", { class: "detail-list" }, r.failed.map((i) => el("li", null,
         detailButton({ side: r.side, kind: "criterion", index: i }, "link-btn", "✕ " + criterionName(decision.criteria[i])))))
       : el("p", { class: "small muted", text: T.none });
-    return [el("h3", { text: T.failedCriteria }), failed,
+    const pending = r.pending.length
+      ? [el("h3", { text: T.pendingCriteria }), el("ul", { class: "detail-list" }, r.pending.map((i) => el("li", null,
+        detailButton({ side: r.side, kind: "criterion", index: i }, "link-btn", T.pending.split(" ")[0] + " " + criterionName(decision.criteria[i])))))]
+      : [];
+    return [el("h3", { text: T.failedCriteria }), failed].concat(pending, [
       el("h3", { text: fmt(T.rejectedItems, { reject: REJECT, n: r.rejected }) }), regressedItemList(r, rejectedOf(r)),
-      el("h3", { text: fmt(T.unreviewedItems, { n: r.unreviewed, total: r.regressed.length }) }), regressedItemList(r, unreviewedOf(r))];
+      el("h3", { text: fmt(T.unreviewedItems, { n: r.unreviewed, total: r.regressed.length }) }), regressedItemList(r, unreviewedOf(r))]);
   }
 
   function renderDecisionDetail(d, results) {
@@ -1858,7 +1927,8 @@
         regressed: r.regressed.length,
         unreviewed: r.unreviewed,
         rejected: r.rejected,
-        criteria: decision.criteria.map((c, i) => ({ index: i, value: num(r.results[i].value), pass: r.results[i].pass })),
+        criteria: decision.criteria.map((c, i) => Object.assign({ index: i, value: num(r.results[i].value), pass: r.results[i].pass },
+          r.results[i].pending ? { pending: true } : {})),
         metrics: metrics.map((m) => {
           const s = diffStats(r.pairs, m);
           return { column: m.column, label: m.label, n: s.n, current: num(s.cur), candidate: num(s.cand), difference: num(s.d), ci95: s.ci ? s.ci.map(num) : null };
@@ -1888,7 +1958,7 @@
     decision.criteria.forEach((c) => out.push("- " + criterionName(c) + ": " + criterionThreshold(c)));
     out.push("", "## " + T.summaryH, "");
     const rows = decision.criteria.map((c, i) => [criterionName(c), criterionThreshold(c)]
-      .concat(results.map((r) => criterionValue(c, r.results[i]) + " " + (r.results[i].pass ? T.pass : T.fail))));
+      .concat(results.map((r) => criterionValue(c, r.results[i]) + " " + passText(r.results[i]))));
     rows.push([T.verdictRow, ""].concat(results.map((r) => verdictText(r.verdict))));
     out.push(mdTable([T.criterion, T.thresholdCol].concat(results.map((r) => r.label)), rows));
     out.push("");

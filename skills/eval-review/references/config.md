@@ -178,7 +178,7 @@ A criterion object, by `type`:
 |--------|------|-------------|
 | `absolute` | `metric` (not one with `better: "none"`; the same applies to `relative`), `min` and/or `max` | The candidate's aggregate of the metric is within the bounds. For a `rate` metric or one with `format: "percent"` the bounds are fractions (0.85 means 85%). |
 | `relative` | `metric`, exactly one of `max_worse` / `max_worse_pct` | The candidate is worse than the current model by at most `max_worse` (in the metric's unit; a fraction for `rate` and `format: "percent"`, so 0.02 means 2pt) or `max_worse_pct` percent of the current value. Getting better always passes. |
-| `regressions` | `max` (integer >= 0) | The number of regressed items is at most `max`. |
+| `regressions` | `max` (integer >= 0), optional `count` | The number of regressed items is at most `max`. With `count: "all"` (the default) every regressed item counts, and review never changes the result. With `count: "unaccepted"` items reviewed with any label but the last one (accepted) are not counted; unreviewed items and items with the last label are. While the count exceeds `max` only because unreviewed items are counted, the criterion is "△ awaiting review" (レビュー待ち) instead of not met, and the verdict is the middle one. Its name becomes 受け入れていない悪化した項目の数 (Regressed items not accepted). |
 | `critical_categories` | `categories` (needs `columns.category`) | No regressed item is in one of these categories. Each value must occur in the current model's data. |
 
 `metric` is a column in `columns.metrics`. Aggregates use paired items only (ids
@@ -189,8 +189,20 @@ Verdicts, per candidate, over all paired items regardless of the filter bar:
 
 1. 出さない (`no-go`): a criterion fails, or a regressed item is labelled with the last
    review label.
-2. 要レビュー (`review`): otherwise, a regressed item has no label yet.
+2. 要レビュー (`review`): otherwise, a regressed item has no label yet. A criterion
+   awaiting review (`count: "unaccepted"`) always leaves an item unreviewed, so it lands
+   here.
 3. 出してよい (`go`): otherwise.
+
+`{"type": "regressions", "max": 0, "count": "unaccepted"}` and leaving out `regressions`
+both let review decide the regressed items, and a single item labelled with the last
+label gives the worst verdict either way. The difference is what the page and the record
+show: with the criterion, the pre-written condition ("no regressed item, unless a person
+accepts it after looking") appears as a criterion row, as "△ awaiting review" while items
+are unreviewed, and in the record JSON as `"pending": true` on that criterion (its
+`value` is the number of counted items). Write it when the user's criteria say regressions
+must be accepted by review; leave `regressions` out only when they say nothing about the
+number of regressed items.
 
 The release tab also shows each metric's n and the 95% interval of the paired
 difference (mean of the per-item differences ± 1.96 standard errors, times n for `sum`
@@ -212,7 +224,8 @@ built HTML sees the reviews that the record was exported with.
 times. The JSON holds `kind` (`"eval-review/release-record"`), `version` (1),
 `title`, `exported_at`, `files.current` (label and file name), `criteria`,
 `review_labels`, and per candidate: `label`, `file`, `verdict`, the counts `paired`,
-`regressed`, `unreviewed`, `rejected`, each criterion's `value` and `pass`, each
+`regressed`, `unreviewed`, `rejected`, each criterion's `value` and `pass` (plus
+`"pending": true` for a criterion awaiting review), each
 metric's n, aggregates, difference and `ci95`, and `reviews` for every regressed item
 (label `""` when unreviewed).
 

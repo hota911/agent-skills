@@ -30,6 +30,14 @@ confirmed, and do not present the verdict alone as the conclusion. When the verd
 and the human's reading disagree (for example every criterion passed but the
 interval of the main metric contains 0), say so in the report.
 
+A pre-written criterion such as "no regressed item, unless a person looks at it and
+accepts it" becomes `{"type": "regressions", "max": 0, "count": "unaccepted"}`. With
+`"max": 0` alone, one regressed item fixes the verdict at `fail` whatever the review
+says. Leaving `regressions` out lets the review decide as well, but then the criterion
+does not appear in the page, the record, or the report's criteria. See
+[config.md](config.md#release) for how `count` works; the record marks a
+criterion awaiting review with `"pending": true`.
+
 ## Frontmatter
 
 The file starts with a frontmatter block that states each condition's verdict, by
@@ -58,7 +66,7 @@ Use these five headings in this order, in the language of the page:
 | Heading | Content |
 |---------|---------|
 | 背景と仮説 / Background and hypothesis | What was changed and why it was expected to help. Quote `hypothesis`. |
-| 方法 / Method | The data (number of items, file names), the baseline and the conditions, the metrics, and the criteria as written in the config. |
+| 方法 / Method | The data (number of items, file names), the baseline and the conditions, the metrics, and the criteria as written in the config. When the criteria were written before the experiment, state which config criterion each of them became (for example "悪化する項目は 0 個。ただし人が見て受け入れたものは除く" → `{"type": "regressions", "max": 0, "count": "unaccepted"}`), and say so when one has no config criterion. |
 | 結果 / Results | Each condition's verdict (in the words of `verdict_labels`), and each metric's value, difference, and 95% interval, copied from the record. |
 | 考察 / Discussion | The review of regressed items (labels and notes), metrics whose interval contains 0 or not, categories with few items, and how the experimenter reads them. State that the interval did not decide any verdict. |
 | 結論と次にやること / Conclusion and next steps | Whether the hypothesis is adopted, as the experimenter decided, and the next experiment or task. |

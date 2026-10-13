@@ -128,6 +128,7 @@ button, select, input, textarea { font: inherit; color: inherit; }
 .delta.bad { color: var(--bad-text); }
 .delta.flat { color: var(--text-secondary); }
 .delta.neutral { color: var(--text-primary); font-weight: 400; }
+.delta.pending { color: var(--text-primary); }
 
 /* Charts */
 .chart { width: 100%; display: block; overflow: visible; }

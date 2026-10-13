@@ -41,9 +41,12 @@ EXPERIMENT_KEYS = RELEASE_KEYS | {"hypothesis", "verdict_labels"}
 CRITERION_KEYS = {
     "absolute": {"type", "metric", "min", "max"},
     "relative": {"type", "metric", "max_worse", "max_worse_pct"},
-    "regressions": {"type", "max"},
+    "regressions": {"type", "max", "count"},
     "critical_categories": {"type", "categories"},
 }
+# How a regressions criterion counts: every regressed item, or only those not accepted in
+# review (unreviewed or rejected). Must match evaluateCriterion() in app.js.
+REGRESSION_COUNTS = ("all", "unaccepted")
 # The last review label rejects an item. Must match the release / experiment tab in app.js.
 DEFAULT_REVIEW_LABELS = {"ja": ["許容", "不可"], "en": ["acceptable", "unacceptable"]}
 
@@ -359,6 +362,8 @@ def validate_decision(cfg: dict, decision: Decision) -> None:
             value = c.get("max")
             if not isinstance(value, int) or isinstance(value, bool) or value < 0:
                 fail(f"{where}.max must be an integer >= 0")
+            if c.get("count", "all") not in REGRESSION_COUNTS:
+                fail(f"{where}.count must be one of {list(REGRESSION_COUNTS)}, got {c['count']!r}")
         else:
             if not cfg["columns"].get("category"):
                 fail(f"{where}: critical_categories needs config.columns.category")
@@ -670,21 +675,31 @@ def is_regressed(a: dict, b: dict, metrics: list[dict]) -> bool:
 
 
 def evaluate_criterion(c: dict, metrics: dict[str, dict], pairs: list, regressed: list,
-                       category_col: str | None) -> bool:
+                       category_col: str | None, labels: dict[str, str], reject: str) -> str:
+    """"pass", "fail", or "pending" (count "unaccepted" over the maximum only because of
+    unreviewed items). `labels` maps each regressed id to its review label ("" if none)."""
     kind = c["type"]
     if kind == "regressions":
-        return len(regressed) <= c["max"]
+        if c.get("count", "all") != "unaccepted":
+            return "pass" if len(regressed) <= c["max"] else "fail"
+        counted = [labels[rid] for rid, _, _ in regressed if labels[rid] in ("", reject)]
+        if len(counted) <= c["max"]:
+            return "pass"
+        return "pending" if counted.count(reject) <= c["max"] else "fail"
     if kind == "critical_categories":
         cats = set(c["categories"])
-        return not any(cell_text(a[category_col]) in cats for _, a, _ in regressed)
-    m = metrics[c["metric"]]
+        return "fail" if any(cell_text(a[category_col]) in cats for _, a, _ in regressed) else "pass"
+    return "pass" if metric_criterion_met(c, metrics[c["metric"]], pairs) else "fail"
+
+
+def metric_criterion_met(c: dict, m: dict, pairs: list) -> bool:
     both = [(va, vb) for va, vb in ((metric_value(a, m), metric_value(b, m)) for _, a, b in pairs)
             if va is not None and vb is not None]
     cur = aggregate([x[0] for x in both], m)
     cand = aggregate([x[1] for x in both], m)
     if cand is None:
         return False
-    if kind == "absolute":
+    if c["type"] == "absolute":
         return ("min" not in c or cand >= c["min"]) and ("max" not in c or cand <= c["max"])
     worse = cand - cur if m["better"] == "lower" else cur - cand
     if "max_worse" in c:
@@ -704,10 +719,13 @@ def candidate_verdict(cfg: dict, decision: Decision, a: Table, b: Table,
     pairs = pair_rows(a, b, cols["id"])
     regressed = [p for p in pairs if is_regressed(p[1], p[2], cols["metrics"])]
     metrics = {m["column"]: m for m in cols["metrics"]}
-    failed = not all(evaluate_criterion(c, metrics, pairs, regressed, cols.get("category"))
-                     for c in section["criteria"])
     reject = section["review_labels"][-1]
-    labels = [reviews.get(rid, {}).get("label", "") for rid, _, _ in regressed]
+    by_id = {rid: reviews.get(rid, {}).get("label", "") for rid, _, _ in regressed}
+    # A pending criterion is not failed; it implies an unreviewed item, so the verdict is
+    # the middle one.
+    failed = any(evaluate_criterion(c, metrics, pairs, regressed, cols.get("category"), by_id, reject) == "fail"
+                 for c in section["criteria"])
+    labels = list(by_id.values())
     met, unreviewed, not_met = decision.verdicts
     if failed or reject in labels:
         verdict = not_met

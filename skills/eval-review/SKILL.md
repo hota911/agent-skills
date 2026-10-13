@@ -109,7 +109,10 @@ Five jobs, selected by `tabs` in the config:
   `table`. Turn each condition the user states into a `release.criteria` entry
   (`absolute`, `relative`, `regressions`, `critical_categories`); do not invent
   criteria they did not state, and ask when a threshold is missing. The metric
-  thresholds decide which items count as regressed, so set them too.
+  thresholds decide which items count as regressed, so set them too. A condition like
+  "no regressed item, unless a person looks at it and accepts it" is
+  `{"type": "regressions", "max": 0, "count": "unaccepted"}`; plain `"max": 0` fails
+  on the first regressed item whatever the review says.
 - "Write up the decision" -> only after a human has reviewed the regressed items and
   exported the record (JSON). Read
   [references/release-report.md](references/release-report.md), write the report with
