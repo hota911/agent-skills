@@ -13,14 +13,22 @@
       onlyIn: "{label} にだけあり {other} にない id（{n} 件、比較から除外）: {ids}",
       candidate: "比べる候補", candidateCol: "候補", candidateValue: "候補の値",
       paired: "比較した件数", regressed: "悪化", improved: "改善", unchanged: "変化なし",
-      flipBad: "正→誤", flipGood: "誤→正", better: "改善", worse: "悪化", flat: "変化なし",
+      better: "改善", worse: "悪化", flat: "変化なし", rateGood: "○", rateBad: "×",
       regressedTitle: "悪化したケース", improvedTitle: "改善したケース",
-      regressedSort: "正→誤の反転を先頭に、閾値に対する悪化の大きさ順。行を選ぶと A/B を並べて表示します。",
-      improvedSort: "誤→正の反転を先頭に、閾値に対する改善の大きさ順。行を選ぶと A/B を並べて表示します。",
-      reason: "理由", metric: "指標", delta: "差 ({b}−{a})", shared: "{a}・{b} 共通",
+      regressedSort: "{flip}悪くなり方が大きい順です。行を押すと、{a} と {b} の内容を並べて表示します。",
+      improvedSort: "{flip}良くなり方が大きい順です。行を押すと、{a} と {b} の内容を並べて表示します。",
+      flipFirst: "{from}→{to} に変わったものを先頭に、",
+      compareSummary: "{a} と {b} を、同じ id の行どうし（{n} 件）で比べた。",
+      rulesUsed: "{rules}ものを「悪化」、反対に良くなったものを「改善」とした。",
+      rulesNone: "悪化・改善を決める指標がないため、すべて「変化なし」とした。",
+      ruleFlip: "{label} が {good} から {bad} に変わった", ruleUp: "{label} が {t} を超えて上がった", ruleDown: "{label} が {t} を超えて下がった", ruleOr: "か、",
+      countOf: "{total} {unit}のうち {n}（{pct}%）", pairedNote: "{a} と {b} の両方にある id",
+      noteFlip: "{label} {from}→{to}", noteOver: "{label} {d} 超", noteAny: "{list} のどれか", unchangedNote: "悪化にも改善にも当たらない",
+      changeText: "{label}：{a} → {b}", changeDelta: "（{d}）",
+      reason: "変化", metric: "指標", delta: "差 ({b}−{a})", shared: "{a}・{b} 共通",
       noRegressions: "条件に合う悪化ケースはありません", noImprovements: "条件に合う改善ケースはありません",
-      thresholdNote: "閾値", noThreshold: "閾値なし（判定に使わない）",
-      infoNote: "参考（悪化・改善の判断に使わない）", infoSentence: "{list} は参考として表示し、悪化・改善の判断には使わない。", listSep: "、", noDirection: "なし（参考）",
+      thresholdNote: "悪化・改善の目安", noThreshold: "目安なし（悪化・改善の判断に使わない）",
+      infoNote: "参考（悪化・改善の判断に使わない）", rulesInfo: "{list} は参考として表示し、悪化・改善の判断には使わない。", listSep: "、",
       reviewed: "レビュー済み {n} / {total}", unreviewedOnly: "未レビューのみ", exportCsv: "CSV を書き出す",
       prev: "← 前へ", next: "次へ →", note: "メモ", humanLabel: "あなたの判定",
       keys: "← → 移動 · 1–{n} 判定 · N メモ · Esc メモから戻る",
@@ -103,14 +111,22 @@
       onlyIn: "ids in {label} but not in {other} ({n}, excluded from comparison): {ids}",
       candidate: "Candidate", candidateCol: "Candidate", candidateValue: "Candidate value",
       paired: "Compared cases", regressed: "Regressed", improved: "Improved", unchanged: "Unchanged",
-      flipBad: "correct→incorrect", flipGood: "incorrect→correct", better: "better", worse: "worse", flat: "no change",
+      better: "better", worse: "worse", flat: "no change", rateGood: "✓", rateBad: "✗",
       regressedTitle: "Regressed cases", improvedTitle: "Improved cases",
-      regressedSort: "Correct→incorrect flips first, then by worsening relative to the threshold. Select a row to see A and B side by side.",
-      improvedSort: "Incorrect→correct flips first, then by improvement relative to the threshold. Select a row to see A and B side by side.",
-      reason: "Reason", metric: "Metric", delta: "Δ ({b}−{a})", shared: "Same in {a} and {b}",
+      regressedSort: "Sorted {flip}by how much worse they got. Select a row to see {a} and {b} side by side.",
+      improvedSort: "Sorted {flip}by how much better they got. Select a row to see {a} and {b} side by side.",
+      flipFirst: "with {from}→{to} changes first, then ",
+      compareSummary: "Compared {a} and {b} on {n} {unit} with the same id.",
+      rulesUsed: "\"Regressed\" {unit} are those where {rules}; \"improved\" {unit} changed the other way.",
+      rulesNone: "No metric is used to call a change better or worse, so all {unit} count as unchanged.",
+      ruleFlip: "{label} changed from {good} to {bad}", ruleUp: "{label} rose by more than {t}", ruleDown: "{label} fell by more than {t}", ruleOr: ", or ",
+      countOf: "{n} of {total} {unit} ({pct}%)", pairedNote: "{unit} in both {a} and {b}",
+      noteFlip: "{label} {from}→{to}", noteOver: "{label} over {d}", noteAny: "any of: {list}", unchangedNote: "neither regressed nor improved",
+      changeText: "{label}: {a} → {b}", changeDelta: " ({d})",
+      reason: "Change", metric: "Metric", delta: "Δ ({b}−{a})", shared: "Same in {a} and {b}",
       noRegressions: "No regressed cases match the filters", noImprovements: "No improved cases match the filters",
-      thresholdNote: "threshold", noThreshold: "no threshold (not used for regressions)",
-      infoNote: "reference only (not used to call a change better or worse)", infoSentence: "{list} are shown for reference only and are not used to call a change better or worse.", listSep: ", ", noDirection: "none (reference)",
+      thresholdNote: "threshold for better or worse", noThreshold: "no threshold (not used to call a change better or worse)",
+      infoNote: "reference only (not used to call a change better or worse)", rulesInfo: "{list} are shown for reference only and are not used to call a change better or worse.", listSep: ", ",
       reviewed: "Reviewed {n} / {total}", unreviewedOnly: "Unreviewed only", exportCsv: "Export CSV",
       prev: "← Prev", next: "Next →", note: "Note", humanLabel: "Your judgment",
       keys: "← → move · 1–{n} judgment · N note · Esc leave note",
@@ -208,7 +224,10 @@
       unacceptedCount: "受け入れていない悪化した{unit} {n}（上限 {max}）。悪化した {total} {unit}のうち、レビューで受け入れた {accepted} {unit}を除き、未レビューの {unreviewed} {unit}を数えた",
       unacceptedCountRejected: "受け入れていない悪化した{unit} {n}（上限 {max}）。悪化した {total} {unit}のうち、レビューで受け入れた {accepted} {unit}を除き、未レビューの {unreviewed} {unit}と「{reject}」の {rejected} {unit}を数えた",
       pendingReason: "上限を超えるのは未レビューの{unit}を数えているため。レビューが済むまで判定は「{review}」になる。",
-      countedItems: "数えた{unit}（未レビュー・「{reject}」）: {n}", notCountedItems: "数えない{unit}（レビューで受け入れた）: {n}"
+      countedItems: "数えた{unit}（未レビュー・「{reject}」）: {n}", notCountedItems: "数えない{unit}（レビューで受け入れた）: {n}",
+      compareSummary: "{a} と {b} を、同じ{unit}どうし（{n} {unit}）で比べた。",
+      rulesUsed: "{rules}{unit}を「悪化」、反対に良くなった{unit}を「改善」とした。",
+      pairedNote: "{a} と {b} の両方にある{unit}"
     },
     en: {
       shown: "Showing {n} of {total} {unit}", items: "{unit}",
@@ -1112,19 +1131,62 @@
     ]);
   }
 
-  function countTile(label, n, total, icon) {
+  // total is 0 for a tile that is not a share of the compared items.
+  function countTile(label, n, total, icon, note) {
     return el("div", { class: "tile" }, [el("div", { class: "label", text: label }), el("div", { class: "value", text: (icon ? icon + " " : "") + n }),
-      el("div", { class: "sub", text: total ? Math.round((n / total) * 100) + "% / " + total : "" })]);
+      total ? el("div", { class: "sub", text: fmt(T.countOf, { n: n, total: total, pct: numberFormat(1).format((n / total) * 100) }) }) : null,
+      note ? el("div", { class: "sub", text: note }) : null]);
+  }
+
+  // Metrics that classifyPair() uses: rates, and numbers with a regression_threshold.
+  function decidingMetrics() {
+    return metrics.filter((m) => !isInfo(m) && (m.aggregate === "rate" ||
+      (m.regression_threshold !== undefined && m.regression_threshold !== null)));
+  }
+
+  // The mark for a rate value: good is true for higher-is-better and false for lower-is-better.
+  function rateMark(v, m) {
+    if (v === null) return "–";
+    return v === (m.better === "higher" ? 1 : 0) ? T.rateGood : T.rateBad;
+  }
+
+  // The sentences above the compare tab: what was compared, and what counts as regressed.
+  function compareSummary(side, n) {
+    const deciding = decidingMetrics();
+    const rules = deciding.map((m) => m.aggregate === "rate"
+      ? fmt(T.ruleFlip, { label: m.label, good: T.rateGood, bad: T.rateBad })
+      : fmt(m.better === "lower" ? T.ruleUp : T.ruleDown, { label: m.label, t: fmtAmount(m.regression_threshold, m) }));
+    const reference = metrics.filter((m) => !deciding.includes(m)).map(metricName);
+    const parts = [fmt(T.compareSummary, { a: sideLabel.a, b: sideLabel[side], n: n })];
+    parts.push(rules.length ? fmt(T.rulesUsed, { rules: rules.join(T.ruleOr) }) : T.rulesNone);
+    if (reference.length) parts.push(fmt(T.rulesInfo, { list: reference.join(T.listSep) }));
+    return parts.join(LANG === "en" ? " " : "");
+  }
+
+  // The note under the regressed (worse) or improved count tile, e.g. "accuracy ✓→✗, latency over +300 ms".
+  function countNote(worse) {
+    const notes = decidingMetrics().map((m) => {
+      if (m.aggregate === "rate") {
+        return fmt(T.noteFlip, worse ? { label: m.label, from: T.rateGood, to: T.rateBad } : { label: m.label, from: T.rateBad, to: T.rateGood });
+      }
+      const up = (m.better === "lower") === worse;
+      return fmt(T.noteOver, { label: m.label, d: fmtDelta(up ? m.regression_threshold : -m.regression_threshold, m) });
+    });
+    if (!notes.length) return "";
+    return notes.length === 1 ? notes[0] : fmt(T.noteAny, { list: notes.join(T.listSep) });
+  }
+
+  // One change in the change column: a flip as "✓ → ✗", a number as "before → after (▲ delta)".
+  // ▲ / ▼ show the direction of the number, not whether it got better.
+  function changeText(ch) {
+    const m = ch.m;
+    if (ch.flip) return fmt(T.changeText, { label: m.label, a: rateMark(ch.va, m), b: rateMark(ch.vb, m) });
+    return fmt(T.changeText, { label: m.label, a: fmtMetric(ch.va, m), b: fmtMetric(ch.vb, m) })
+      + fmt(T.changeDelta, { d: (ch.vb > ch.va ? "▲ " : "▼ ") + fmtDelta(ch.vb - ch.va, m) });
   }
 
   function reasonNodes(c) {
-    return c.changes.map((ch) => {
-      const m = ch.m;
-      let text;
-      if (ch.flip) text = (ch.kind === "regressed" ? "✕ " : "✓ ") + m.label + " " + (ch.kind === "regressed" ? T.flipBad : T.flipGood);
-      else text = (ch.vb > ch.va ? "▲ " : "▼ ") + m.label + " " + fmtDelta(ch.vb - ch.va, m);
-      return el("span", { class: "badge reason", text: text });
-    });
+    return c.changes.map((ch) => el("span", { class: "badge reason", text: changeText(ch) }));
   }
 
   function textBlock(title, value) {
@@ -1138,9 +1200,11 @@
     const metricRows = metrics.map((m) => {
       const va = metricValue(p.a, m), vb = metricValue(p.b, m);
       const d = va === null || vb === null ? null : vb - va;
-      const show = (v) => (m.aggregate === "rate" ? (v === null ? "–" : v ? "true" : "false") : fmtMetric(v, m));
+      // A rate with a direction shows the same marks as the change column; a reference-only
+      // rate has no good value, so it keeps true / false.
+      const show = (v) => (m.aggregate !== "rate" ? fmtMetric(v, m) : isInfo(m) ? (v === null ? "–" : v ? "true" : "false") : rateMark(v, m));
       return el("tr", { style: "cursor:default" }, [el("td", { text: m.label, style: "white-space:nowrap" }), el("td", { class: "num", text: show(va) }), el("td", { class: "num", text: show(vb) }),
-        el("td", { class: "num" }, m.aggregate === "rate" ? (d ? (isInfo(m) ? el("span", { class: "delta neutral", text: show(va) + " → " + show(vb) }) : deltaFlip(d, m)) : el("span", { class: "delta flat", text: "= " + T.flat })) : deltaNode(d, m))]);
+        el("td", { class: "num" }, m.aggregate === "rate" ? (d ? el("span", { class: "delta " + (isInfo(m) ? "neutral" : rateMark(vb, m) === T.rateGood ? "good" : "bad"), text: show(va) + " → " + show(vb) }) : el("span", { class: "delta flat", text: "= " + T.flat })) : deltaNode(d, m))]);
     });
     card.appendChild(el("div", { class: "scroll-x" }, el("table", { class: "list", style: "margin-bottom:12px" }, [
       el("thead", null, el("tr", null, [el("th", { text: T.metric }), el("th", { text: labelA }), el("th", { text: labelB }), el("th", { text: fmt(T.delta, { a: labelA, b: labelB }) })])),
@@ -1152,11 +1216,6 @@
       card.appendChild(el("div", { class: "side-by-side" }, [textBlock(c + " — " + labelA, p.a[c]), textBlock(c + " — " + labelB, p.b[c])]));
     }
     return card;
-  }
-
-  function deltaFlip(d, m) {
-    const good = (d > 0) === (m.better === "higher");
-    return el("span", { class: "delta " + (good ? "good" : "bad"), text: (good ? "✓ " + T.flipGood : "✕ " + T.flipBad) });
   }
 
   // Regressions list order: flips first, then by severity, then by id.
@@ -1176,15 +1235,12 @@
     reg.sort(bySeverity);
     imp.sort(bySeverity);
 
-    const infoMetrics = metrics.filter(isInfo);
-    if (infoMetrics.length) {
-      root.appendChild(el("p", { class: "small muted", text: fmt(T.infoSentence, { list: infoMetrics.map(metricName).join(T.listSep) }) }));
-    }
+    root.appendChild(el("p", { class: "small muted", text: compareSummary(side, ps.length) }));
     root.appendChild(el("div", { class: "grid" }, [
-      countTile(T.paired, ps.length, 0, ""),
-      countTile(T.regressed, reg.length, ps.length, "▼"),
-      countTile(T.improved, imp.length, ps.length, "▲"),
-      countTile(T.unchanged, ps.length - reg.length - imp.length, ps.length, "=")
+      countTile(T.paired, ps.length, 0, "", fmt(T.pairedNote, { a: sideLabel.a, b: sideLabel[side] })),
+      countTile(T.regressed, reg.length, ps.length, "▼", countNote(true)),
+      countTile(T.improved, imp.length, ps.length, "▲", countNote(false)),
+      countTile(T.unchanged, ps.length - reg.length - imp.length, ps.length, "=", T.unchangedNote)
     ]));
     root.appendChild(el("div", { class: "grid" }, metrics.map((m) => deltaTile(m, ps, side))));
 
@@ -1194,7 +1250,9 @@
     root.appendChild(card);
     card.appendChild(el("div", { class: "segmented", role: "group" }, [["regressed", T.regressedTitle + " (" + reg.length + ")"], ["improved", T.improvedTitle + " (" + imp.length + ")"]].map(([k, label]) =>
       el("button", { "aria-pressed": String(view === k), text: label, onclick: () => { state.compareView = k; state.selectedId = null; renderContent(); } }))));
-    card.appendChild(el("p", { class: "small muted", text: view === "regressed" ? T.regressedSort : T.improvedSort }));
+    const flip = !list.some((x) => x.c.flip) ? "" : view === "regressed"
+      ? fmt(T.flipFirst, { from: T.rateGood, to: T.rateBad }) : fmt(T.flipFirst, { from: T.rateBad, to: T.rateGood });
+    card.appendChild(el("p", { class: "small muted", text: fmt(view === "regressed" ? T.regressedSort : T.improvedSort, { flip: flip, a: sideLabel.a, b: sideLabel[side] }) }));
     if (!list.length) {
       card.appendChild(el("div", { class: "empty", text: view === "regressed" ? T.noRegressions : T.noImprovements }));
     } else {
@@ -2035,7 +2093,7 @@
       if (!r.regressed.length) { out.push(T.noRegressedItems); continue; }
       out.push(mdTable([cols.id].concat(cols.category ? [cols.category] : [], [T.reason, T.yourLabel, T.note]), r.regressed.map((x) => {
         const rv = decisionReviewOf(r.side, x.p.id);
-        const reasons = reasonNodes(x.c).map((n) => n.textContent).join(", ");
+        const reasons = x.c.changes.map(changeText).join("; ");
         return [x.p.id].concat(cols.category ? [cellText(x.p.a[cols.category])] : [], [reasons, rv.label || T.unlabeled, rv.note || ""]);
       })));
     }

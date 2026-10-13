@@ -164,9 +164,13 @@ Five jobs, selected by `tabs` in the config:
   table" view. With candidates, buttons switch the overview between the data files.
 - **Compare:** with several candidates, buttons pick the one compared with A. Items
   are paired by id. Ids present on only one side are excluded and
-  listed in a banner. Regressions sort flips first, then by size relative to the
-  threshold. Selecting a row shows metrics side by side, text that is identical once,
-  and text that differs as two columns.
+  listed in a banner. A sentence at the top says what was compared and which change
+  of each metric counts as regressed or improved, and each count tile says what it
+  counted. The change column shows each deciding metric as before → after (a rate as
+  ○ → ×, a number with ▲ / ▼ for the direction of the number). Regressions sort
+  flips first, then by size relative to the threshold, which the page calls the
+  guide for better or worse (悪化・改善の目安). Selecting a row shows metrics side by
+  side, text that is identical once, and text that differs as two columns.
 - **Review:** applies to the first CSV (A). Labels and notes are stored in the
   browser's localStorage, keyed by the title and the data (in load mode, the title and
   the set of ids, so labels survive a data refresh), so reopening the same file
