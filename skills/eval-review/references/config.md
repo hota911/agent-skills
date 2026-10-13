@@ -408,11 +408,19 @@ is the fact-check review on `factcheck.jsonl`, using flattened names
 
 ### Experiment against a baseline
 
-`examples/experiment.config.json` (the baseline and three conditions, with the same
-`data` and `columns` as above apart from the file names and labels);
-`examples/experiment_report.config.json` adds the `report` tab with
-`"record": "experiment_record.json"` and `"report": "experiment_report.md"`. The
-experiment part:
+`examples/experiment.config.json` (the baseline and three conditions, with `data` and
+`columns` like the above apart from the file names and labels, plus `"item_label":
+"質問"`, a `correct_of_3` metric with `"format": "percent"` and an `output_chars`
+metric with `"better": "none"`); `examples/experiment_report.config.json` adds the
+`report` tab with `"record": "experiment_record.json"` and `"report":
+"experiment_report.md"`. The extra metrics:
+
+```json
+{"column": "correct_of_3", "label": "3回中の正答の割合", "aggregate": "mean", "better": "higher", "format": "percent", "regression_threshold": 0.5},
+{"column": "output_chars", "label": "出力の文字数", "unit": "文字", "aggregate": "mean", "better": "none"}
+```
+
+The experiment part:
 
 ```json
 {
@@ -422,7 +430,7 @@ experiment part:
     "criteria": [
       {"type": "absolute", "metric": "correct", "min": 0.95},
       {"type": "relative", "metric": "latency_ms", "max_worse_pct": 15},
-      {"type": "regressions", "max": 2},
+      {"type": "regressions", "max": 2, "count": "unaccepted"},
       {"type": "critical_categories", "categories": ["安全"]}
     ],
     "verdict_labels": {"pass": "仮説を支持", "review": "要レビュー", "fail": "支持しない"}

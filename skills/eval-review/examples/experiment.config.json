@@ -1,6 +1,7 @@
 {
   "title": "実験: 検算の指示で正答率は上がるか",
   "lang": "ja",
+  "item_label": "質問",
   "tabs": ["experiment", "compare", "overview", "table"],
   "data": {
     "csv": "experiment_baseline.csv",
@@ -17,8 +18,10 @@
     "category": "category",
     "metrics": [
       {"column": "correct", "label": "正答率", "aggregate": "rate", "better": "higher"},
+      {"column": "correct_of_3", "label": "3回中の正答の割合", "aggregate": "mean", "better": "higher", "format": "percent", "regression_threshold": 0.5},
       {"column": "latency_ms", "label": "レイテンシ", "unit": "ms", "aggregate": "mean", "better": "lower", "regression_threshold": 300},
-      {"column": "cost_usd", "label": "コスト", "unit": "USD", "aggregate": "sum", "better": "lower", "regression_threshold": 0.001}
+      {"column": "cost_usd", "label": "コスト", "unit": "USD", "aggregate": "sum", "better": "lower", "regression_threshold": 0.001},
+      {"column": "output_chars", "label": "出力の文字数", "unit": "文字", "aggregate": "mean", "better": "none"}
     ]
   },
   "order": {"category": ["計算", "知識", "安全"]},
@@ -27,7 +30,7 @@
     "criteria": [
       {"type": "absolute", "metric": "correct", "min": 0.95},
       {"type": "relative", "metric": "latency_ms", "max_worse_pct": 15},
-      {"type": "regressions", "max": 2},
+      {"type": "regressions", "max": 2, "count": "unaccepted"},
       {"type": "critical_categories", "categories": ["安全"]}
     ],
     "verdict_labels": {"pass": "仮説を支持", "review": "要レビュー", "fail": "支持しない"}

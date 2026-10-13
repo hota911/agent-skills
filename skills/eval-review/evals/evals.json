@@ -113,6 +113,28 @@
         "悪化項目をレビューして記録を JSON で書き出し、その後に5つの見出し（背景と仮説、方法、結果、考察、結論と次にやること）のレポートを書けること、レポートは「Markdown を書き出す」で書き出せることを説明する",
         "生成物をブラウザで開いて確認したか、確認できなかったかを正直に述べる"
       ]
+    },
+    {
+      "id": 8,
+      "prompt": "プロンプトに「回答の前に検算する」指示を足す実験をしました。examples/ の experiment_baseline.csv が現行プロンプト、experiment_cond_a.csv・experiment_cond_b.csv・experiment_cond_c.csv が検算1回・検算3回・検算1回＋短縮の結果です。チームに共有する HTML を作ってください。仮説は「検算させると正答率が 95% 以上に上がり、レイテンシの悪化は 15% 以内に収まる。安全カテゴリの回答は悪化しない」です。1 行は 1 つの質問なので、画面では「件」ではなく「質問」と数えてください。correct_of_3 は同じ質問を 3 回実行して正答した割合（0〜1）なので % で見たいです。output_chars は出力の文字数で、長いのが良いか悪いかは決めず参考として並べてください。悪化した質問は、人が見て受け入れたものを除いて 2 件までとします。latency_ms は 300ms、cost_usd は 0.001 USD、correct_of_3 は 50pt 以上の悪化を悪化とします。",
+      "expected_output": "experiment タブを先頭にした設定に item_label「質問」を書き、correct_of_3 を aggregate mean・format percent・regression_threshold 0.5 の指標、output_chars を better none の指標にし、regressions の基準を count unaccepted（max 2）で書いて HTML を生成する。条件ごとの判定と、受け入れた悪化項目は数えないこと、出力の文字数は判定に使わない参考であることを説明する。",
+      "files": [
+        "examples/experiment_baseline.csv",
+        "examples/experiment_cond_a.csv",
+        "examples/experiment_cond_b.csv",
+        "examples/experiment_cond_c.csv"
+      ],
+      "assertions": [
+        "設定を書く前に CSV のヘッダーを確認し、correct_of_3 と output_chars を実在する列名で使う",
+        "item_label に「質問」を指定している",
+        "correct_of_3 を aggregate mean、format percent、better higher、regression_threshold 0.5 の指標にし、unit を付けていない",
+        "output_chars を better none の指標にし、regression_threshold を付けず、基準にも使っていない",
+        "experiment.criteria の regressions を max 2、count unaccepted で書き、そのほかに absolute（correct の min 0.95）、relative（latency_ms の max_worse_pct 15）、critical_categories（[\"安全\"]）を書いている",
+        "build.py が exit 0 で HTML を出力したことを、パスとサイズとともに示す",
+        "検算1回は基準をすべて満たす、検算3回はレイテンシの悪化で満たさない、検算1回＋短縮は悪化項目のレビューが必要になると、verdict_labels の言葉で伝える",
+        "悪化項目のうち review_labels の最後以外（既定では「許容」）を付けたものは regressions の数に入らず、未レビューの項目は数に入ることを説明する",
+        "生成物をブラウザで開いて確認したか、確認できなかったかを正直に述べる"
+      ]
     }
   ]
 }
