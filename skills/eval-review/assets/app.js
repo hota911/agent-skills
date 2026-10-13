@@ -1323,6 +1323,13 @@
     download("\uFEFF" + reviewCsvText(), baseName(state.data.a.name) + "_reviewed.csv", "text/csv;charset=utf-8");
   }
 
+  // UTF-8 with BOM so Excel opens it correctly. `data` is a list of rows, each a list of cells.
+  // Exposed to extra tabs as ctx.downloadCsv.
+  function downloadCsv(filename, fields, data) {
+    const csvText = "\uFEFF" + Papa.unparse({ fields: fields, data: data.map((row) => row.map(cellText)) });
+    download(csvText, filename, "text/csv;charset=utf-8");
+  }
+
   // Some embedded browser panes ignore downloads without any sign the page can see, so
   // every export has a copy button next to it. When the clipboard is unavailable or
   // refused, the text is shown in a read-only textarea, selected, below the button's bar.
