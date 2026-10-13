@@ -29,11 +29,21 @@ file.
 | `candidates` | required by `compare`, `release`, and `experiment` | List of `{"file": "...", "label": "..."}`, one per model compared against `csv`, same formats. The compare view has a picker for them. Labels must be unique and differ from `label_a`. |
 | `records_path` | no | Only for `.json` files whose top level is an object: the dotted path to the record array, for example `"data.items"`. Applies to every file. An error with a `.csv` or `.jsonl` file. |
 | `label_a` | no (default `A`) | Short name of `csv` shown everywhere, for example `"現行"`. |
+| `mode` | no (default `"embed"`) | `"embed"` inlines the rows into the HTML. `"load"` writes no rows; the page reads the CSV each time it opens. `--mode` on the command line overrides it. |
 
 `csv_b` and `label_b` were replaced by `candidates`; a config that still uses them
-fails with the rewrite to use (`{"candidates": [{"file": "<csv_b>", "label": "<label_b>"}]}`).
-The `--csv-b` command-line option was removed with them.
-| `mode` | no (default `"embed"`) | `"embed"` inlines the rows into the HTML. `"load"` writes no rows; the page reads the CSV each time it opens. `--mode` on the command line overrides it. |
+fails with the rewrite to use. The `--csv-b` command-line option was removed with
+them. For example, this older `data`:
+
+```json
+"data": {"csv": "golden_model_a.csv", "label_a": "現行", "csv_b": "golden_model_b.csv", "label_b": "新"}
+```
+
+becomes:
+
+```json
+"data": {"csv": "golden_model_a.csv", "label_a": "現行", "candidates": [{"file": "golden_model_b.csv", "label": "新"}]}
+```
 
 In both modes the build reads the CSVs and runs every check below. The config in the
 HTML keeps only the file names (`golden_model_a.csv`), never the paths.

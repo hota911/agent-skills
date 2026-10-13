@@ -82,7 +82,10 @@ Five jobs, selected by `tabs` in the config:
    check each tab: no console errors, charts sized to their cards, numbers that match
    a quick count from the CSV (for example the number of rows and of `true` values).
    In load mode, serve the folder (`python3 -m http.server`) so the CSV loads, or drop
-   it on the page. If no browser is available, say so instead of claiming it renders.
+   it on the page. After a rebuild, reopen the page with a new query string
+   (`page.html?v=2`) or a forced reload; the browser may otherwise show the previous
+   build from its cache. If no browser is available, say so instead of claiming it
+   renders.
 7. **Hand the HTML file to the user** with a short reply covering:
    - the HTML path and size (from the build output);
    - what is in it and how to use it: which tab answers their question, keyboard keys
