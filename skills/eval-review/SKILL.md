@@ -101,7 +101,9 @@ Five jobs, selected by `tabs` in the config:
   `aggregate` and `better`. Boolean pass/fail metrics use `aggregate: "rate"`; a
   true->false flip of a `better: "higher"` rate is a regression. For numeric metrics
   set `regression_threshold` in the metric's unit (for example 300 for latency in ms);
-  a numeric metric without a threshold is shown but does not classify items.
+  a numeric metric without a threshold is shown but does not classify items. A metric
+  with no good direction (for example answer length) takes `better: "none"`: it is shown
+  for reference only, without better/worse or colour, and cannot be a criterion.
   Put the current model in `data.csv` and each other model in `data.candidates`.
 - "Which candidate can we release?" -> `release` first, then `compare`, `overview`,
   `table`. Turn each condition the user states into a `release.criteria` entry

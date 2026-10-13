@@ -30,7 +30,7 @@ ASSETS = SKILL_DIR / "assets"
 
 TABS = ("overview", "compare", "review", "table", "release", "experiment", "report")
 AGGREGATES = ("mean", "sum", "rate")
-BETTER = ("higher", "lower")
+BETTER = ("higher", "lower", "none")
 LANGS = ("ja", "en")
 MODES = ("embed", "load")
 
@@ -209,6 +209,9 @@ def validate_config(cfg: object) -> dict:
             fail(f"{where}.better must be one of {list(BETTER)}")
         threshold = m.get("regression_threshold")
         if threshold is not None:
+            if m["better"] == "none":
+                fail(f"{where}: better 'none' shows the metric for reference only, so it has no "
+                     "regression_threshold; remove it or set better to 'higher' or 'lower'")
             if m["aggregate"] == "rate":
                 fail(f"{where}: regression_threshold is not used with aggregate 'rate' "
                      "(a true->false flip is the regression); remove it")
@@ -326,6 +329,9 @@ def validate_decision(cfg: dict, decision: Decision) -> None:
             if c.get("metric") not in metrics:
                 fail(f"{where}.metric must be a column in config.columns.metrics: {list(metrics)}")
             m = metrics[c["metric"]]
+            if m["better"] == "none":
+                fail(f"{where}: metric {c['metric']!r} has better 'none' (reference only), so it "
+                     "cannot be a criterion; set its better to 'higher' or 'lower'")
         if kind == "absolute":
             bounds = [k for k in ("min", "max") if k in c]
             if not bounds:
@@ -644,6 +650,8 @@ def pair_rows(a: Table, b: Table, id_col: str) -> list[tuple[str, dict, dict]]:
 
 def is_regressed(a: dict, b: dict, metrics: list[dict]) -> bool:
     for m in metrics:
+        if m["better"] == "none":
+            continue
         va, vb = metric_value(a, m), metric_value(b, m)
         if va is None or vb is None:
             continue

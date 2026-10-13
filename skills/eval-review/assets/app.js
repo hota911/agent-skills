@@ -20,6 +20,7 @@
       reason: "理由", metric: "指標", delta: "差 ({b}−{a})", shared: "{a}・{b} 共通",
       noRegressions: "条件に合う悪化ケースはありません", noImprovements: "条件に合う改善ケースはありません",
       thresholdNote: "閾値", noThreshold: "閾値なし（判定に使わない）",
+      infoNote: "参考（悪化・改善の判断に使わない）", infoSentence: "{list} は参考として表示し、悪化・改善の判断には使わない。", listSep: "、", noDirection: "なし（参考）",
       reviewed: "レビュー済み {n} / {total}", unreviewedOnly: "未レビューのみ", exportCsv: "CSV を書き出す",
       prev: "← 前へ", next: "次へ →", note: "メモ", humanLabel: "あなたの判定",
       keys: "← → 移動 · 1–{n} 判定 · N メモ · Esc メモから戻る",
@@ -100,6 +101,7 @@
       reason: "Reason", metric: "Metric", delta: "Δ ({b}−{a})", shared: "Same in {a} and {b}",
       noRegressions: "No regressed cases match the filters", noImprovements: "No improved cases match the filters",
       thresholdNote: "threshold", noThreshold: "no threshold (not used for regressions)",
+      infoNote: "reference only (not used to call a change better or worse)", infoSentence: "{list} are shown for reference only and are not used to call a change better or worse.", listSep: ", ", noDirection: "none (reference)",
       reviewed: "Reviewed {n} / {total}", unreviewedOnly: "Unreviewed only", exportCsv: "Export CSV",
       prev: "← Prev", next: "Next →", note: "Note", humanLabel: "Your judgment",
       keys: "← → move · 1–{n} judgment · N note · Esc leave note",
@@ -413,6 +415,14 @@
   // differences and thresholds as pt. Must match is_fraction() in build.py.
   function isPercent(m) { return m.aggregate === "rate" || m.format === "percent"; }
 
+  // The metric's label with how it is aggregated, e.g. "Latency (mean)".
+  function metricName(m) {
+    return m.label + (m.aggregate === "mean" ? " (" + T.mean + ")" : m.aggregate === "sum" ? " (" + T.sum + ")" : "");
+  }
+
+  // better "none": shown for reference, never used to classify or judge. Must match build.py.
+  function isInfo(m) { return m.better === "none"; }
+
   function fmtMetric(v, m) {
     if (v === null || !Number.isFinite(v)) return "–";
     if (isPercent(m)) return numberFormat(1).format(v * 100) + "%";
@@ -588,6 +598,7 @@
   function classifyPair(p) {
     const changes = [];
     for (const m of metrics) {
+      if (isInfo(m)) continue; // includes rate flips
       const va = metricValue(p.a, m), vb = metricValue(p.b, m);
       if (va === null || vb === null) continue;
       if (m.aggregate === "rate") {
@@ -959,7 +970,7 @@
       value = fmtMetric(mean(values), m);
       sub = "n=" + values.length + " · p50 " + fmtMetric(quantile(values, 0.5), m) + " · p95 " + fmtMetric(quantile(values, 0.95), m);
     }
-    const label = m.label + (m.aggregate === "mean" ? " (" + T.mean + ")" : m.aggregate === "sum" ? " (" + T.sum + ")" : "");
+    const label = metricName(m);
     return el("div", { class: "tile" }, [el("div", { class: "label", text: label }), el("div", { class: "value", text: value }), el("div", { class: "sub", text: sub })]);
   }
 
@@ -1043,6 +1054,7 @@
 
   function deltaNode(d, m) {
     if (d === null) return el("span", { class: "delta flat", text: "–" });
+    if (isInfo(m)) return el("span", { class: "delta neutral", text: fmtDelta(Math.abs(d) < 1e-12 ? 0 : d, m) });
     if (Math.abs(d) < 1e-12) {
       return el("span", { class: "delta flat", text: "= " + fmtDelta(0, m) + " " + T.flat });
     }
@@ -1059,8 +1071,8 @@
     const both = pairedValues(ps, m);
     const va = aggregate(both.map((x) => x[0]), m), vb = aggregate(both.map((x) => x[1]), m);
     const d = va === null || vb === null ? null : vb - va;
-    const label = m.label + (m.aggregate === "mean" ? " (" + T.mean + ")" : m.aggregate === "sum" ? " (" + T.sum + ")" : "");
-    const threshold = m.aggregate === "rate" ? "" : m.regression_threshold === undefined || m.regression_threshold === null
+    const label = metricName(m);
+    const threshold = isInfo(m) ? " · " + T.infoNote : m.aggregate === "rate" ? "" : m.regression_threshold === undefined || m.regression_threshold === null
       ? " · " + T.noThreshold : " · " + T.thresholdNote + " " + fmtAmount(m.regression_threshold, m);
     return el("div", { class: "tile" }, [
       el("div", { class: "label", text: label }),
@@ -1098,7 +1110,7 @@
       const d = va === null || vb === null ? null : vb - va;
       const show = (v) => (m.aggregate === "rate" ? (v === null ? "–" : v ? "true" : "false") : fmtMetric(v, m));
       return el("tr", { style: "cursor:default" }, [el("td", { text: m.label, style: "white-space:nowrap" }), el("td", { class: "num", text: show(va) }), el("td", { class: "num", text: show(vb) }),
-        el("td", { class: "num" }, m.aggregate === "rate" ? (d ? deltaFlip(d, m) : el("span", { class: "delta flat", text: "= " + T.flat })) : deltaNode(d, m))]);
+        el("td", { class: "num" }, m.aggregate === "rate" ? (d ? (isInfo(m) ? el("span", { class: "delta neutral", text: show(va) + " → " + show(vb) }) : deltaFlip(d, m)) : el("span", { class: "delta flat", text: "= " + T.flat })) : deltaNode(d, m))]);
     });
     card.appendChild(el("div", { class: "scroll-x" }, el("table", { class: "list", style: "margin-bottom:12px" }, [
       el("thead", null, el("tr", null, [el("th", { text: T.metric }), el("th", { text: labelA }), el("th", { text: labelB }), el("th", { text: fmt(T.delta, { a: labelA, b: labelB }) })])),
@@ -1134,6 +1146,10 @@
     reg.sort(bySeverity);
     imp.sort(bySeverity);
 
+    const infoMetrics = metrics.filter(isInfo);
+    if (infoMetrics.length) {
+      root.appendChild(el("p", { class: "small muted", text: fmt(T.infoSentence, { list: infoMetrics.map(metricName).join(T.listSep) }) }));
+    }
     root.appendChild(el("div", { class: "grid" }, [
       countTile(T.paired, ps.length, 0, ""),
       countTile(T.regressed, reg.length, ps.length, "▼"),
