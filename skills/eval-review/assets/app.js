@@ -909,10 +909,29 @@
     return { svg: svg, bins: bins };
   }
 
-  function dataTable(headers, rows) {
+  // A cell that reads as a number: digits with optional sign, grouping commas, decimals and %.
+  const NUMBER_CELL = /^[+\-−±]?(?:\d{1,3}(?:,\d{3})+|\d*)(?:\.\d+)?(?:e[+-]?\d+)?\s*%?$/i;
+
+  // Numeric columns are right-aligned and do not wrap; text columns are left-aligned and wrap.
+  // opts.numeric: indexes of the numeric columns; without it, a column is numeric when every
+  // non-empty cell is a number. opts.minWidth: minimum width in px of each text column.
+  function dataTable(headers, rows, opts) {
+    opts = opts || {};
+    if (opts.numeric !== undefined && !(Array.isArray(opts.numeric) && opts.numeric.every((i) => Number.isInteger(i) && i >= 0 && i < headers.length))) {
+      throw new Error("dataTable: opts.numeric must be an array of column indexes (0 to " + (headers.length - 1) + ")");
+    }
+    if (opts.minWidth !== undefined && !(typeof opts.minWidth === "number" && opts.minWidth > 0)) {
+      throw new Error("dataTable: opts.minWidth must be a positive number of px");
+    }
+    const numeric = headers.map((_, i) => {
+      if (opts.numeric) return opts.numeric.includes(i);
+      const cells = rows.map((r) => String(r[i] === undefined || r[i] === null ? "" : r[i]).trim()).filter((v) => v !== "");
+      return cells.length > 0 && cells.every((v) => /\d/.test(v) && NUMBER_CELL.test(v));
+    });
+    const textStyle = opts.minWidth ? "min-width:" + opts.minWidth + "px" : null;
     return el("div", { class: "scroll-x" }, el("table", { class: "list" }, [
-      el("thead", null, el("tr", null, headers.map((h, i) => el("th", { text: h, style: i ? "text-align:right" : null })))),
-      el("tbody", null, rows.map((r) => el("tr", { style: "cursor:default" }, r.map((v, i) => el("td", { class: i ? "num" : null, text: v })))))
+      el("thead", null, el("tr", null, headers.map((h, i) => el("th", { text: h, style: numeric[i] ? "text-align:right" : textStyle })))),
+      el("tbody", null, rows.map((r) => el("tr", { style: "cursor:default" }, r.map((v, i) => el("td", { class: numeric[i] ? "num" : null, text: v })))))
     ]));
   }
 

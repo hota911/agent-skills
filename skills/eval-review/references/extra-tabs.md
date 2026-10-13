@@ -53,7 +53,7 @@ The container is new and empty each time, so `render` builds the whole tab from 
 | `barChart(holder, categories, counts)` | Horizontal bars; `counts` is a `Map` from category to count. Returns an SVG. |
 | `stackedBarChart(holder, categories, segments, countOf)` | Horizontal bars stacked by segment, with a legend; `countOf(category, segment)` returns a count. Segments that are status / verdict values keep the overview's colors. Returns an element. |
 | `histogramChart(holder, values, unit)` | Histogram of finite numbers; `unit` is an optional suffix. Returns an SVG (or an empty-state message for no values). |
-| `dataTable(headers, rows)` | A plain table; `rows` are arrays of strings. |
+| `dataTable(headers, rows, opts)` | A plain table; `rows` are arrays of strings. A column whose non-empty cells are all numbers (`12`, `1,088`, `-0.5`, `85%`) is right-aligned and does not wrap; any other column is left-aligned and wraps. `opts` is optional: `numeric` is an array of column indexes to treat as numeric instead of guessing (`{numeric: [2, 3]}`; `[]` makes every column text), and `minWidth` is the minimum width in px of each text column, so long sentences do not squeeze into a narrow column. An invalid `opts` throws. |
 | `downloadCsv(filename, fields, rows)` | Downloads a CSV (UTF-8 with BOM); `rows` are arrays of cells. |
 
 The chart functions size themselves to `holder`, so append `holder` to the container
