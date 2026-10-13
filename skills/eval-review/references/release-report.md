@@ -67,9 +67,21 @@ the file is shown literally, never executed.
   (indented items are shown at the same level).
 - Tables: a header row, a `| --- |` separator row, then data rows.
 - Emphasis: `**bold**` and `*italic*`.
+- Differences: ▲ / ▼ followed by the change, as described below.
 
 Anything else (links, images, inline code, code blocks, nested lists, `_italic_`) is
 shown as plain text. Write file names and ids without backticks.
+
+## Writing differences
+
+Write a difference the way the page does: ▲ when the number went up and ▼ when it went
+down, then the signed change, then 改善 or 悪化 (better / worse in English) for a metric
+with a direction, for example "▼ −2pt 悪化" for accuracy or "▲ +75.6 ms 悪化" for
+latency. The arrow alone never says whether the change is good; the word does. The
+report tab colours the difference from that word: in a table cell that starts with ▲ / ▼
+the whole cell, elsewhere the text from the arrow to the next 、。,; or closing
+parenthesis. A difference without either word (for a metric with `better: "none"`, or
+one the reader should not judge) stays uncoloured.
 
 ## When the report goes stale
 

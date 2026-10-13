@@ -77,6 +77,8 @@ labels and the metric labels from the config, not new names.
 ## Markdown and staleness
 
 The report tab renders the same Markdown subset as for the release report (headings,
-paragraphs, one-level lists, tables, bold and italic, HTML shown as text), and shows
+paragraphs, one-level lists, tables, bold and italic, HTML shown as text), colours ▲ / ▼
+differences from the 改善 / 悪化 written next to them (see
+[release-report.md](release-report.md#writing-differences)), and shows
 the same warning when the viewer's reviews change a verdict from the record. See
 [release-report.md](release-report.md#markdown-that-the-report-tab-renders).

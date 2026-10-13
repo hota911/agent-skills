@@ -2080,7 +2080,7 @@
         while (i < lines.length && isTableRow(lines[i])) { body.push(splitRow(lines[i])); i++; }
         out.push(el("div", { class: "scroll-x" }, el("table", { class: "list" }, [
           el("thead", null, el("tr", null, head.map((c) => el("th", null, inline(c))))),
-          el("tbody", null, body.map((row) => el("tr", { style: "cursor:default" }, head.map((_, k) => el("td", null, inline(row[k] || ""))))))])));
+          el("tbody", null, body.map((row) => el("tr", { style: "cursor:default" }, head.map((_, k) => el("td", null, deltaCell(row[k] || ""))))))])));
         continue;
       }
       const li = listItem(line);
@@ -2100,17 +2100,54 @@
     return out;
   }
 
-  function inline(text) {
+  // `marks` false leaves ▲ / ▼ uncoloured (a table cell coloured as a whole).
+  function inline(text, marks) {
+    const plain = marks === false ? (t) => [t] : markDeltas;
     const nodes = [];
     const re = /\*\*(.+?)\*\*|\*([^*\s](?:[^*]*[^*\s])?)\*/g;
     let last = 0, m;
     while ((m = re.exec(text))) {
-      if (m.index > last) nodes.push(text.slice(last, m.index));
-      nodes.push(m[1] !== undefined ? el("strong", null, inline(m[1])) : el("em", null, m[2]));
+      if (m.index > last) nodes.push(...plain(text.slice(last, m.index)));
+      nodes.push(m[1] !== undefined ? el("strong", null, inline(m[1], marks)) : el("em", null, plain(m[2])));
       last = re.lastIndex;
     }
-    if (last < text.length) nodes.push(text.slice(last));
+    if (last < text.length) nodes.push(...plain(text.slice(last)));
     return nodes;
+  }
+
+  // In a report, ▲ / ▼ give the direction of the number (as in the page's differences);
+  // whether it is better or worse comes only from the words written next to it, which
+  // pick the colour. Neither word, or both, means no colour. Classes only, never styles
+  // from the report.
+  const BETTER_WORDS = /改善|\b(?:better|improved?)\b/i;
+  const WORSE_WORDS = /悪化|\b(?:worse|regressed)\b/i;
+  function deltaWordClass(text) {
+    const good = BETTER_WORDS.test(text), bad = WORSE_WORDS.test(text);
+    return good === bad ? null : "delta " + (good ? "good" : "bad");
+  }
+
+  // Colours each fragment from ▲ / ▼ to the next 、。,; or closing parenthesis.
+  function markDeltas(text) {
+    const out = [];
+    const re = /[▲▼][^▲▼、。，,；;)）]*/g;
+    let last = 0, m;
+    while ((m = re.exec(text))) {
+      const cls = deltaWordClass(m[0]);
+      if (!cls) continue;
+      if (m.index > last) out.push(text.slice(last, m.index));
+      out.push(el("span", { class: cls, text: m[0] }));
+      last = re.lastIndex;
+    }
+    if (last < text.length) out.push(text.slice(last));
+    return out;
+  }
+
+  // A table cell that starts with ▲ / ▼ is coloured as a whole, from the words anywhere in it.
+  function deltaCell(text) {
+    const mark = text.trimStart()[0];
+    if (mark !== "▲" && mark !== "▼") return inline(text);
+    const cls = deltaWordClass(text);
+    return cls ? el("span", { class: cls }, inline(text, false)) : inline(text);
   }
 
   // ---------- table ----------
