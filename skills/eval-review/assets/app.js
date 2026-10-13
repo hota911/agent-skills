@@ -409,16 +409,25 @@
     return numberFormat(0, 3).format(v);
   }
 
+  // Rates and "format": "percent" means hold fractions (0.85) shown as % (85%), and their
+  // differences and thresholds as pt. Must match is_fraction() in build.py.
+  function isPercent(m) { return m.aggregate === "rate" || m.format === "percent"; }
+
   function fmtMetric(v, m) {
     if (v === null || !Number.isFinite(v)) return "–";
-    if (m.aggregate === "rate") return numberFormat(1).format(v * 100) + "%";
+    if (isPercent(m)) return numberFormat(1).format(v * 100) + "%";
+    return fmtNum(v) + (m.unit ? " " + m.unit : "");
+  }
+
+  // An unsigned amount of change in the metric's unit, as for a threshold.
+  function fmtAmount(v, m) {
+    if (isPercent(m)) return numberFormat(1).format(v * 100) + "pt";
     return fmtNum(v) + (m.unit ? " " + m.unit : "");
   }
 
   function fmtDelta(d, m) {
     const sign = d > 0 ? "+" : d < 0 ? "−" : "±";
-    if (m.aggregate === "rate") return sign + numberFormat(1).format(Math.abs(d) * 100) + "pt";
-    return sign + fmtNum(Math.abs(d)) + (m.unit ? " " + m.unit : "");
+    return sign + fmtAmount(Math.abs(d), m);
   }
 
   function mean(xs) { return xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null; }
@@ -819,16 +828,18 @@
       svg.appendChild(svgEl("line", { class: t === 0 ? "baseline" : "gridline", x1: left, x2: width - right, y1: sy(t), y2: sy(t) }));
       svg.appendChild(svgEl("text", { x: left - 6, y: sy(t) + 4, "text-anchor": "end", text: fmtNum(t) }));
     }
-    const edgeLabelW = Math.max(...bins.map((b) => textWidth(fmtNum(b.lo), 11))) + 10;
+    // Axis values without the unit, which is written once at the end; percent stays %.
+    const axisNum = (v) => (isPercent(m) ? fmtMetric(v, m) : fmtNum(v));
+    const edgeLabelW = Math.max(...bins.map((b) => textWidth(axisNum(b.lo), 11))) + 10;
     const every = Math.max(1, Math.ceil(edgeLabelW / slot));
     for (let i = 0; i <= nBins; i += every) {
-      svg.appendChild(svgEl("text", { x: left + i * slot, y: height - bottom + 16, "text-anchor": "middle", text: fmtNum(start + i * step) }));
+      svg.appendChild(svgEl("text", { x: left + i * slot, y: height - bottom + 16, "text-anchor": "middle", text: axisNum(start + i * step) }));
     }
     if (m.unit) svg.appendChild(svgEl("text", { x: width - right, y: height - 4, "text-anchor": "end", text: m.unit }));
     const tallest = bins.reduce((best, b) => (b.n > best.n ? b : best), bins[0]);
     bins.forEach((b, i) => {
       const x = left + i * slot + (slot - barW) / 2;
-      const g = svgEl("g", { class: "hov", tabindex: 0, "aria-label": fmtNum(b.lo) + "–" + fmtNum(b.hi) + ": " + b.n });
+      const g = svgEl("g", { class: "hov", tabindex: 0, "aria-label": axisNum(b.lo) + "–" + axisNum(b.hi) + ": " + b.n });
       g.appendChild(svgEl("rect", { class: "hit", x: left + i * slot, y: top, width: slot, height: plotH }));
       if (b.n > 0) g.appendChild(svgEl("path", { class: "mark", d: vBarPath(x, sy(b.n), barW, sy(0) - sy(b.n)), style: "fill:var(--series-1)" }));
       bindTip(g, () => tipContent(b.n + " " + T.items, [{ text: T.range + ": " + fmtMetric(b.lo, m) + " – " + fmtMetric(b.hi, m) }]));
@@ -1050,7 +1061,7 @@
     const d = va === null || vb === null ? null : vb - va;
     const label = m.label + (m.aggregate === "mean" ? " (" + T.mean + ")" : m.aggregate === "sum" ? " (" + T.sum + ")" : "");
     const threshold = m.aggregate === "rate" ? "" : m.regression_threshold === undefined || m.regression_threshold === null
-      ? " · " + T.noThreshold : " · " + T.thresholdNote + " " + fmtMetric(m.regression_threshold, m);
+      ? " · " + T.noThreshold : " · " + T.thresholdNote + " " + fmtAmount(m.regression_threshold, m);
     return el("div", { class: "tile" }, [
       el("div", { class: "label", text: label }),
       el("div", { class: "ab" }, [el("span", { text: sideLabel.a }), el("span", { text: fmtMetric(va, m) }), el("span", { text: sideLabel[side] }), el("span", { text: fmtMetric(vb, m) })]),
@@ -1415,12 +1426,6 @@
     if (c.type === "critical_categories") return fmt(T.critCritical, { cats: c.categories.join(", ") });
     const m = metricByColumn.get(c.metric);
     return c.type === "absolute" ? fmt(T.critAbsolute, { metric: m.label }) : fmt(T.critRelative, { metric: m.label, a: sideLabel.a });
-  }
-
-  // A change in a metric's own unit; rate changes are in percentage points.
-  function fmtAmount(v, m) {
-    if (m.aggregate === "rate") return numberFormat(1).format(v * 100) + "pt";
-    return fmtNum(v) + (m.unit ? " " + m.unit : "");
   }
 
   function criterionThreshold(c) {
@@ -2021,10 +2026,23 @@
     const dims = new Set(["category", "status", "verdict"].map((k) => cols[k]).filter(Boolean).concat(withReview ? ["human_label"] : []));
     const numeric = new Set(metrics.filter((m) => m.aggregate !== "rate").map((m) => m.column));
     const longText = new Set(cols.text.concat(withReview ? ["human_note"] : []));
+    const percent = new Map(metrics.filter((m) => m.aggregate !== "rate" && isPercent(m)).map((m) => [m.column, m]));
     const columns = headers.map((h, i) => {
       const c = { title: h, field: field(i), headerFilter: "input", formatter: plainFormatter };
       if (dims.has(h)) Object.assign(c, { headerFilter: "list", headerFilterParams: { valuesLookup: true, clearable: true }, headerFilterFunc: "=" });
       if (numeric.has(h)) Object.assign(c, { sorter: "number", hozAlign: "right" });
+      if (percent.has(h)) {
+        // Shown as % while the data and the download keep the fraction; the filter matches either.
+        const m = percent.get(h);
+        const shown = (v) => { const n = parseNum(v); return n === null ? String(v ?? "") : fmtMetric(n, m); };
+        Object.assign(c, {
+          formatter: (cell) => el("span", { text: shown(cell.getValue()) }),
+          headerFilterFunc: (q, v) => {
+            const s = String(q).toLowerCase();
+            return String(v ?? "").toLowerCase().includes(s) || shown(v).toLowerCase().includes(s);
+          }
+        });
+      }
       if (longText.has(h)) Object.assign(c, { formatter: textFormatter, width: 320, variableHeight: true, cssClass: "wrap" });
       if (h === cols.id) c.frozen = window.innerWidth > 600;
       return c;

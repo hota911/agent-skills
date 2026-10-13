@@ -75,7 +75,8 @@ CANDIDATE_KEYS = {"file", "label"}
 # Replaced by data.candidates; a config using them gets an error showing the rewrite.
 REMOVED_DATA_KEYS = ("csv_b", "label_b")
 COLUMN_KEYS = {"id", "text", "category", "status", "verdict", "metrics"}
-METRIC_KEYS = {"column", "label", "unit", "aggregate", "better", "regression_threshold"}
+METRIC_KEYS = {"column", "label", "unit", "aggregate", "better", "regression_threshold", "format"}
+METRIC_FORMATS = ("percent",)
 REVIEW_KEYS = {"labels"}
 EXTRA_TAB_KEYS = {"id", "title", "script"}
 
@@ -213,6 +214,14 @@ def validate_config(cfg: object) -> dict:
                      "(a true->false flip is the regression); remove it")
             if not isinstance(threshold, (int, float)) or threshold < 0:
                 fail(f"{where}.regression_threshold must be a number >= 0")
+        if "format" in m:
+            if m["format"] not in METRIC_FORMATS:
+                fail(f"{where}.format must be one of {list(METRIC_FORMATS)}, got {m['format']!r}")
+            if m["aggregate"] != "mean":
+                fail(f"{where}: format 'percent' needs aggregate 'mean' (a rate is already a "
+                     "percentage, and a sum of fractions is not one)")
+            if m["unit"]:
+                fail(f"{where}: format 'percent' shows % and pt, so remove unit {m['unit']!r}")
     if "compare" in tabs and not metrics:
         fail('config.tabs includes "compare" but config.columns.metrics is empty')
 
@@ -283,6 +292,12 @@ def decision_of(cfg: dict) -> Decision | None:
     return found[0] if found else None
 
 
+def is_fraction(m: dict) -> bool:
+    """A metric whose values are fractions shown as %: a rate, or a mean with format percent.
+    Must match isPercent() in app.js."""
+    return m["aggregate"] == "rate" or m.get("format") == "percent"
+
+
 def is_number(value: object) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
@@ -318,8 +333,9 @@ def validate_decision(cfg: dict, decision: Decision) -> None:
             for k in bounds:
                 if not is_number(c[k]):
                     fail(f"{where}.{k} must be a number")
-                if m["aggregate"] == "rate" and not 0 <= c[k] <= 1:
-                    fail(f"{where}.{k} must be between 0 and 1 for a rate metric (0.85 means 85%)")
+                if is_fraction(m) and not 0 <= c[k] <= 1:
+                    fail(f"{where}.{k} must be between 0 and 1 for a rate or percent metric "
+                         "(0.85 means 85%)")
             if len(bounds) == 2 and c["min"] > c["max"]:
                 fail(f"{where}: min {c['min']} is greater than max {c['max']}")
         elif kind == "relative":
@@ -330,8 +346,9 @@ def validate_decision(cfg: dict, decision: Decision) -> None:
             key = given[0]
             if not is_number(c[key]) or c[key] < 0:
                 fail(f"{where}.{key} must be a number >= 0")
-            if m["aggregate"] == "rate" and key == "max_worse" and c[key] > 1:
-                fail(f"{where}.max_worse is a fraction for a rate metric (0.02 means 2pt)")
+            if is_fraction(m) and key == "max_worse" and c[key] > 1:
+                fail(f"{where}.max_worse is a fraction for a rate or percent metric "
+                     "(0.02 means 2pt)")
         elif kind == "regressions":
             value = c.get("max")
             if not isinstance(value, int) or isinstance(value, bool) or value < 0:

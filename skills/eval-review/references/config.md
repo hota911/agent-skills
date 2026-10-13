@@ -120,6 +120,7 @@ A metric object:
 | `aggregate` | yes | `rate`: boolean column, shown as the share of true values. `mean`: average, with p50 and p95. `sum`: total, with the per-item average. |
 | `better` | yes | `higher` or `lower`. Decides the direction of deltas and of regressions. |
 | `regression_threshold` | no, numeric metrics only | Smallest change, in the metric's unit, that counts as a regression or an improvement. Not allowed on `rate`. |
+| `format` | no | `"percent"`: a `mean` of values between 0 and 1 (for example the average score of 3 runs) is shown as % (66.7%), and its differences, threshold, and 95% interval as pt (+14pt), as a `rate` is. Only the display changes: the data, the record JSON, and the CSV exports keep 0.667, and `regression_threshold` and the criteria's bounds are written as fractions (0.2 means 20pt, `"min": 0.75` means 75%). Allowed only with `aggregate: "mean"` and without `unit`. The build does not check that the values lie between 0 and 1 (1.2 is shown as 120%). |
 
 Values: an empty cell means "no value" and is left out of n. A `rate` cell must be one
 of `true/false`, `1/0`, `yes/no`, `y/n`, `t/f` (any case). A `mean` / `sum` cell must
@@ -174,8 +175,8 @@ A criterion object, by `type`:
 
 | `type` | Keys | Passes when |
 |--------|------|-------------|
-| `absolute` | `metric`, `min` and/or `max` | The candidate's aggregate of the metric is within the bounds. For a `rate` metric the bounds are fractions (0.85 means 85%). |
-| `relative` | `metric`, exactly one of `max_worse` / `max_worse_pct` | The candidate is worse than the current model by at most `max_worse` (in the metric's unit; a fraction for `rate`, so 0.02 means 2pt) or `max_worse_pct` percent of the current value. Getting better always passes. |
+| `absolute` | `metric`, `min` and/or `max` | The candidate's aggregate of the metric is within the bounds. For a `rate` metric or one with `format: "percent"` the bounds are fractions (0.85 means 85%). |
+| `relative` | `metric`, exactly one of `max_worse` / `max_worse_pct` | The candidate is worse than the current model by at most `max_worse` (in the metric's unit; a fraction for `rate` and `format: "percent"`, so 0.02 means 2pt) or `max_worse_pct` percent of the current value. Getting better always passes. |
 | `regressions` | `max` (integer >= 0) | The number of regressed items is at most `max`. |
 | `critical_categories` | `categories` (needs `columns.category`) | No regressed item is in one of these categories. Each value must occur in the current model's data. |
 
