@@ -13,14 +13,24 @@
       onlyIn: "{label} にだけあり {other} にない id（{n} 件、比較から除外）: {ids}",
       candidate: "比べる候補", candidateCol: "候補", candidateValue: "候補の値",
       paired: "比較した件数", regressed: "悪化", improved: "改善", unchanged: "変化なし",
-      flipBad: "正→誤", flipGood: "誤→正", better: "改善", worse: "悪化", flat: "変化なし",
+      better: "改善", worse: "悪化", flat: "変化なし", rateGood: "○", rateBad: "×",
       regressedTitle: "悪化したケース", improvedTitle: "改善したケース",
-      regressedSort: "正→誤の反転を先頭に、閾値に対する悪化の大きさ順。行を選ぶと A/B を並べて表示します。",
-      improvedSort: "誤→正の反転を先頭に、閾値に対する改善の大きさ順。行を選ぶと A/B を並べて表示します。",
-      reason: "理由", metric: "指標", delta: "差 ({b}−{a})", shared: "{a}・{b} 共通",
+      regressedSort: "{flip}悪くなり方が大きい順です。行を押すと、{a} と {b} の内容を並べて表示します。",
+      improvedSort: "{flip}良くなり方が大きい順です。行を押すと、{a} と {b} の内容を並べて表示します。",
+      flipFirst: "{from}→{to} に変わったものを先頭に、",
+      compareSummary: "{a} と {b} を、同じ id の行どうし（{n} 件）で比べた。",
+      rulesUsed: "{rules}ものを「悪化」、反対に良くなったものを「改善」とした。",
+      rulesNone: "悪化・改善を決める指標がないため、すべて「変化なし」とした。",
+      ruleFlip: "{label} が {good} から {bad} に変わった", ruleUp: "{label} が {t} を超えて上がった", ruleDown: "{label} が {t} を超えて下がった", ruleOr: "か、",
+      countOf: "{total} {unit}のうち {n}（{pct}%）", pairedNote: "{a} と {b} の両方にある id",
+      noteFlip: "{label} {from}→{to}", noteOver: "{label} {d} 超", noteAny: "{list} のどれか", unchangedNote: "悪化にも改善にも当たらない",
+      changeText: "{label}：{a} → {b}", changeDelta: "（{d}）",
+      reason: "変化", metric: "指標", delta: "差 ({b}−{a})", shared: "{a}・{b} 共通",
       noRegressions: "条件に合う悪化ケースはありません", noImprovements: "条件に合う改善ケースはありません",
-      thresholdNote: "閾値", noThreshold: "閾値なし（判定に使わない）",
+      thresholdNote: "悪化・改善の目安", noThreshold: "目安なし（悪化・改善の判断に使わない）",
+      infoNote: "参考（悪化・改善の判断に使わない）", rulesInfo: "{list} は参考として表示し、悪化・改善の判断には使わない。", listSep: "、",
       reviewed: "レビュー済み {n} / {total}", unreviewedOnly: "未レビューのみ", exportCsv: "CSV を書き出す",
+      dataChanged: "データが変わった", dataChangedHint: "レビューした後で、この項目の値が変わった。見直して、ラベルを付け直すかメモを直すと消える。",
       prev: "← 前へ", next: "次へ →", note: "メモ", humanLabel: "あなたの判定",
       keys: "← → 移動 · 1–{n} 判定 · N メモ · Esc メモから戻る",
       storageOk: "このブラウザに自動保存しています", storageNo: "このブラウザには保存できません。閉じる前に CSV を書き出してください",
@@ -57,6 +67,8 @@
       reviewRegressed: "悪化項目をレビュー ({n})", openCompare: "比較ビューで見る",
       criteriaTitle: "候補 × 基準", criterion: "基準", thresholdCol: "基準値", verdictRow: "判定",
       critAbsolute: "{metric}", critRelative: "{metric}の{a}からの悪化", critRegressions: "悪化した項目の数",
+      addedAfter: "（結果を見た後に追加）",
+      addedAfterNote: "「結果を見た後に追加」の基準は、記録を書き出した後で設定に加えたもの。判定には含めるが、報告では前からある基準と分けて書く。",
       critCritical: "重要カテゴリ（{cats}）で悪化した項目",
       worsePos: "（悪化）", worseNeg: "（改善）", nItems: "{n} 件",
       metricsTitle: "指標ごとの差と 95% 区間（参考）",
@@ -74,13 +86,22 @@
       experimentRule: "判定の順: 自動の基準を1つでも満たさないか「{reject}」が1件でもあれば「{fail}」、悪化項目にレビューしていないものが残れば「{review}」、それ以外は「{pass}」。95% 区間は判定に使わない。集計はフィルタにかかわらず全件。",
       ciGuide: "区間の読み方", ciExcludesZero: "区間が0を含まない：差は誤差の範囲を超えている可能性が高い",
       ciIncludesZero: "区間が0を含む：差は誤差の範囲かもしれない",
-      exportReport: "Markdown を書き出す",
+      exportReport: "Markdown を書き出す", copyReport: "Markdown をコピー",
+      copyCsv: "CSV をコピー", copyMd: "記録の Markdown をコピー", copyJson: "記録の JSON をコピー",
+      copied: "✓ クリップボードにコピーしました",
+      copyFallback: "クリップボードに書き込めませんでした。下の欄を選択してコピーしてください（全選択してから Ctrl+C / ⌘C）。",
       detailHint: "値・判定・理由を押すと、判断の根拠を表の下に表示します（もう一度押すか Esc で閉じる）。",
       close: "閉じる", verdictReasons: "判定の理由", result: "結果", aggregation: "集計方法",
       aggRate: "割合（true の件数 / 値のある件数）", pairedN: "n（両方に値がある同じ id の項目）", valueOf: "{label} の値",
       failMin: "下限 {v} を下回る", failMax: "上限 {v} を上回る", noValue: "両方に値がある項目がないため満たさない",
       whyFail: "満たさない理由", direction: "良い方向", higherBetter: "高いほど良い", lowerBetter: "低いほど良い",
       comparedValue: "基準値と比べる値", regCount: "悪化した項目 {n} 件（上限 {max} 件）",
+      pending: "△ レビュー待ち", pendingCriteria: "レビュー待ちの基準", critUnaccepted: "受け入れていない悪化した項目の数",
+      unacceptedRule: "「{name}」は、レビューで「{reject}」以外のラベルを付けた項目を数えず、未レビューの項目は数える。未レビューの項目を数えたために上限を超えるときは、その基準をレビュー待ちとし、判定は「{review}」にする。",
+      unacceptedCount: "受け入れていない悪化した項目 {n} 件（上限 {max} 件）。悪化した {total} 件のうち、レビューで受け入れた {accepted} 件を除き、未レビューの {unreviewed} 件を数えた",
+      unacceptedCountRejected: "受け入れていない悪化した項目 {n} 件（上限 {max} 件）。悪化した {total} 件のうち、レビューで受け入れた {accepted} 件を除き、未レビューの {unreviewed} 件と「{reject}」の {rejected} 件を数えた",
+      whyPending: "レビュー待ちの理由", pendingReason: "上限を超えるのは未レビューの項目を数えているため。レビューが済むまで判定は「{review}」になる。",
+      countedItems: "数えた項目（未レビュー・「{reject}」）: {n} 件", notCountedItems: "数えない項目（レビューで受け入れた）: {n} 件",
       openInReview: "レビューで開く", goTo: "移動"
     },
     en: {
@@ -93,14 +114,24 @@
       onlyIn: "ids in {label} but not in {other} ({n}, excluded from comparison): {ids}",
       candidate: "Candidate", candidateCol: "Candidate", candidateValue: "Candidate value",
       paired: "Compared cases", regressed: "Regressed", improved: "Improved", unchanged: "Unchanged",
-      flipBad: "correct→incorrect", flipGood: "incorrect→correct", better: "better", worse: "worse", flat: "no change",
+      better: "better", worse: "worse", flat: "no change", rateGood: "✓", rateBad: "✗",
       regressedTitle: "Regressed cases", improvedTitle: "Improved cases",
-      regressedSort: "Correct→incorrect flips first, then by worsening relative to the threshold. Select a row to see A and B side by side.",
-      improvedSort: "Incorrect→correct flips first, then by improvement relative to the threshold. Select a row to see A and B side by side.",
-      reason: "Reason", metric: "Metric", delta: "Δ ({b}−{a})", shared: "Same in {a} and {b}",
+      regressedSort: "Sorted {flip}by how much worse they got. Select a row to see {a} and {b} side by side.",
+      improvedSort: "Sorted {flip}by how much better they got. Select a row to see {a} and {b} side by side.",
+      flipFirst: "with {from}→{to} changes first, then ",
+      compareSummary: "Compared {a} and {b} on {n} {unit} with the same id.",
+      rulesUsed: "\"Regressed\" {unit} are those where {rules}; \"improved\" {unit} changed the other way.",
+      rulesNone: "No metric is used to call a change better or worse, so all {unit} count as unchanged.",
+      ruleFlip: "{label} changed from {good} to {bad}", ruleUp: "{label} rose by more than {t}", ruleDown: "{label} fell by more than {t}", ruleOr: ", or ",
+      countOf: "{n} of {total} {unit} ({pct}%)", pairedNote: "{unit} in both {a} and {b}",
+      noteFlip: "{label} {from}→{to}", noteOver: "{label} over {d}", noteAny: "any of: {list}", unchangedNote: "neither regressed nor improved",
+      changeText: "{label}: {a} → {b}", changeDelta: " ({d})",
+      reason: "Change", metric: "Metric", delta: "Δ ({b}−{a})", shared: "Same in {a} and {b}",
       noRegressions: "No regressed cases match the filters", noImprovements: "No improved cases match the filters",
-      thresholdNote: "threshold", noThreshold: "no threshold (not used for regressions)",
+      thresholdNote: "threshold for better or worse", noThreshold: "no threshold (not used to call a change better or worse)",
+      infoNote: "reference only (not used to call a change better or worse)", rulesInfo: "{list} are shown for reference only and are not used to call a change better or worse.", listSep: ", ",
       reviewed: "Reviewed {n} / {total}", unreviewedOnly: "Unreviewed only", exportCsv: "Export CSV",
+      dataChanged: "data changed", dataChangedHint: "This item's values changed after it was reviewed. Check it again; setting the label or editing the note clears this mark.",
       prev: "← Prev", next: "Next →", note: "Note", humanLabel: "Your judgment",
       keys: "← → move · 1–{n} judgment · N note · Esc leave note",
       storageOk: "Auto-saved in this browser", storageNo: "Cannot save in this browser. Export the CSV before closing.",
@@ -137,6 +168,8 @@
       reviewRegressed: "Review regressed items ({n})", openCompare: "Open in compare",
       criteriaTitle: "Candidates × criteria", criterion: "Criterion", thresholdCol: "Threshold", verdictRow: "Verdict",
       critAbsolute: "{metric}", critRelative: "{metric} worse than {a}", critRegressions: "Regressed items",
+      addedAfter: " (added after the results)",
+      addedAfterNote: "Criteria marked \"added after the results\" were added to the config after the record was exported. They count toward the verdict, but the report keeps them apart from the criteria written before.",
       critCritical: "Regressed items in critical categories ({cats})",
       worsePos: " (worse)", worseNeg: " (better)", nItems: "{n}",
       metricsTitle: "Difference per metric with 95% interval (reference)",
@@ -154,14 +187,75 @@
       experimentRule: "Order: any criterion not met or any \"{reject}\" item means \"{fail}\"; otherwise any regressed item left unreviewed means \"{review}\"; otherwise \"{pass}\". The 95% interval is not used in the verdict. Computed on all items, regardless of the filters.",
       ciGuide: "Reading the interval", ciExcludesZero: "Interval excludes 0: the difference is likely beyond noise",
       ciIncludesZero: "Interval includes 0: the difference may be within noise",
-      exportReport: "Export Markdown",
+      exportReport: "Export Markdown", copyReport: "Copy Markdown",
+      copyCsv: "Copy CSV", copyMd: "Copy record (Markdown)", copyJson: "Copy record (JSON)",
+      copied: "✓ Copied to the clipboard",
+      copyFallback: "Could not write to the clipboard. Select the text below and copy it (select all, then Ctrl+C / ⌘C).",
       detailHint: "Click a value, a verdict, or a reason to see what decided it below the table (click again or press Esc to close).",
       close: "Close", verdictReasons: "Why this verdict", result: "Result", aggregation: "Aggregation",
       aggRate: "rate (true count / items with a value)", pairedN: "n (items with the same id and a value on both sides)", valueOf: "{label} value",
       failMin: "below the minimum {v}", failMax: "above the maximum {v}", noValue: "not met: no item has a value on both sides",
       whyFail: "Why not met", direction: "Better when", higherBetter: "higher", lowerBetter: "lower",
       comparedValue: "Compared with the threshold", regCount: "{n} regressed items (at most {max})",
+      pending: "△ awaiting review", pendingCriteria: "Criteria awaiting review", critUnaccepted: "Regressed items not accepted",
+      unacceptedRule: "\"{name}\" does not count items reviewed with a label other than \"{reject}\", and counts unreviewed items. When it exceeds the maximum only because unreviewed items are counted, the criterion awaits review and the verdict is \"{review}\".",
+      unacceptedCount: "{n} regressed items not accepted (at most {max}). Of {total} regressed items, {accepted} accepted in review are left out and {unreviewed} unreviewed are counted",
+      unacceptedCountRejected: "{n} regressed items not accepted (at most {max}). Of {total} regressed items, {accepted} accepted in review are left out, and {unreviewed} unreviewed and {rejected} \"{reject}\" are counted",
+      whyPending: "Why awaiting review", pendingReason: "The maximum is exceeded only because unreviewed items are counted. Until they are reviewed, the verdict is \"{review}\".",
+      countedItems: "Counted items (unreviewed or \"{reject}\"): {n}", notCountedItems: "Items not counted (accepted in review): {n}",
       openInReview: "Open in review", goTo: "Go to"
+    }
+  };
+
+  // Strings that count items, rewritten with {unit} (config.item_label). They replace the
+  // STRINGS entries only when item_label is set, so pages without it read as before.
+  const ITEM_STRINGS = {
+    ja: {
+      shown: "表示 {n} / {total} {unit}", items: "{unit}", perItem: "1{unit}あたり",
+      countsTitle: "{cat} × {stack} の{unit}の数", countsTitleSingle: "{cat} 別の{unit}の数", count: "{unit}の数",
+      onlyIn: "{label} にだけあり {other} にない id（{n} {unit}、比較から除外）: {ids}",
+      paired: "比較した{unit}の数", regressedTitle: "悪化した{unit}", improvedTitle: "改善した{unit}",
+      noRegressions: "条件に合う悪化した{unit}はありません", noImprovements: "条件に合う改善した{unit}はありません",
+      reviewed: "レビュー済み {n} / {total} {unit}", noItems: "条件に合う{unit}はありません",
+      verdictRule: "判定の順: 自動の基準を1つでも満たさないか「{reject}」が1件でもあれば出さない、悪化した{unit}にレビューしていないものが残れば要レビュー、それ以外は出してよい。集計はフィルタにかかわらず全件。",
+      experimentRule: "判定の順: 自動の基準を1つでも満たさないか「{reject}」が1件でもあれば「{fail}」、悪化した{unit}にレビューしていないものが残れば「{review}」、それ以外は「{pass}」。95% 区間は判定に使わない。集計はフィルタにかかわらず全件。",
+      rejectedItems: "「{reject}」の{unit}: {n}", unreviewedItems: "未レビューの悪化した{unit}: {n} / {total}",
+      reviewRegressed: "悪化した{unit}をレビュー ({n})", critRegressions: "悪化した{unit}の数",
+      critCritical: "重要カテゴリ（{cats}）で悪化した{unit}", nItems: "{n} {unit}",
+      reviewTitle: "{label} の悪化した{unit}のレビュー", allRegressed: "悪化した{unit}の一覧",
+      noRegressedItems: "この候補に悪化した{unit}はありません", reviewsH: "悪化した{unit}のレビュー",
+      pairedN: "n（両方に値がある同じ id の{unit}）", regCount: "悪化した{unit} {n}（上限 {max}）",
+      critUnaccepted: "受け入れていない悪化した{unit}の数",
+      unacceptedRule: "「{name}」は、レビューで「{reject}」以外のラベルを付けた{unit}を数えず、未レビューの{unit}は数える。未レビューの{unit}を数えたために上限を超えるときは、その基準をレビュー待ちとし、判定は「{review}」にする。",
+      unacceptedCount: "受け入れていない悪化した{unit} {n}（上限 {max}）。悪化した {total} {unit}のうち、レビューで受け入れた {accepted} {unit}を除き、未レビューの {unreviewed} {unit}を数えた",
+      unacceptedCountRejected: "受け入れていない悪化した{unit} {n}（上限 {max}）。悪化した {total} {unit}のうち、レビューで受け入れた {accepted} {unit}を除き、未レビューの {unreviewed} {unit}と「{reject}」の {rejected} {unit}を数えた",
+      pendingReason: "上限を超えるのは未レビューの{unit}を数えているため。レビューが済むまで判定は「{review}」になる。",
+      countedItems: "数えた{unit}（未レビュー・「{reject}」）: {n}", notCountedItems: "数えない{unit}（レビューで受け入れた）: {n}",
+      compareSummary: "{a} と {b} を、同じ{unit}どうし（{n} {unit}）で比べた。",
+      rulesUsed: "{rules}{unit}を「悪化」、反対に良くなった{unit}を「改善」とした。",
+      pairedNote: "{a} と {b} の両方にある{unit}"
+    },
+    en: {
+      shown: "Showing {n} of {total} {unit}", items: "{unit}",
+      countsTitle: "Number of {unit} by {cat} × {stack}", countsTitleSingle: "Number of {unit} by {cat}", count: "Number of {unit}",
+      onlyIn: "ids in {label} but not in {other} ({n} {unit}, excluded from comparison): {ids}",
+      paired: "Compared {unit}", regressedTitle: "Regressed {unit}", improvedTitle: "Improved {unit}",
+      noRegressions: "No regressed {unit} match the filters", noImprovements: "No improved {unit} match the filters",
+      reviewed: "Reviewed {n} / {total} {unit}", noItems: "No {unit} match the filters",
+      verdictRule: "Order: any criterion not met or any \"{reject}\" item means do not release; otherwise any regressed {unit} left unreviewed means needs review; otherwise release. Computed on all items, regardless of the filters.",
+      experimentRule: "Order: any criterion not met or any \"{reject}\" item means \"{fail}\"; otherwise any regressed {unit} left unreviewed means \"{review}\"; otherwise \"{pass}\". The 95% interval is not used in the verdict. Computed on all items, regardless of the filters.",
+      rejectedItems: "\"{reject}\" {unit}: {n}", unreviewedItems: "Unreviewed regressed {unit}: {n} / {total}",
+      reviewRegressed: "Review regressed {unit} ({n})", critRegressions: "Regressed {unit}",
+      critCritical: "Regressed {unit} in critical categories ({cats})", nItems: "{n} {unit}",
+      reviewTitle: "Review regressed {unit} of {label}", allRegressed: "All regressed {unit}",
+      noRegressedItems: "This candidate has no regressed {unit}", reviewsH: "Reviews of regressed {unit}",
+      pairedN: "n ({unit} with the same id and a value on both sides)", regCount: "{n} regressed {unit} (at most {max})",
+      critUnaccepted: "Regressed {unit} not accepted",
+      unacceptedRule: "\"{name}\" does not count {unit} reviewed with a label other than \"{reject}\", and counts unreviewed {unit}. When it exceeds the maximum only because unreviewed {unit} are counted, the criterion awaits review and the verdict is \"{review}\".",
+      unacceptedCount: "{n} regressed {unit} not accepted (at most {max}). Of {total} regressed {unit}, {accepted} accepted in review are left out and {unreviewed} unreviewed are counted",
+      unacceptedCountRejected: "{n} regressed {unit} not accepted (at most {max}). Of {total} regressed {unit}, {accepted} accepted in review are left out, and {unreviewed} unreviewed and {rejected} \"{reject}\" are counted",
+      pendingReason: "The maximum is exceeded only because unreviewed {unit} are counted. Until they are reviewed, the verdict is \"{review}\".",
+      countedItems: "Counted {unit} (unreviewed or \"{reject}\"): {n}", notCountedItems: "{unit} not counted (accepted in review): {n}"
     }
   };
 
@@ -176,7 +270,13 @@
 
   const payload = JSON.parse(document.getElementById("page-data").textContent);
   const cfg = payload.config;
-  const T = STRINGS[cfg.lang] || STRINGS.ja;
+  const LANG = STRINGS[cfg.lang] ? cfg.lang : "ja";
+  // What one row is (config.item_label, plural in English), or the generic word.
+  const itemLabel = cfg.item_label || null;
+  const UNIT = itemLabel || (LANG === "en" ? "items" : "件");
+  // {unit} is filled in once here, so every string reads with item_label wherever it is used.
+  const T = Object.fromEntries(Object.entries(Object.assign({}, STRINGS[LANG], itemLabel ? ITEM_STRINGS[LANG] : {}))
+    .map(([k, v]) => [k, typeof v === "string" ? v.split("{unit}").join(UNIT) : v]));
   const cols = cfg.columns;
   const metrics = cols.metrics;
   // Side keys: "a" is data.csv (the current model when comparing), "c1", "c2", ... are
@@ -203,6 +303,10 @@
   const decision = decisionTab ? cfg[decisionTab] : null;
   const isExperiment = decisionTab === "experiment";
   const decisionRecord = payload.record || null;
+  // Indexes of the criteria added to the config after the record was exported, that is,
+  // after the results were seen. The key must match ADDED_KEY in build.py.
+  const ADDED_KEY = "added_after_results";
+  const addedAfter = new Set(decisionRecord ? decisionRecord[ADDED_KEY] : []);
   function perSide(make) { return Object.fromEntries(SIDES.map((s) => [s, make(s)])); }
   const stackCol = cols.status || cols.verdict || null;
   const numFmtCache = {};
@@ -366,16 +470,33 @@
     return numberFormat(0, 3).format(v);
   }
 
+  // Rates and "format": "percent" means hold fractions (0.85) shown as % (85%), and their
+  // differences and thresholds as pt. Must match is_fraction() in build.py.
+  function isPercent(m) { return m.aggregate === "rate" || m.format === "percent"; }
+
+  // The metric's label with how it is aggregated, e.g. "Latency (mean)".
+  function metricName(m) {
+    return m.label + (m.aggregate === "mean" ? " (" + T.mean + ")" : m.aggregate === "sum" ? " (" + T.sum + ")" : "");
+  }
+
+  // better "none": shown for reference, never used to classify or judge. Must match build.py.
+  function isInfo(m) { return m.better === "none"; }
+
   function fmtMetric(v, m) {
     if (v === null || !Number.isFinite(v)) return "–";
-    if (m.aggregate === "rate") return numberFormat(1).format(v * 100) + "%";
+    if (isPercent(m)) return numberFormat(1).format(v * 100) + "%";
+    return fmtNum(v) + (m.unit ? " " + m.unit : "");
+  }
+
+  // An unsigned amount of change in the metric's unit, as for a threshold.
+  function fmtAmount(v, m) {
+    if (isPercent(m)) return numberFormat(1).format(v * 100) + "pt";
     return fmtNum(v) + (m.unit ? " " + m.unit : "");
   }
 
   function fmtDelta(d, m) {
     const sign = d > 0 ? "+" : d < 0 ? "−" : "±";
-    if (m.aggregate === "rate") return sign + numberFormat(1).format(Math.abs(d) * 100) + "pt";
-    return sign + fmtNum(Math.abs(d)) + (m.unit ? " " + m.unit : "");
+    return sign + fmtAmount(Math.abs(d), m);
   }
 
   function mean(xs) { return xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null; }
@@ -536,6 +657,7 @@
   function classifyPair(p) {
     const changes = [];
     for (const m of metrics) {
+      if (isInfo(m)) continue; // includes rate flips
       const va = metricValue(p.a, m), vb = metricValue(p.b, m);
       if (va === null || vb === null) continue;
       if (m.aggregate === "rate") {
@@ -607,11 +729,10 @@
     state.reviewCursor = null;
     const a = state.data.a;
     if (!a) { state.storageKey = null; state.storageOk = false; return; }
-    // Embed mode keys by the full data, so a different snapshot starts empty. Load mode
-    // keys by title + id set, so labels survive reloading updated data with the same ids.
-    state.storageKey = loadMode
-      ? STORAGE_PREFIX + "ids:" + fnv1a(JSON.stringify([cfg.title, a.rows.map((r) => r[cols.id]).sort()]))
-      : STORAGE_PREFIX + fnv1a(JSON.stringify([cfg.title, a.headers, a.rows]));
+    // Both modes key by title + id set, so labels survive a rebuild or reload with an added
+    // column or changed values; each review keeps a fingerprint of its row (fp) instead,
+    // and an item whose row changed since is marked.
+    state.storageKey = STORAGE_PREFIX + "ids:" + fnv1a(JSON.stringify([cfg.title, a.rows.map((r) => r[cols.id]).sort()]));
     try {
       const raw = window.localStorage.getItem(state.storageKey);
       if (raw) state.review = JSON.parse(raw) || {};
@@ -633,8 +754,21 @@
 
   function reviewOf(id) { return state.review[id] || { label: "", note: "" }; }
 
+  // The configured columns of a row, which a review of the row was made against.
+  function rowFingerprint(row) {
+    return fnv1a(JSON.stringify(requiredColumns().map((c) => cellText(row[c]))));
+  }
+
+  // True when a stored review has a fingerprint and the data has changed since.
+  function reviewIsStale(rv, fp) { return Boolean(rv.fp && (rv.label || rv.note) && rv.fp !== fp); }
+
+  function staleBadge() {
+    return el("span", { class: "badge stale", title: T.dataChangedHint, text: "⚠ " + T.dataChanged });
+  }
+
   function setReview(id, patch) {
-    const next = Object.assign({}, reviewOf(id), patch);
+    const row = state.data.a.rows.find((r) => r[cols.id] === id);
+    const next = Object.assign({}, reviewOf(id), patch, row ? { fp: rowFingerprint(row) } : {});
     if (!next.label && !next.note) delete state.review[id];
     else state.review[id] = next;
     saveReview();
@@ -776,16 +910,18 @@
       svg.appendChild(svgEl("line", { class: t === 0 ? "baseline" : "gridline", x1: left, x2: width - right, y1: sy(t), y2: sy(t) }));
       svg.appendChild(svgEl("text", { x: left - 6, y: sy(t) + 4, "text-anchor": "end", text: fmtNum(t) }));
     }
-    const edgeLabelW = Math.max(...bins.map((b) => textWidth(fmtNum(b.lo), 11))) + 10;
+    // Axis values without the unit, which is written once at the end; percent stays %.
+    const axisNum = (v) => (isPercent(m) ? fmtMetric(v, m) : fmtNum(v));
+    const edgeLabelW = Math.max(...bins.map((b) => textWidth(axisNum(b.lo), 11))) + 10;
     const every = Math.max(1, Math.ceil(edgeLabelW / slot));
     for (let i = 0; i <= nBins; i += every) {
-      svg.appendChild(svgEl("text", { x: left + i * slot, y: height - bottom + 16, "text-anchor": "middle", text: fmtNum(start + i * step) }));
+      svg.appendChild(svgEl("text", { x: left + i * slot, y: height - bottom + 16, "text-anchor": "middle", text: axisNum(start + i * step) }));
     }
     if (m.unit) svg.appendChild(svgEl("text", { x: width - right, y: height - 4, "text-anchor": "end", text: m.unit }));
     const tallest = bins.reduce((best, b) => (b.n > best.n ? b : best), bins[0]);
     bins.forEach((b, i) => {
       const x = left + i * slot + (slot - barW) / 2;
-      const g = svgEl("g", { class: "hov", tabindex: 0, "aria-label": fmtNum(b.lo) + "–" + fmtNum(b.hi) + ": " + b.n });
+      const g = svgEl("g", { class: "hov", tabindex: 0, "aria-label": axisNum(b.lo) + "–" + axisNum(b.hi) + ": " + b.n });
       g.appendChild(svgEl("rect", { class: "hit", x: left + i * slot, y: top, width: slot, height: plotH }));
       if (b.n > 0) g.appendChild(svgEl("path", { class: "mark", d: vBarPath(x, sy(b.n), barW, sy(0) - sy(b.n)), style: "fill:var(--series-1)" }));
       bindTip(g, () => tipContent(b.n + " " + T.items, [{ text: T.range + ": " + fmtMetric(b.lo, m) + " – " + fmtMetric(b.hi, m) }]));
@@ -795,10 +931,29 @@
     return { svg: svg, bins: bins };
   }
 
-  function dataTable(headers, rows) {
+  // A cell that reads as a number: digits with optional sign, grouping commas, decimals and %.
+  const NUMBER_CELL = /^[+\-−±]?(?:\d{1,3}(?:,\d{3})+|\d*)(?:\.\d+)?(?:e[+-]?\d+)?\s*%?$/i;
+
+  // Numeric columns are right-aligned and do not wrap; text columns are left-aligned and wrap.
+  // opts.numeric: indexes of the numeric columns; without it, a column is numeric when every
+  // non-empty cell is a number. opts.minWidth: minimum width in px of each text column.
+  function dataTable(headers, rows, opts) {
+    opts = opts || {};
+    if (opts.numeric !== undefined && !(Array.isArray(opts.numeric) && opts.numeric.every((i) => Number.isInteger(i) && i >= 0 && i < headers.length))) {
+      throw new Error("dataTable: opts.numeric must be an array of column indexes (0 to " + (headers.length - 1) + ")");
+    }
+    if (opts.minWidth !== undefined && !(typeof opts.minWidth === "number" && opts.minWidth > 0)) {
+      throw new Error("dataTable: opts.minWidth must be a positive number of px");
+    }
+    const numeric = headers.map((_, i) => {
+      if (opts.numeric) return opts.numeric.includes(i);
+      const cells = rows.map((r) => String(r[i] === undefined || r[i] === null ? "" : r[i]).trim()).filter((v) => v !== "");
+      return cells.length > 0 && cells.every((v) => /\d/.test(v) && NUMBER_CELL.test(v));
+    });
+    const textStyle = opts.minWidth ? "min-width:" + opts.minWidth + "px" : null;
     return el("div", { class: "scroll-x" }, el("table", { class: "list" }, [
-      el("thead", null, el("tr", null, headers.map((h, i) => el("th", { text: h, style: i ? "text-align:right" : null })))),
-      el("tbody", null, rows.map((r) => el("tr", { style: "cursor:default" }, r.map((v, i) => el("td", { class: i ? "num" : null, text: v })))))
+      el("thead", null, el("tr", null, headers.map((h, i) => el("th", { text: h, style: numeric[i] ? "text-align:right" : textStyle })))),
+      el("tbody", null, rows.map((r) => el("tr", { style: "cursor:default" }, r.map((v, i) => el("td", { class: numeric[i] ? "num" : null, text: v })))))
     ]));
   }
 
@@ -905,7 +1060,7 @@
       value = fmtMetric(mean(values), m);
       sub = "n=" + values.length + " · p50 " + fmtMetric(quantile(values, 0.5), m) + " · p95 " + fmtMetric(quantile(values, 0.95), m);
     }
-    const label = m.label + (m.aggregate === "mean" ? " (" + T.mean + ")" : m.aggregate === "sum" ? " (" + T.sum + ")" : "");
+    const label = metricName(m);
     return el("div", { class: "tile" }, [el("div", { class: "label", text: label }), el("div", { class: "value", text: value }), el("div", { class: "sub", text: sub })]);
   }
 
@@ -989,6 +1144,7 @@
 
   function deltaNode(d, m) {
     if (d === null) return el("span", { class: "delta flat", text: "–" });
+    if (isInfo(m)) return el("span", { class: "delta neutral", text: fmtDelta(Math.abs(d) < 1e-12 ? 0 : d, m) });
     if (Math.abs(d) < 1e-12) {
       return el("span", { class: "delta flat", text: "= " + fmtDelta(0, m) + " " + T.flat });
     }
@@ -1005,9 +1161,9 @@
     const both = pairedValues(ps, m);
     const va = aggregate(both.map((x) => x[0]), m), vb = aggregate(both.map((x) => x[1]), m);
     const d = va === null || vb === null ? null : vb - va;
-    const label = m.label + (m.aggregate === "mean" ? " (" + T.mean + ")" : m.aggregate === "sum" ? " (" + T.sum + ")" : "");
-    const threshold = m.aggregate === "rate" ? "" : m.regression_threshold === undefined || m.regression_threshold === null
-      ? " · " + T.noThreshold : " · " + T.thresholdNote + " " + fmtMetric(m.regression_threshold, m);
+    const label = metricName(m);
+    const threshold = isInfo(m) ? " · " + T.infoNote : m.aggregate === "rate" ? "" : m.regression_threshold === undefined || m.regression_threshold === null
+      ? " · " + T.noThreshold : " · " + T.thresholdNote + " " + fmtAmount(m.regression_threshold, m);
     return el("div", { class: "tile" }, [
       el("div", { class: "label", text: label }),
       el("div", { class: "ab" }, [el("span", { text: sideLabel.a }), el("span", { text: fmtMetric(va, m) }), el("span", { text: sideLabel[side] }), el("span", { text: fmtMetric(vb, m) })]),
@@ -1016,19 +1172,62 @@
     ]);
   }
 
-  function countTile(label, n, total, icon) {
+  // total is 0 for a tile that is not a share of the compared items.
+  function countTile(label, n, total, icon, note) {
     return el("div", { class: "tile" }, [el("div", { class: "label", text: label }), el("div", { class: "value", text: (icon ? icon + " " : "") + n }),
-      el("div", { class: "sub", text: total ? Math.round((n / total) * 100) + "% / " + total : "" })]);
+      total ? el("div", { class: "sub", text: fmt(T.countOf, { n: n, total: total, pct: numberFormat(1).format((n / total) * 100) }) }) : null,
+      note ? el("div", { class: "sub", text: note }) : null]);
+  }
+
+  // Metrics that classifyPair() uses: rates, and numbers with a regression_threshold.
+  function decidingMetrics() {
+    return metrics.filter((m) => !isInfo(m) && (m.aggregate === "rate" ||
+      (m.regression_threshold !== undefined && m.regression_threshold !== null)));
+  }
+
+  // The mark for a rate value: good is true for higher-is-better and false for lower-is-better.
+  function rateMark(v, m) {
+    if (v === null) return "–";
+    return v === (m.better === "higher" ? 1 : 0) ? T.rateGood : T.rateBad;
+  }
+
+  // The sentences above the compare tab: what was compared, and what counts as regressed.
+  function compareSummary(side, n) {
+    const deciding = decidingMetrics();
+    const rules = deciding.map((m) => m.aggregate === "rate"
+      ? fmt(T.ruleFlip, { label: m.label, good: T.rateGood, bad: T.rateBad })
+      : fmt(m.better === "lower" ? T.ruleUp : T.ruleDown, { label: m.label, t: fmtAmount(m.regression_threshold, m) }));
+    const reference = metrics.filter((m) => !deciding.includes(m)).map(metricName);
+    const parts = [fmt(T.compareSummary, { a: sideLabel.a, b: sideLabel[side], n: n })];
+    parts.push(rules.length ? fmt(T.rulesUsed, { rules: rules.join(T.ruleOr) }) : T.rulesNone);
+    if (reference.length) parts.push(fmt(T.rulesInfo, { list: reference.join(T.listSep) }));
+    return parts.join(LANG === "en" ? " " : "");
+  }
+
+  // The note under the regressed (worse) or improved count tile, e.g. "accuracy ✓→✗, latency over +300 ms".
+  function countNote(worse) {
+    const notes = decidingMetrics().map((m) => {
+      if (m.aggregate === "rate") {
+        return fmt(T.noteFlip, worse ? { label: m.label, from: T.rateGood, to: T.rateBad } : { label: m.label, from: T.rateBad, to: T.rateGood });
+      }
+      const up = (m.better === "lower") === worse;
+      return fmt(T.noteOver, { label: m.label, d: fmtDelta(up ? m.regression_threshold : -m.regression_threshold, m) });
+    });
+    if (!notes.length) return "";
+    return notes.length === 1 ? notes[0] : fmt(T.noteAny, { list: notes.join(T.listSep) });
+  }
+
+  // One change in the change column: a flip as "✓ → ✗", a number as "before → after (▲ delta)".
+  // ▲ / ▼ show the direction of the number, not whether it got better.
+  function changeText(ch) {
+    const m = ch.m;
+    if (ch.flip) return fmt(T.changeText, { label: m.label, a: rateMark(ch.va, m), b: rateMark(ch.vb, m) });
+    return fmt(T.changeText, { label: m.label, a: fmtMetric(ch.va, m), b: fmtMetric(ch.vb, m) })
+      + fmt(T.changeDelta, { d: (ch.vb > ch.va ? "▲ " : "▼ ") + fmtDelta(ch.vb - ch.va, m) });
   }
 
   function reasonNodes(c) {
-    return c.changes.map((ch) => {
-      const m = ch.m;
-      let text;
-      if (ch.flip) text = (ch.kind === "regressed" ? "✕ " : "✓ ") + m.label + " " + (ch.kind === "regressed" ? T.flipBad : T.flipGood);
-      else text = (ch.vb > ch.va ? "▲ " : "▼ ") + m.label + " " + fmtDelta(ch.vb - ch.va, m);
-      return el("span", { class: "badge reason", text: text });
-    });
+    return c.changes.map((ch) => el("span", { class: "badge reason", text: changeText(ch) }));
   }
 
   function textBlock(title, value) {
@@ -1042,9 +1241,11 @@
     const metricRows = metrics.map((m) => {
       const va = metricValue(p.a, m), vb = metricValue(p.b, m);
       const d = va === null || vb === null ? null : vb - va;
-      const show = (v) => (m.aggregate === "rate" ? (v === null ? "–" : v ? "true" : "false") : fmtMetric(v, m));
+      // A rate with a direction shows the same marks as the change column; a reference-only
+      // rate has no good value, so it keeps true / false.
+      const show = (v) => (m.aggregate !== "rate" ? fmtMetric(v, m) : isInfo(m) ? (v === null ? "–" : v ? "true" : "false") : rateMark(v, m));
       return el("tr", { style: "cursor:default" }, [el("td", { text: m.label, style: "white-space:nowrap" }), el("td", { class: "num", text: show(va) }), el("td", { class: "num", text: show(vb) }),
-        el("td", { class: "num" }, m.aggregate === "rate" ? (d ? deltaFlip(d, m) : el("span", { class: "delta flat", text: "= " + T.flat })) : deltaNode(d, m))]);
+        el("td", { class: "num" }, m.aggregate === "rate" ? (d ? el("span", { class: "delta " + (isInfo(m) ? "neutral" : rateMark(vb, m) === T.rateGood ? "good" : "bad"), text: show(va) + " → " + show(vb) }) : el("span", { class: "delta flat", text: "= " + T.flat })) : deltaNode(d, m))]);
     });
     card.appendChild(el("div", { class: "scroll-x" }, el("table", { class: "list", style: "margin-bottom:12px" }, [
       el("thead", null, el("tr", null, [el("th", { text: T.metric }), el("th", { text: labelA }), el("th", { text: labelB }), el("th", { text: fmt(T.delta, { a: labelA, b: labelB }) })])),
@@ -1056,11 +1257,6 @@
       card.appendChild(el("div", { class: "side-by-side" }, [textBlock(c + " — " + labelA, p.a[c]), textBlock(c + " — " + labelB, p.b[c])]));
     }
     return card;
-  }
-
-  function deltaFlip(d, m) {
-    const good = (d > 0) === (m.better === "higher");
-    return el("span", { class: "delta " + (good ? "good" : "bad"), text: (good ? "✓ " + T.flipGood : "✕ " + T.flipBad) });
   }
 
   // Regressions list order: flips first, then by severity, then by id.
@@ -1080,11 +1276,12 @@
     reg.sort(bySeverity);
     imp.sort(bySeverity);
 
+    root.appendChild(el("p", { class: "small muted", text: compareSummary(side, ps.length) }));
     root.appendChild(el("div", { class: "grid" }, [
-      countTile(T.paired, ps.length, 0, ""),
-      countTile(T.regressed, reg.length, ps.length, "▼"),
-      countTile(T.improved, imp.length, ps.length, "▲"),
-      countTile(T.unchanged, ps.length - reg.length - imp.length, ps.length, "=")
+      countTile(T.paired, ps.length, 0, "", fmt(T.pairedNote, { a: sideLabel.a, b: sideLabel[side] })),
+      countTile(T.regressed, reg.length, ps.length, "▼", countNote(true)),
+      countTile(T.improved, imp.length, ps.length, "▲", countNote(false)),
+      countTile(T.unchanged, ps.length - reg.length - imp.length, ps.length, "=", T.unchangedNote)
     ]));
     root.appendChild(el("div", { class: "grid" }, metrics.map((m) => deltaTile(m, ps, side))));
 
@@ -1094,7 +1291,9 @@
     root.appendChild(card);
     card.appendChild(el("div", { class: "segmented", role: "group" }, [["regressed", T.regressedTitle + " (" + reg.length + ")"], ["improved", T.improvedTitle + " (" + imp.length + ")"]].map(([k, label]) =>
       el("button", { "aria-pressed": String(view === k), text: label, onclick: () => { state.compareView = k; state.selectedId = null; renderContent(); } }))));
-    card.appendChild(el("p", { class: "small muted", text: view === "regressed" ? T.regressedSort : T.improvedSort }));
+    const flip = !list.some((x) => x.c.flip) ? "" : view === "regressed"
+      ? fmt(T.flipFirst, { from: T.rateGood, to: T.rateBad }) : fmt(T.flipFirst, { from: T.rateBad, to: T.rateGood });
+    card.appendChild(el("p", { class: "small muted", text: fmt(view === "regressed" ? T.regressedSort : T.improvedSort, { flip: flip, a: sideLabel.a, b: sideLabel[side] }) }));
     if (!list.length) {
       card.appendChild(el("div", { class: "empty", text: view === "regressed" ? T.noRegressions : T.noImprovements }));
     } else {
@@ -1149,20 +1348,67 @@
     renderContent();
   }
 
-  function exportReview() {
+  // The reviewed data as CSV, shared by the download and the copy button.
+  function reviewCsvText() {
     const a = state.data.a;
     const fields = a.headers.concat(REVIEW_EXPORT_COLUMNS);
     const data = a.rows.map((r) => {
       const rv = reviewOf(r[cols.id]);
-      return a.headers.map((h) => r[h]).concat([rv.label, rv.note]);
+      return a.headers.map((h) => cellText(r[h])).concat([rv.label, rv.note]);
     });
-    downloadCsv(baseName(a.name) + "_reviewed.csv", fields, data);
+    return Papa.unparse({ fields: fields, data: data });
+  }
+
+  // The download gets a BOM so Excel opens the UTF-8 correctly; the copy does not.
+  function exportReview() {
+    download("\uFEFF" + reviewCsvText(), baseName(state.data.a.name) + "_reviewed.csv", "text/csv;charset=utf-8");
   }
 
   // UTF-8 with BOM so Excel opens it correctly. `data` is a list of rows, each a list of cells.
+  // Exposed to extra tabs as ctx.downloadCsv.
   function downloadCsv(filename, fields, data) {
     const csvText = "\uFEFF" + Papa.unparse({ fields: fields, data: data.map((row) => row.map(cellText)) });
     download(csvText, filename, "text/csv;charset=utf-8");
+  }
+
+  // Some embedded browser panes ignore downloads without any sign the page can see, so
+  // every export has a copy button next to it. When the clipboard is unavailable or
+  // refused, the text is shown in a read-only textarea, selected, below the button's bar.
+  function copyButton(label, makeText) {
+    return el("button", { class: "btn", type: "button", text: label, onclick: (e) => copyText(makeText(), e.currentTarget) });
+  }
+
+  async function copyText(text, button) {
+    const bar = button.parentElement;
+    try {
+      if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") throw new Error("no clipboard API");
+      await navigator.clipboard.writeText(text);
+      showCopied(bar);
+    } catch (err) {
+      showCopyFallback(bar, text);
+    }
+  }
+
+  function showCopied(bar) {
+    const old = bar.querySelector(".copy-status");
+    if (old) old.remove();
+    const status = el("span", { class: "small copy-status", role: "status", text: T.copied });
+    bar.appendChild(status);
+    setTimeout(() => status.remove(), 2500);
+  }
+
+  function showCopyFallback(bar, text) {
+    const old = bar.nextElementSibling;
+    if (old && old.classList.contains("copy-fallback")) old.remove();
+    const area = el("textarea", { class: "copy-text", readonly: true, rows: 12, spellcheck: "false" });
+    area.value = text; // a value, never markup
+    const panel = el("div", { class: "card copy-fallback", role: "region" }, [
+      el("div", { class: "verdict-head" }, [el("p", { class: "small", text: T.copyFallback }),
+        el("button", { type: "button", class: "btn", text: T.close, onclick: () => panel.remove() })]),
+      area]);
+    bar.after(panel);
+    area.focus();
+    area.select();
   }
 
   function download(text, filename, type) {
@@ -1188,7 +1434,8 @@
         el("span", { style: "width:" + (filtered.length ? (reviewedCount / filtered.length) * 100 : 0) + "%" })),
       el("span", { class: "small muted", text: fmt(T.reviewed, { n: reviewedCount, total: filtered.length }) }),
       el("label", { class: "check" }, [el("input", { type: "checkbox", checked: state.unreviewedOnly, onchange: (e) => { state.unreviewedOnly = e.target.checked; renderContent(); } }), T.unreviewedOnly]),
-      el("button", { class: "btn", text: T.exportCsv, onclick: exportReview })
+      el("button", { class: "btn", text: T.exportCsv, onclick: exportReview }),
+      copyButton(T.copyCsv, reviewCsvText)
     ]);
     root.appendChild(bar);
     root.appendChild(el("p", { class: "small muted", text: (state.storageOk ? "✓ " + T.storageOk : "⚠ " + T.storageNo) + " · " + fmt(T.keys, { n: labels.length }) }));
@@ -1199,7 +1446,8 @@
     const rv = reviewOf(id);
     const card = el("div", { class: "card" });
     root.appendChild(card);
-    const meta = el("div", { class: "review-meta" }, [el("strong", { text: cols.id + ": " + id })]);
+    const meta = el("div", { class: "review-meta" }, [el("strong", { text: cols.id + ": " + id }),
+      reviewIsStale(rv, rowFingerprint(row)) ? staleBadge() : null]);
     for (const k of ["category", "status", "verdict"]) {
       const c = cols[k];
       if (!c) continue;
@@ -1258,11 +1506,15 @@
   const VERDICT_MARKS = ["✓", "△", "✕"];
   const metricByColumn = new Map(metrics.map((m) => [m.column, m]));
 
-  // What a candidate's stored review belongs to: like the review tab, embed mode uses the
-  // full data and load mode the id set.
+  // What a candidate's stored review belongs to: like the review tab, the id set, so an
+  // added column or changed values keep the reviews (see pairFingerprint).
   function tableSignature(side) {
-    const d = state.data[side];
-    return loadMode ? d.rows.map((r) => r[cols.id]).sort() : [d.headers, d.rows];
+    return state.data[side].rows.map((r) => r[cols.id]).sort();
+  }
+
+  // The compared metric values of a pair, which a review of the regressed item was made against.
+  function pairFingerprint(p) {
+    return fnv1a(JSON.stringify(metrics.map((m) => [metricValue(p.a, m), metricValue(p.b, m)])));
   }
 
   // Per candidate: labels saved in this browser, else the reviews embedded from
@@ -1296,7 +1548,8 @@
 
   function setDecisionReview(side, id, patch) {
     const all = state.decisionReview[side] || (state.decisionReview[side] = {});
-    const next = Object.assign({}, decisionReviewOf(side, id), patch);
+    const pair = pairs(side).find((p) => p.id === id);
+    const next = Object.assign({}, decisionReviewOf(side, id), patch, pair ? { fp: pairFingerprint(pair) } : {});
     if (!next.label && !next.note) delete all[id];
     else all[id] = next;
     if (!state.decisionStorageOk) return;
@@ -1312,9 +1565,21 @@
   // is compared with: the candidate's aggregate, its worsening from A (in the metric's
   // unit or in percent), or a count of items. `regressed` is [{ p, c }] from classifyPair.
   // The other fields (the counted items, n, both aggregates and their sums) are what the
-  // detail panel shows; the verdict and the record use only `value` and `pass`.
-  function evaluateCriterion(c, ps, regressed) {
-    if (c.type === "regressions") return { value: regressed.length, pass: regressed.length <= c.max, items: regressed };
+  // detail panel shows; the verdict and the record use only `value`, `pass` and `pending`.
+  // A regressions criterion with count "unaccepted" leaves out items accepted in review
+  // (any label but REJECT); it is `pending` (not failed) while only unreviewed items
+  // push it over the maximum.
+  function evaluateCriterion(c, ps, regressed, side) {
+    if (c.type === "regressions") {
+      if (c.count !== "unaccepted") return { value: regressed.length, pass: regressed.length <= c.max, items: regressed };
+      const labelOf = (x) => decisionReviewOf(side, x.p.id).label;
+      const items = regressed.filter((x) => !labelOf(x) || labelOf(x) === REJECT);
+      const accepted = regressed.filter((x) => labelOf(x) && labelOf(x) !== REJECT);
+      const rejected = items.filter((x) => labelOf(x) === REJECT).length;
+      const pass = items.length <= c.max;
+      return { value: items.length, pass: pass, pending: !pass && rejected <= c.max, items: items, accepted: accepted,
+        rejected: rejected, unreviewed: items.length - rejected, total: regressed.length };
+    }
     if (c.type === "critical_categories") {
       const cats = new Set(c.categories);
       const items = regressed.filter((x) => cats.has(cellText(x.p.a[cols.category])));
@@ -1341,14 +1606,17 @@
     const regressed = ps.map((p) => ({ p: p, c: classifyPair(p) })).filter((x) => x.c.kind === "regressed");
     regressed.sort(bySeverity);
     const regPairs = regressed.map((x) => x.p);
-    const results = decision.criteria.map((c) => evaluateCriterion(c, ps, regressed));
+    const results = decision.criteria.map((c) => evaluateCriterion(c, ps, regressed, side));
     const labels = regPairs.map((p) => decisionReviewOf(side, p.id).label);
     const rejected = labels.filter((l) => l === REJECT).length;
     const unreviewed = labels.filter((l) => !l).length;
-    const failed = decision.criteria.map((c, i) => i).filter((i) => !results[i].pass);
+    const idx = decision.criteria.map((c, i) => i);
+    // A pending criterion is not failed: it implies an unreviewed item, so the verdict is the middle one.
+    const failed = idx.filter((i) => !results[i].pass && !results[i].pending);
+    const pending = idx.filter((i) => results[i].pending);
     const verdict = VERDICTS[failed.length || rejected ? 2 : unreviewed ? 1 : 0];
     return { side: side, label: sideLabel[side], pairs: ps, regressed: regressed, results: results, failed: failed,
-      rejected: rejected, unreviewed: unreviewed, verdict: verdict };
+      pending: pending, rejected: rejected, unreviewed: unreviewed, verdict: verdict };
   }
 
   // Paired difference (candidate − A) per metric with a normal-approximation 95% interval:
@@ -1367,17 +1635,13 @@
     return { n: n, cur: cur, cand: cand, d: d, ci: [(mu - half) * k, (mu + half) * k] };
   }
 
+  // c is an element of decision.criteria; a criterion added after the results says so.
   function criterionName(c) {
-    if (c.type === "regressions") return T.critRegressions;
-    if (c.type === "critical_categories") return fmt(T.critCritical, { cats: c.categories.join(", ") });
+    const added = addedAfter.has(decision.criteria.indexOf(c)) ? T.addedAfter : "";
+    if (c.type === "regressions") return (c.count === "unaccepted" ? T.critUnaccepted : T.critRegressions) + added;
+    if (c.type === "critical_categories") return fmt(T.critCritical, { cats: c.categories.join(", ") }) + added;
     const m = metricByColumn.get(c.metric);
-    return c.type === "absolute" ? fmt(T.critAbsolute, { metric: m.label }) : fmt(T.critRelative, { metric: m.label, a: sideLabel.a });
-  }
-
-  // A change in a metric's own unit; rate changes are in percentage points.
-  function fmtAmount(v, m) {
-    if (m.aggregate === "rate") return numberFormat(1).format(v * 100) + "pt";
-    return fmtNum(v) + (m.unit ? " " + m.unit : "");
+    return (c.type === "absolute" ? fmt(T.critAbsolute, { metric: m.label }) : fmt(T.critRelative, { metric: m.label, a: sideLabel.a })) + added;
   }
 
   function criterionThreshold(c) {
@@ -1412,8 +1676,17 @@
     return el("span", { class: "verdict verdict-" + verdict, text: verdictText(verdict) });
   }
 
-  function passNode(pass) {
-    return el("span", { class: "delta " + (pass ? "good" : "bad"), text: pass ? T.pass : T.fail });
+  // `res` is an evaluateCriterion() result.
+  function passNode(res) {
+    if (res.pending) return el("span", { class: "delta pending", text: T.pending });
+    return el("span", { class: "delta " + (res.pass ? "good" : "bad"), text: res.pass ? T.pass : T.fail });
+  }
+
+  function passText(res) { return res.pending ? T.pending : res.pass ? T.pass : T.fail; }
+
+  // The verdict wording for "needs review", without the mark.
+  function reviewVerdictName() {
+    return isExperiment ? decision.verdict_labels.review : T.verdict.review.replace(/^\S+\s/, "");
   }
 
   function goTo(tab) {
@@ -1432,7 +1705,9 @@
   function renderDecisionSummary(root, results) {
     root.appendChild(el("div", { class: "table-toolbar" }, [
       el("button", { class: "btn", text: T.exportMd, onclick: () => download(recordMarkdown(results), recordFileName("md"), "text/markdown;charset=utf-8") }),
-      el("button", { class: "btn", text: T.exportJson, onclick: () => download(JSON.stringify(recordData(results), null, 2) + "\n", recordFileName("json"), "application/json") }),
+      copyButton(T.copyMd, () => recordMarkdown(results)),
+      el("button", { class: "btn", text: T.exportJson, onclick: () => download(recordJson(results), recordFileName("json"), "application/json") }),
+      copyButton(T.copyJson, () => recordJson(results)),
       el("span", { class: "small muted", text: state.decisionStorageOk ? "✓ " + T.storageOk : "⚠ " + T.storageNo })
     ]));
 
@@ -1441,16 +1716,25 @@
     root.appendChild(el("p", { class: "small muted", text: isExperiment
       ? fmt(T.experimentRule, { reject: REJECT, pass: decision.verdict_labels.pass, review: decision.verdict_labels.review, fail: decision.verdict_labels.fail })
       : fmt(T.verdictRule, { reject: REJECT }) }));
+    for (const c of decision.criteria.filter((x) => x.type === "regressions" && x.count === "unaccepted")) {
+      root.appendChild(el("p", { class: "small muted", text: fmt(T.unacceptedRule, { name: criterionName(c), reject: REJECT, review: reviewVerdictName() }) }));
+    }
     root.appendChild(el("div", { class: "verdict-grid" }, results.map((r) => {
       const failedLinks = [];
       r.failed.forEach((i, k) => {
         if (k) failedLinks.push(" / ");
         failedLinks.push(detailButton({ side: r.side, kind: "criterion", index: i }, "link-btn", criterionName(decision.criteria[i])));
       });
+      const pendingLinks = [];
+      r.pending.forEach((i, k) => {
+        if (k) pendingLinks.push(" / ");
+        pendingLinks.push(detailButton({ side: r.side, kind: "criterion", index: i }, "link-btn", criterionName(decision.criteria[i])));
+      });
       const unreviewedText = fmt(T.unreviewedItems, { n: r.unreviewed, total: r.regressed.length });
       return el("div", { class: "card verdict-card verdict-card-" + r.verdict }, [
         el("div", { class: "verdict-head" }, [el("strong", { text: r.label }), detailButton({ side: r.side, kind: "verdict" }, "link-btn", verdictBadge(r.verdict))]),
         el("div", { class: "small" }, [T.failedCriteria + ": "].concat(failedLinks.length ? failedLinks : [T.none])),
+        pendingLinks.length ? el("div", { class: "small" }, [T.pendingCriteria + ": "].concat(pendingLinks)) : null,
         r.rejected ? el("div", { class: "small" }, detailButton({ side: r.side, kind: "rejected" }, "link-btn", fmt(T.rejectedItems, { reject: REJECT, n: r.rejected }))) : null,
         el("div", { class: "small" }, r.unreviewed ? detailButton({ side: r.side, kind: "unreviewed" }, "link-btn", unreviewedText) : unreviewedText),
         el("div", { class: "review-nav" }, [
@@ -1462,14 +1746,15 @@
       ]);
     })));
 
-    const card = el("div", { class: "card" }, [el("h2", { text: T.criteriaTitle }), el("p", { class: "small muted", text: T.detailHint })]);
+    const card = el("div", { class: "card" }, [el("h2", { text: T.criteriaTitle }), el("p", { class: "small muted", text: T.detailHint }),
+      addedAfter.size ? el("p", { class: "small muted", text: T.addedAfterNote }) : null]);
     root.appendChild(card);
     const head = [el("th", { text: T.criterion }), el("th", { text: T.thresholdCol })].concat(results.map((r) => el("th", { class: "num", text: r.label })));
     const body = decision.criteria.map((c, i) => el("tr", { style: "cursor:default" }, [
       el("td", { text: criterionName(c), style: "min-width:10em" }),
       el("td", { class: "num", text: criterionThreshold(c) })
     ].concat(results.map((r) => el("td", { class: "num" }, detailButton({ side: r.side, kind: "criterion", index: i }, "cell-btn",
-      [el("span", { class: "cell-value", text: criterionValue(c, r.results[i]) }), passNode(r.results[i].pass)]))))));
+      [el("span", { class: "cell-value", text: criterionValue(c, r.results[i]) }), passNode(r.results[i])]))))));
     body.push(el("tr", { style: "cursor:default" }, [el("td", { text: T.verdictRow }), el("td")].concat(results.map((r) =>
       el("td", { class: "num" }, detailButton({ side: r.side, kind: "verdict" }, "cell-btn", verdictBadge(r.verdict)))))));
     card.appendChild(el("div", { class: "scroll-x" }, el("table", { class: "list" }, [el("thead", null, el("tr", null, head)), el("tbody", null, body)])));
@@ -1579,7 +1864,8 @@
           el("td", { text: x.p.id, style: "white-space:nowrap" }),
           cols.category ? el("td", { text: x.p.a[cols.category] }) : null,
           el("td", null, el("div", { style: "display:flex;flex-wrap:wrap;gap:4px" }, reasonNodes(x.c))),
-          el("td", { class: rv.label === REJECT ? "delta bad" : rv.label ? "" : "muted", text: rv.label || T.unlabeled }),
+          el("td", null, [el("span", { class: rv.label === REJECT ? "delta bad" : rv.label ? "" : "muted", text: rv.label || T.unlabeled }),
+            reviewIsStale(rv, pairFingerprint(x.p)) ? staleBadge() : null]),
           el("td", { class: "longtext", text: rv.note || "" }),
           el("td", null, el("div", { class: "detail-links" }, [
             el("button", { type: "button", class: "link-btn", text: T.openInReview, onclick: () => openInReview(r.side, x.p.id) }),
@@ -1596,11 +1882,19 @@
   // Shows the values evaluateCriterion() computed for the verdict, never a recomputation.
   function criterionDetail(c, res, r) {
     if (c.type === "regressions") {
-      return [kvList([[T.result, passNode(res.pass)], [T.comparedValue, fmt(T.regCount, { n: res.value, max: c.max })]]),
-        regressedItemList(r, res.items)];
+      if (c.count !== "unaccepted") {
+        return [kvList([[T.result, passNode(res)], [T.comparedValue, fmt(T.regCount, { n: res.value, max: c.max })]]),
+          regressedItemList(r, res.items)];
+      }
+      const counts = { n: res.value, max: c.max, total: res.total, accepted: res.accepted.length, unreviewed: res.unreviewed, rejected: res.rejected, reject: REJECT };
+      const rows = [[T.result, passNode(res)], [T.comparedValue, fmt(res.rejected ? T.unacceptedCountRejected : T.unacceptedCount, counts)]];
+      if (res.pending) rows.push([T.whyPending, fmt(T.pendingReason, { review: reviewVerdictName() })]);
+      return [kvList(rows),
+        el("h3", { text: fmt(T.countedItems, { reject: REJECT, n: res.items.length }) }), regressedItemList(r, res.items),
+        el("h3", { text: fmt(T.notCountedItems, { n: res.accepted.length }) }), regressedItemList(r, res.accepted)];
     }
     if (c.type === "critical_categories") {
-      const out = [kvList([[T.result, passNode(res.pass)], [T.thresholdCol, criterionThreshold(c)]])];
+      const out = [kvList([[T.result, passNode(res)], [T.thresholdCol, criterionThreshold(c)]])];
       for (const cat of c.categories) {
         const xs = res.items.filter((x) => cellText(x.p.a[cols.category]) === cat);
         out.push(el("h3", { text: cols.category + " = " + cat + ": " + fmt(T.nItems, { n: xs.length }) }), regressedItemList(r, xs));
@@ -1610,7 +1904,7 @@
     const m = metricByColumn.get(c.metric);
     // Rates also show the count of true values over n.
     const show = (v, k) => fmtMetric(v, m) + (m.aggregate === "rate" && v !== null ? " (" + k + "/" + res.n + ")" : "");
-    const rows = [[T.result, passNode(res.pass)]];
+    const rows = [[T.result, passNode(res)]];
     if (c.type === "relative") rows.push([fmt(T.valueOf, { label: sideLabel.a }), show(res.cur, res.sumCur)]);
     rows.push([fmt(T.valueOf, { label: r.label }), show(res.cand, res.sumCand)],
       [T.aggregation, m.aggregate === "rate" ? T.aggRate : m.aggregate === "sum" ? T.sum : T.mean],
@@ -1639,9 +1933,13 @@
       ? el("ul", { class: "detail-list" }, r.failed.map((i) => el("li", null,
         detailButton({ side: r.side, kind: "criterion", index: i }, "link-btn", "✕ " + criterionName(decision.criteria[i])))))
       : el("p", { class: "small muted", text: T.none });
-    return [el("h3", { text: T.failedCriteria }), failed,
+    const pending = r.pending.length
+      ? [el("h3", { text: T.pendingCriteria }), el("ul", { class: "detail-list" }, r.pending.map((i) => el("li", null,
+        detailButton({ side: r.side, kind: "criterion", index: i }, "link-btn", T.pending.split(" ")[0] + " " + criterionName(decision.criteria[i])))))]
+      : [];
+    return [el("h3", { text: T.failedCriteria }), failed].concat(pending, [
       el("h3", { text: fmt(T.rejectedItems, { reject: REJECT, n: r.rejected }) }), regressedItemList(r, rejectedOf(r)),
-      el("h3", { text: fmt(T.unreviewedItems, { n: r.unreviewed, total: r.regressed.length }) }), regressedItemList(r, unreviewedOf(r))];
+      el("h3", { text: fmt(T.unreviewedItems, { n: r.unreviewed, total: r.regressed.length }) }), regressedItemList(r, unreviewedOf(r))]);
   }
 
   function renderDecisionDetail(d, results) {
@@ -1738,7 +2036,8 @@
             el("td", { text: x.p.id, style: "white-space:nowrap" }),
             cols.category ? el("td", { text: x.p.a[cols.category] }) : null,
             el("td", null, el("div", { style: "display:flex;flex-wrap:wrap;gap:4px" }, reasonNodes(x.c))),
-            el("td", { class: rv.label === REJECT ? "delta bad" : rv.label ? "" : "muted", text: rv.label || T.unlabeled }),
+            el("td", null, [el("span", { class: rv.label === REJECT ? "delta bad" : rv.label ? "" : "muted", text: rv.label || T.unlabeled }),
+              reviewIsStale(rv, pairFingerprint(x.p)) ? staleBadge() : null]),
             el("td", { class: "muted", text: truncateToWidth((rv.note || "").replace(/\s+/g, " "), 200, 13) })
           ]);
         }))])));
@@ -1749,7 +2048,8 @@
     const rv = decisionReviewOf(side, id);
     const card = el("div", { class: "card" });
     root.appendChild(card);
-    card.appendChild(el("div", { class: "review-meta" }, [el("strong", { text: (idx + 1) + " / " + items.length })]));
+    card.appendChild(el("div", { class: "review-meta" }, [el("strong", { text: (idx + 1) + " / " + items.length }),
+      reviewIsStale(rv, pairFingerprint(items[idx].p)) ? staleBadge() : null]));
     card.appendChild(el("h3", { text: T.humanLabel }));
     card.appendChild(el("div", { class: "label-buttons" }, REVIEW_LABELS.map((l, i) =>
       el("button", { "aria-pressed": String(rv.label === l), onclick: () => applyDecisionLabel(id, l) }, [el("kbd", { text: String(i + 1) }), l]))));
@@ -1783,7 +2083,7 @@
       files: { current: { label: sideLabel.a, file: state.data.a.name } }
     };
     if (isExperiment) out.hypothesis = decision.hypothesis;
-    out.criteria = decision.criteria;
+    out.criteria = decision.criteria.map((c, i) => (addedAfter.has(i) ? Object.assign({}, c, { [ADDED_KEY]: true }) : c));
     out.review_labels = REVIEW_LABELS;
     if (isExperiment) out.verdict_labels = decision.verdict_labels;
     out.candidates = results.map((r) => ({
@@ -1794,7 +2094,8 @@
         regressed: r.regressed.length,
         unreviewed: r.unreviewed,
         rejected: r.rejected,
-        criteria: decision.criteria.map((c, i) => ({ index: i, value: num(r.results[i].value), pass: r.results[i].pass })),
+        criteria: decision.criteria.map((c, i) => Object.assign({ index: i, value: num(r.results[i].value), pass: r.results[i].pass },
+          r.results[i].pending ? { pending: true } : {})),
         metrics: metrics.map((m) => {
           const s = diffStats(r.pairs, m);
           return { column: m.column, label: m.label, n: s.n, current: num(s.cur), candidate: num(s.cand), difference: num(s.d), ci95: s.ci ? s.ci.map(num) : null };
@@ -1806,6 +2107,8 @@
       }));
     return out;
   }
+
+  function recordJson(results) { return JSON.stringify(recordData(results), null, 2) + "\n"; }
 
   function mdCell(s) { return String(s).replace(/\|/g, "\\|").replace(/\s*\n\s*/g, " "); }
   function mdRow(cells) { return "| " + cells.map(mdCell).join(" | ") + " |"; }
@@ -1822,9 +2125,10 @@
     for (const r of results) out.push("- " + r.label + ": " + state.data[r.side].name);
     out.push("", "## " + T.criteriaH, "");
     decision.criteria.forEach((c) => out.push("- " + criterionName(c) + ": " + criterionThreshold(c)));
+    if (addedAfter.size) out.push("", T.addedAfterNote);
     out.push("", "## " + T.summaryH, "");
     const rows = decision.criteria.map((c, i) => [criterionName(c), criterionThreshold(c)]
-      .concat(results.map((r) => criterionValue(c, r.results[i]) + " " + (r.results[i].pass ? T.pass : T.fail))));
+      .concat(results.map((r) => criterionValue(c, r.results[i]) + " " + passText(r.results[i]))));
     rows.push([T.verdictRow, ""].concat(results.map((r) => verdictText(r.verdict))));
     out.push(mdTable([T.criterion, T.thresholdCol].concat(results.map((r) => r.label)), rows));
     out.push("");
@@ -1850,7 +2154,7 @@
       if (!r.regressed.length) { out.push(T.noRegressedItems); continue; }
       out.push(mdTable([cols.id].concat(cols.category ? [cols.category] : [], [T.reason, T.yourLabel, T.note]), r.regressed.map((x) => {
         const rv = decisionReviewOf(r.side, x.p.id);
-        const reasons = reasonNodes(x.c).map((n) => n.textContent).join(", ");
+        const reasons = x.c.changes.map(changeText).join("; ");
         return [x.p.id].concat(cols.category ? [cellText(x.p.a[cols.category])] : [], [reasons, rv.label || T.unlabeled, rv.note || ""]);
       })));
     }
@@ -1864,10 +2168,11 @@
     const diffs = now.filter((r) => decisionRecord.verdicts[r.label] !== r.verdict)
       .map((r) => fmt(T.staleItem, { label: r.label, was: verdictText(decisionRecord.verdicts[r.label]), now: verdictText(r.verdict) }));
     if (diffs.length) root.appendChild(el("div", { class: "banner" }, el("p", { text: "⚠ " + fmt(T.reportStale, { diffs: diffs.join(", ") }) })));
-    // The download is the report body as embedded at build time (without the frontmatter),
-    // for pasting into other documents.
-    root.appendChild(el("div", { class: "table-toolbar" }, el("button", { class: "btn", text: T.exportReport,
-      onclick: () => download(payload.report + "\n", decision.report, "text/markdown;charset=utf-8") })));
+    // The download and the copy are the report body as embedded at build time (without the
+    // frontmatter), for pasting into other documents.
+    root.appendChild(el("div", { class: "table-toolbar" }, [
+      el("button", { class: "btn", text: T.exportReport, onclick: () => download(payload.report + "\n", decision.report, "text/markdown;charset=utf-8") }),
+      copyButton(T.copyReport, () => payload.report + "\n")]));
     root.appendChild(el("div", { class: "card report" }, renderMarkdown(payload.report)));
   }
 
@@ -1894,7 +2199,7 @@
         while (i < lines.length && isTableRow(lines[i])) { body.push(splitRow(lines[i])); i++; }
         out.push(el("div", { class: "scroll-x" }, el("table", { class: "list" }, [
           el("thead", null, el("tr", null, head.map((c) => el("th", null, inline(c))))),
-          el("tbody", null, body.map((row) => el("tr", { style: "cursor:default" }, head.map((_, k) => el("td", null, inline(row[k] || ""))))))])));
+          el("tbody", null, body.map((row) => el("tr", { style: "cursor:default" }, head.map((_, k) => el("td", null, deltaCell(row[k] || ""))))))])));
         continue;
       }
       const li = listItem(line);
@@ -1914,17 +2219,54 @@
     return out;
   }
 
-  function inline(text) {
+  // `marks` false leaves ▲ / ▼ uncoloured (a table cell coloured as a whole).
+  function inline(text, marks) {
+    const plain = marks === false ? (t) => [t] : markDeltas;
     const nodes = [];
     const re = /\*\*(.+?)\*\*|\*([^*\s](?:[^*]*[^*\s])?)\*/g;
     let last = 0, m;
     while ((m = re.exec(text))) {
-      if (m.index > last) nodes.push(text.slice(last, m.index));
-      nodes.push(m[1] !== undefined ? el("strong", null, inline(m[1])) : el("em", null, m[2]));
+      if (m.index > last) nodes.push(...plain(text.slice(last, m.index)));
+      nodes.push(m[1] !== undefined ? el("strong", null, inline(m[1], marks)) : el("em", null, plain(m[2])));
       last = re.lastIndex;
     }
-    if (last < text.length) nodes.push(text.slice(last));
+    if (last < text.length) nodes.push(...plain(text.slice(last)));
     return nodes;
+  }
+
+  // In a report, ▲ / ▼ give the direction of the number (as in the page's differences);
+  // whether it is better or worse comes only from the words written next to it, which
+  // pick the colour. Neither word, or both, means no colour. Classes only, never styles
+  // from the report.
+  const BETTER_WORDS = /改善|\b(?:better|improved?)\b/i;
+  const WORSE_WORDS = /悪化|\b(?:worse|regressed)\b/i;
+  function deltaWordClass(text) {
+    const good = BETTER_WORDS.test(text), bad = WORSE_WORDS.test(text);
+    return good === bad ? null : "delta " + (good ? "good" : "bad");
+  }
+
+  // Colours each fragment from ▲ / ▼ to the next 、。,; or closing parenthesis.
+  function markDeltas(text) {
+    const out = [];
+    const re = /[▲▼][^▲▼、。，,；;)）]*/g;
+    let last = 0, m;
+    while ((m = re.exec(text))) {
+      const cls = deltaWordClass(m[0]);
+      if (!cls) continue;
+      if (m.index > last) out.push(text.slice(last, m.index));
+      out.push(el("span", { class: cls, text: m[0] }));
+      last = re.lastIndex;
+    }
+    if (last < text.length) out.push(text.slice(last));
+    return out;
+  }
+
+  // A table cell that starts with ▲ / ▼ is coloured as a whole, from the words anywhere in it.
+  function deltaCell(text) {
+    const mark = text.trimStart()[0];
+    if (mark !== "▲" && mark !== "▼") return inline(text);
+    const cls = deltaWordClass(text);
+    return cls ? el("span", { class: cls }, inline(text, false)) : inline(text);
   }
 
   // ---------- table ----------
@@ -1978,10 +2320,23 @@
     const dims = new Set(["category", "status", "verdict"].map((k) => cols[k]).filter(Boolean).concat(withReview ? ["human_label"] : []));
     const numeric = new Set(metrics.filter((m) => m.aggregate !== "rate").map((m) => m.column));
     const longText = new Set(cols.text.concat(withReview ? ["human_note"] : []));
+    const percent = new Map(metrics.filter((m) => m.aggregate !== "rate" && isPercent(m)).map((m) => [m.column, m]));
     const columns = headers.map((h, i) => {
       const c = { title: h, field: field(i), headerFilter: "input", formatter: plainFormatter };
       if (dims.has(h)) Object.assign(c, { headerFilter: "list", headerFilterParams: { valuesLookup: true, clearable: true }, headerFilterFunc: "=" });
       if (numeric.has(h)) Object.assign(c, { sorter: "number", hozAlign: "right" });
+      if (percent.has(h)) {
+        // Shown as % while the data and the download keep the fraction; the filter matches either.
+        const m = percent.get(h);
+        const shown = (v) => { const n = parseNum(v); return n === null ? String(v ?? "") : fmtMetric(n, m); };
+        Object.assign(c, {
+          formatter: (cell) => el("span", { text: shown(cell.getValue()) }),
+          headerFilterFunc: (q, v) => {
+            const s = String(q).toLowerCase();
+            return String(v ?? "").toLowerCase().includes(s) || shown(v).toLowerCase().includes(s);
+          }
+        });
+      }
       if (longText.has(h)) Object.assign(c, { formatter: textFormatter, width: 320, variableHeight: true, cssClass: "wrap" });
       if (h === cols.id) c.frozen = window.innerWidth > 600;
       return c;

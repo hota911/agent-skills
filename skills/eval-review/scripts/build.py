@@ -30,20 +30,23 @@ ASSETS = SKILL_DIR / "assets"
 
 TABS = ("overview", "compare", "review", "table", "release", "experiment", "report")
 AGGREGATES = ("mean", "sum", "rate")
-BETTER = ("higher", "lower")
+BETTER = ("higher", "lower", "none")
 LANGS = ("ja", "en")
 MODES = ("embed", "load")
 
-TOP_KEYS = {"title", "lang", "tabs", "data", "columns", "order", "histogram", "review",
-            "extra_tabs", "release", "experiment"}
+TOP_KEYS = {"title", "lang", "item_label", "tabs", "data", "columns", "order", "histogram",
+            "review", "extra_tabs", "release", "experiment"}
 RELEASE_KEYS = {"criteria", "review_labels", "record", "report"}
 EXPERIMENT_KEYS = RELEASE_KEYS | {"hypothesis", "verdict_labels"}
 CRITERION_KEYS = {
     "absolute": {"type", "metric", "min", "max"},
     "relative": {"type", "metric", "max_worse", "max_worse_pct"},
-    "regressions": {"type", "max"},
+    "regressions": {"type", "max", "count"},
     "critical_categories": {"type", "categories"},
 }
+# How a regressions criterion counts: every regressed item, or only those not accepted in
+# review (unreviewed or rejected). Must match evaluateCriterion() in app.js.
+REGRESSION_COUNTS = ("all", "unaccepted")
 # The last review label rejects an item. Must match the release / experiment tab in app.js.
 DEFAULT_REVIEW_LABELS = {"ja": ["許容", "不可"], "en": ["acceptable", "unacceptable"]}
 
@@ -75,7 +78,8 @@ CANDIDATE_KEYS = {"file", "label"}
 # Replaced by data.candidates; a config using them gets an error showing the rewrite.
 REMOVED_DATA_KEYS = ("csv_b", "label_b")
 COLUMN_KEYS = {"id", "text", "category", "status", "verdict", "metrics"}
-METRIC_KEYS = {"column", "label", "unit", "aggregate", "better", "regression_threshold"}
+METRIC_KEYS = {"column", "label", "unit", "aggregate", "better", "regression_threshold", "format"}
+METRIC_FORMATS = ("percent",)
 REVIEW_KEYS = {"labels"}
 EXTRA_TAB_KEYS = {"id", "title", "script"}
 
@@ -146,6 +150,11 @@ def validate_config(cfg: object) -> dict:
     lang = cfg.setdefault("lang", "ja")
     if lang not in LANGS:
         fail(f"config.lang must be one of {list(LANGS)}, got {lang!r}")
+    item_label = optional_str(cfg, "item_label", "config")
+    if item_label is not None and (item_label != item_label.strip() or "{" in item_label
+                                   or "}" in item_label):
+        fail(f"config.item_label {item_label!r} must have no leading or trailing spaces and "
+             "no braces; it names one row, for example \"質問\" or \"questions\"")
 
     tabs = cfg.get("tabs")
     if not isinstance(tabs, list) or not tabs:
@@ -203,11 +212,22 @@ def validate_config(cfg: object) -> dict:
             fail(f"{where}.better must be one of {list(BETTER)}")
         threshold = m.get("regression_threshold")
         if threshold is not None:
+            if m["better"] == "none":
+                fail(f"{where}: better 'none' shows the metric for reference only, so it has no "
+                     "regression_threshold; remove it or set better to 'higher' or 'lower'")
             if m["aggregate"] == "rate":
                 fail(f"{where}: regression_threshold is not used with aggregate 'rate' "
                      "(a true->false flip is the regression); remove it")
             if not isinstance(threshold, (int, float)) or threshold < 0:
                 fail(f"{where}.regression_threshold must be a number >= 0")
+        if "format" in m:
+            if m["format"] not in METRIC_FORMATS:
+                fail(f"{where}.format must be one of {list(METRIC_FORMATS)}, got {m['format']!r}")
+            if m["aggregate"] != "mean":
+                fail(f"{where}: format 'percent' needs aggregate 'mean' (a rate is already a "
+                     "percentage, and a sum of fractions is not one)")
+            if m["unit"]:
+                fail(f"{where}: format 'percent' shows % and pt, so remove unit {m['unit']!r}")
     if "compare" in tabs and not metrics:
         fail('config.tabs includes "compare" but config.columns.metrics is empty')
 
@@ -278,6 +298,12 @@ def decision_of(cfg: dict) -> Decision | None:
     return found[0] if found else None
 
 
+def is_fraction(m: dict) -> bool:
+    """A metric whose values are fractions shown as %: a rate, or a mean with format percent.
+    Must match isPercent() in app.js."""
+    return m["aggregate"] == "rate" or m.get("format") == "percent"
+
+
 def is_number(value: object) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
@@ -306,6 +332,9 @@ def validate_decision(cfg: dict, decision: Decision) -> None:
             if c.get("metric") not in metrics:
                 fail(f"{where}.metric must be a column in config.columns.metrics: {list(metrics)}")
             m = metrics[c["metric"]]
+            if m["better"] == "none":
+                fail(f"{where}: metric {c['metric']!r} has better 'none' (reference only), so it "
+                     "cannot be a criterion; set its better to 'higher' or 'lower'")
         if kind == "absolute":
             bounds = [k for k in ("min", "max") if k in c]
             if not bounds:
@@ -313,8 +342,9 @@ def validate_decision(cfg: dict, decision: Decision) -> None:
             for k in bounds:
                 if not is_number(c[k]):
                     fail(f"{where}.{k} must be a number")
-                if m["aggregate"] == "rate" and not 0 <= c[k] <= 1:
-                    fail(f"{where}.{k} must be between 0 and 1 for a rate metric (0.85 means 85%)")
+                if is_fraction(m) and not 0 <= c[k] <= 1:
+                    fail(f"{where}.{k} must be between 0 and 1 for a rate or percent metric "
+                         "(0.85 means 85%)")
             if len(bounds) == 2 and c["min"] > c["max"]:
                 fail(f"{where}: min {c['min']} is greater than max {c['max']}")
         elif kind == "relative":
@@ -325,12 +355,15 @@ def validate_decision(cfg: dict, decision: Decision) -> None:
             key = given[0]
             if not is_number(c[key]) or c[key] < 0:
                 fail(f"{where}.{key} must be a number >= 0")
-            if m["aggregate"] == "rate" and key == "max_worse" and c[key] > 1:
-                fail(f"{where}.max_worse is a fraction for a rate metric (0.02 means 2pt)")
+            if is_fraction(m) and key == "max_worse" and c[key] > 1:
+                fail(f"{where}.max_worse is a fraction for a rate or percent metric "
+                     "(0.02 means 2pt)")
         elif kind == "regressions":
             value = c.get("max")
             if not isinstance(value, int) or isinstance(value, bool) or value < 0:
                 fail(f"{where}.max must be an integer >= 0")
+            if c.get("count", "all") not in REGRESSION_COUNTS:
+                fail(f"{where}.count must be one of {list(REGRESSION_COUNTS)}, got {c['count']!r}")
         else:
             if not cfg["columns"].get("category"):
                 fail(f"{where}: critical_categories needs config.columns.category")
@@ -622,6 +655,8 @@ def pair_rows(a: Table, b: Table, id_col: str) -> list[tuple[str, dict, dict]]:
 
 def is_regressed(a: dict, b: dict, metrics: list[dict]) -> bool:
     for m in metrics:
+        if m["better"] == "none":
+            continue
         va, vb = metric_value(a, m), metric_value(b, m)
         if va is None or vb is None:
             continue
@@ -640,21 +675,31 @@ def is_regressed(a: dict, b: dict, metrics: list[dict]) -> bool:
 
 
 def evaluate_criterion(c: dict, metrics: dict[str, dict], pairs: list, regressed: list,
-                       category_col: str | None) -> bool:
+                       category_col: str | None, labels: dict[str, str], reject: str) -> str:
+    """"pass", "fail", or "pending" (count "unaccepted" over the maximum only because of
+    unreviewed items). `labels` maps each regressed id to its review label ("" if none)."""
     kind = c["type"]
     if kind == "regressions":
-        return len(regressed) <= c["max"]
+        if c.get("count", "all") != "unaccepted":
+            return "pass" if len(regressed) <= c["max"] else "fail"
+        counted = [labels[rid] for rid, _, _ in regressed if labels[rid] in ("", reject)]
+        if len(counted) <= c["max"]:
+            return "pass"
+        return "pending" if counted.count(reject) <= c["max"] else "fail"
     if kind == "critical_categories":
         cats = set(c["categories"])
-        return not any(cell_text(a[category_col]) in cats for _, a, _ in regressed)
-    m = metrics[c["metric"]]
+        return "fail" if any(cell_text(a[category_col]) in cats for _, a, _ in regressed) else "pass"
+    return "pass" if metric_criterion_met(c, metrics[c["metric"]], pairs) else "fail"
+
+
+def metric_criterion_met(c: dict, m: dict, pairs: list) -> bool:
     both = [(va, vb) for va, vb in ((metric_value(a, m), metric_value(b, m)) for _, a, b in pairs)
             if va is not None and vb is not None]
     cur = aggregate([x[0] for x in both], m)
     cand = aggregate([x[1] for x in both], m)
     if cand is None:
         return False
-    if kind == "absolute":
+    if c["type"] == "absolute":
         return ("min" not in c or cand >= c["min"]) and ("max" not in c or cand <= c["max"])
     worse = cand - cur if m["better"] == "lower" else cur - cand
     if "max_worse" in c:
@@ -667,17 +712,21 @@ def evaluate_criterion(c: dict, metrics: dict[str, dict], pairs: list, regressed
 
 
 def candidate_verdict(cfg: dict, decision: Decision, a: Table, b: Table,
-                      reviews: dict[str, dict]) -> tuple[str, set[str]]:
-    """The verdict code and the ids of regressed items for one candidate."""
+                      reviews: dict[str, dict], criteria: list[dict] | None = None) -> tuple[str, set[str]]:
+    """The verdict code and the ids of regressed items for one candidate, judged by
+    `criteria` (default: every criterion in the config)."""
     cols = cfg["columns"]
     section = cfg[decision.tab]
     pairs = pair_rows(a, b, cols["id"])
     regressed = [p for p in pairs if is_regressed(p[1], p[2], cols["metrics"])]
     metrics = {m["column"]: m for m in cols["metrics"]}
-    failed = not all(evaluate_criterion(c, metrics, pairs, regressed, cols.get("category"))
-                     for c in section["criteria"])
     reject = section["review_labels"][-1]
-    labels = [reviews.get(rid, {}).get("label", "") for rid, _, _ in regressed]
+    by_id = {rid: reviews.get(rid, {}).get("label", "") for rid, _, _ in regressed}
+    # A pending criterion is not failed; it implies an unreviewed item, so the verdict is
+    # the middle one.
+    failed = any(evaluate_criterion(c, metrics, pairs, regressed, cols.get("category"), by_id, reject) == "fail"
+                 for c in (section["criteria"] if criteria is None else criteria))
+    labels = list(by_id.values())
     met, unreviewed, not_met = decision.verdicts
     if failed or reject in labels:
         verdict = not_met
@@ -688,9 +737,36 @@ def candidate_verdict(cfg: dict, decision: Decision, a: Table, b: Table,
     return verdict, {rid for rid, _, _ in regressed}
 
 
+# Marks a criterion that was added to the config after a record was exported, that is,
+# after the results were seen. Must match ADDED_KEY in app.js.
+ADDED_KEY = "added_after_results"
+
+
+def record_criteria(where: str, tab: str, rec_criteria, criteria: list[dict], again: str) -> list[int]:
+    """Check the record's criteria against config.<tab>.criteria; returns the indexes of
+    the criteria added after the results.
+
+    The record's criteria (without their ADDED_KEY marks) must be the first criteria of
+    the config. The config's later criteria, and those the record already marks, were
+    added after the results; they must all come after the ones written before."""
+    if not isinstance(rec_criteria, list) or not all(isinstance(c, dict) for c in rec_criteria):
+        fail(f"{where}: criteria must be a list of objects")
+    stated = [{k: v for k, v in c.items() if k != ADDED_KEY} for c in rec_criteria]
+    if stated != criteria[:len(stated)]:
+        fail(f"{where}: the record's criteria are not the first criteria of config.{tab}.criteria. "
+             "Criteria added after the results go after the existing ones; a changed or removed "
+             f"criterion needs a new record{again}")
+    added = [i for i, c in enumerate(rec_criteria) if c.get(ADDED_KEY) is True]
+    added += list(range(len(rec_criteria), len(criteria)))
+    if added and added != list(range(added[0], len(criteria))):
+        fail(f"{where}: the criteria marked {ADDED_KEY} must be the last ones of config.{tab}.criteria{again}")
+    return added
+
+
 def read_record(path: Path, cfg: dict, decision: Decision,
-                tables: dict[str, Table]) -> tuple[dict, dict]:
-    """Validate an exported record; returns (verdicts, reviews) keyed by candidate label."""
+                tables: dict[str, Table]) -> tuple[dict, dict, list[int]]:
+    """Validate an exported record; returns (verdicts, reviews) keyed by candidate label, and
+    the indexes of the criteria added after the results."""
     tab = decision.tab
     where = f"{tab} record {path}"
     if not path.is_file():
@@ -706,12 +782,16 @@ def read_record(path: Path, cfg: dict, decision: Decision,
              f"(expected kind {decision.record_kind!r}, version 1)")
     section = cfg[tab]
     again = "; export the record again from a page built with this config and data"
-    compared = ["criteria", "review_labels"]
+    compared = ["review_labels"]
     if tab == "experiment":
         compared += ["hypothesis", "verdict_labels"]
     for key in compared:
         if rec.get(key) != section[key]:
             fail(f"{where}: the record's {key} and config.{tab}.{key} are different{again}")
+    added = record_criteria(where, tab, rec.get("criteria"), section["criteria"], again)
+    # The record's verdicts were judged by the criteria it lists; the page and the report
+    # use every criterion in the config.
+    stated_criteria = section["criteria"][:len(rec["criteria"])]
     files = rec.get("files")
     if not isinstance(files, dict) or not isinstance(files.get("current"), dict) \
             or files["current"].get("file") != tables["a"].path.name:
@@ -750,17 +830,17 @@ def read_record(path: Path, cfg: dict, decision: Decision,
                      f"not one of {section['review_labels']}")
             if item.get("label") or item.get("note"):
                 per_id[item["id"]] = {"label": item.get("label", ""), "note": item.get("note", "")}
-        verdict, regressed = candidate_verdict(cfg, decision, tables["a"], table, per_id)
+        stated_verdict, regressed = candidate_verdict(cfg, decision, tables["a"], table, per_id, stated_criteria)
         stray = sorted(set(per_id) - regressed)
         if stray:
             fail(f"{where} does not match the data: candidate {label!r} has reviews for {stray}, "
                  "which are not regressed items")
-        if verdict != entry["verdict"]:
+        if stated_verdict != entry["verdict"]:
             fail(f"{where} does not match the data: candidate {label!r} is {entry['verdict']!r} in "
-                 f"the record but {verdict!r} from the data and the record's reviews{again}")
-        verdicts[label] = verdict
+                 f"the record but {stated_verdict!r} from the data and the record's reviews{again}")
+        verdicts[label] = candidate_verdict(cfg, decision, tables["a"], table, per_id)[0]
         reviews[label] = per_id
-    return verdicts, reviews
+    return verdicts, reviews, added
 
 
 def read_report(path: Path, decision: Decision, verdicts: dict[str, str]) -> str:
@@ -832,9 +912,9 @@ def check_decision(cfg: dict, decision: Decision, tables: dict[str, Table],
                      f"{cat_col!r} of {tables['a'].path.name}; values: {present}")
     if not section.get("record"):
         return None, None
-    verdicts, reviews = read_record(base / section["record"], cfg, decision, tables)
+    verdicts, reviews, added = read_record(base / section["record"], cfg, decision, tables)
     report = read_report(base / section["report"], decision, verdicts) if section.get("report") else None
-    return {"verdicts": verdicts, "reviews": reviews}, report
+    return {"verdicts": verdicts, "reviews": reviews, "added_after_results": added}, report
 
 
 def read_asset(name: str) -> str:
@@ -964,6 +1044,11 @@ def build(config_path: Path, out_path: Path, csv_override: Path | None,
     report = None
     if decision:
         record, report = check_decision(cfg, decision, tables, base)
+        if record and record["added_after_results"]:
+            names = ", ".join(f"criteria[{i}]" for i in record["added_after_results"])
+            warnings.append(f"config.{decision.tab}.{names}: added after the results (the page and its "
+                            f"exported record mark {ADDED_KEY}); the report must keep them apart from "
+                            "the criteria written before")
 
     # The HTML may be shared, so it never carries the build machine's absolute paths. The
     # config keeps file names, which load mode shows as the files to pick.

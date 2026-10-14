@@ -30,6 +30,14 @@ confirmed, and do not present the verdict alone as the conclusion. When the verd
 and the human's reading disagree (for example every criterion passed but the
 interval of the main metric contains 0), say so in the report.
 
+A pre-written criterion such as "no regressed item, unless a person looks at it and
+accepts it" becomes `{"type": "regressions", "max": 0, "count": "unaccepted"}`. With
+`"max": 0` alone, one regressed item fixes the verdict at `fail` whatever the review
+says. Leaving `regressions` out lets the review decide as well, but then the criterion
+does not appear in the page, the record, or the report's criteria. See
+[config.md](config.md#release) for how `count` works; the record marks a
+criterion awaiting review with `"pending": true`.
+
 ## Frontmatter
 
 The file starts with a frontmatter block that states each condition's verdict, by
@@ -53,12 +61,15 @@ report or of the Markdown download.
 
 ## Structure
 
-Use these five headings in this order, in the language of the page:
+Start the body, before the first heading, with a summary of three or four lines in
+plain sentences: what was tested, each condition's verdict, and what the experimenter
+concluded (or 未決 / undecided). A reader who stops there should know the outcome.
+Then use these five headings in this order, in the language of the page:
 
 | Heading | Content |
 |---------|---------|
 | 背景と仮説 / Background and hypothesis | What was changed and why it was expected to help. Quote `hypothesis`. |
-| 方法 / Method | The data (number of items, file names), the baseline and the conditions, the metrics, and the criteria as written in the config. |
+| 方法 / Method | The data (number of items, file names), the baseline and the conditions, the metrics, and the criteria as written in the config. When the criteria were written before the experiment, state which config criterion each of them became (for example "悪化する項目は 0 個。ただし人が見て受け入れたものは除く" → `{"type": "regressions", "max": 0, "count": "unaccepted"}`), and say so when one has no config criterion. |
 | 結果 / Results | Each condition's verdict (in the words of `verdict_labels`), and each metric's value, difference, and 95% interval, copied from the record. |
 | 考察 / Discussion | The review of regressed items (labels and notes), metrics whose interval contains 0 or not, categories with few items, and how the experimenter reads them. State that the interval did not decide any verdict. |
 | 結論と次にやること / Conclusion and next steps | Whether the hypothesis is adopted, as the experimenter decided, and the next experiment or task. |
@@ -66,9 +77,22 @@ Use these five headings in this order, in the language of the page:
 Write in plain sentences for readers who did not see the data. Use the condition
 labels and the metric labels from the config, not new names.
 
+- Numbers that did not decide anything and are not in the record (cost or time from
+  another source, another evaluation) may go in 考察 with their source, for example
+  "（出典：runs.jsonl の合計）". Never put them in 結果 or mix them into the criteria.
+- When the experimenter has not decided whether to adopt the hypothesis or what to do
+  next, write 未決 (undecided) there and add no proposals of your own.
+- A criterion that the record marks `"added_after_results": true` (the page says
+  「（結果を見た後に追加）」) was added after the results were seen, so it does not
+  test the hypothesis as written before. In 方法, list it apart from the criteria
+  written before and say when and why it was added; in 結果 and 考察, keep its outcome
+  apart too.
+
 ## Markdown and staleness
 
 The report tab renders the same Markdown subset as for the release report (headings,
-paragraphs, one-level lists, tables, bold and italic, HTML shown as text), and shows
+paragraphs, one-level lists, tables, bold and italic, HTML shown as text), colours ▲ / ▼
+differences from the 改善 / 悪化 written next to them (see
+[release-report.md](release-report.md#writing-differences)), and shows
 the same warning when the viewer's reviews change a verdict from the record. See
 [release-report.md](release-report.md#markdown-that-the-report-tab-renders).

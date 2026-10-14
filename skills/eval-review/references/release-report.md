@@ -54,7 +54,18 @@ Use these four headings in this order, in the language of the page:
 | 次にやること / Next steps | Concrete actions: review the remaining items, re-export, fix and compare again. |
 
 Write in plain sentences for readers who did not see the data. Use the candidate labels
-and the metric labels from the config, not new names.
+and the metric labels from the config, not new names. The 結論 section is the summary,
+so put nothing before it.
+
+- Numbers that did not decide anything and are not in the record (cost or time from
+  another source, another evaluation) may go in 注意点 with their source. Never put
+  them in 理由 or mix them into the criteria.
+- When the human has not decided the next steps, write 未決 (undecided) under
+  次にやること and add no proposals of your own.
+- A criterion that the record marks `"added_after_results": true` (the page says
+  「（結果を見た後に追加）」) was added after the results were seen. In 理由, write it
+  after the other criteria and say that it was added after the results, for example
+  "結果を見た後に追加した基準：…". Never present it as a criterion written before.
 
 ## Markdown that the report tab renders
 
@@ -67,9 +78,21 @@ the file is shown literally, never executed.
   (indented items are shown at the same level).
 - Tables: a header row, a `| --- |` separator row, then data rows.
 - Emphasis: `**bold**` and `*italic*`.
+- Differences: ▲ / ▼ followed by the change, as described below.
 
 Anything else (links, images, inline code, code blocks, nested lists, `_italic_`) is
 shown as plain text. Write file names and ids without backticks.
+
+## Writing differences
+
+Write a difference the way the page does: ▲ when the number went up and ▼ when it went
+down, then the signed change, then 改善 or 悪化 (better / worse in English) for a metric
+with a direction, for example "▼ −2pt 悪化" for accuracy or "▲ +75.6 ms 悪化" for
+latency. The arrow alone never says whether the change is good; the word does. The
+report tab colours the difference from that word: in a table cell that starts with ▲ / ▼
+the whole cell, elsewhere the text from the arrow to the next 、。,; or closing
+parenthesis. A difference without either word (for a metric with `better: "none"`, or
+one the reader should not judge) stays uncoloured.
 
 ## When the report goes stale
 

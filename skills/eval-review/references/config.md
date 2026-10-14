@@ -10,6 +10,7 @@ file.
 |-----|----------|------|---------|
 | `title` | yes | string | Page title and heading. Also part of the review storage key. |
 | `lang` | no (default `"ja"`) | `"ja"` \| `"en"` | Language of all UI text. |
+| `item_label` | no | string | What one row is, for example `"質問"` or (English, plural) `"questions"`. Every count on the page uses it instead of 件 / items: 「表示 60 / 60 質問」, 「比較した質問の数」, 「悪化した質問」. Without it the page keeps the generic wording. English always uses the plural ("1 questions"). No leading or trailing spaces, no braces. |
 | `tabs` | yes | list | Non-empty, no repeats, from `overview`, `compare`, `review`, `table`, `release`, `experiment`, `report`. The first entry is the tab shown on open. `release` and `experiment` cannot both appear; build a separate page for each. |
 | `data` | yes | object | Which CSV files to use and whether to embed them. See below. |
 | `columns` | yes | object | Roles of CSV columns. See below. |
@@ -28,11 +29,21 @@ file.
 | `candidates` | required by `compare`, `release`, and `experiment` | List of `{"file": "...", "label": "..."}`, one per model compared against `csv`, same formats. The compare view has a picker for them. Labels must be unique and differ from `label_a`. |
 | `records_path` | no | Only for `.json` files whose top level is an object: the dotted path to the record array, for example `"data.items"`. Applies to every file. An error with a `.csv` or `.jsonl` file. |
 | `label_a` | no (default `A`) | Short name of `csv` shown everywhere, for example `"現行"`. |
+| `mode` | no (default `"embed"`) | `"embed"` inlines the rows into the HTML. `"load"` writes no rows; the page reads the CSV each time it opens. `--mode` on the command line overrides it. |
 
 `csv_b` and `label_b` were replaced by `candidates`; a config that still uses them
-fails with the rewrite to use (`{"candidates": [{"file": "<csv_b>", "label": "<label_b>"}]}`).
-The `--csv-b` command-line option was removed with them.
-| `mode` | no (default `"embed"`) | `"embed"` inlines the rows into the HTML. `"load"` writes no rows; the page reads the CSV each time it opens. `--mode` on the command line overrides it. |
+fails with the rewrite to use. The `--csv-b` command-line option was removed with
+them. For example, this older `data`:
+
+```json
+"data": {"csv": "golden_model_a.csv", "label_a": "現行", "csv_b": "golden_model_b.csv", "label_b": "新"}
+```
+
+becomes:
+
+```json
+"data": {"csv": "golden_model_a.csv", "label_a": "現行", "candidates": [{"file": "golden_model_b.csv", "label": "新"}]}
+```
 
 In both modes the build reads the CSVs and runs every check below. The config in the
 HTML keeps only the file names (`golden_model_a.csv`), never the paths.
@@ -57,14 +68,17 @@ The file picker and drop work in every case. A file loaded in the browser is che
 against the same rules as the build; a file that fails stays unloaded and the error is
 shown.
 
-### Review storage key in load mode
+### Review storage key
 
-Embed mode keys review labels by the title plus the full data, so a different snapshot
-starts with no labels. Load mode exists so the same CSV can be reloaded after it
-changes, so it keys labels by the title plus the sorted set of ids instead: labels
-survive a reload as long as the ids are the same, even when the text or metrics
-changed. Adding or removing an id gives a new key and an empty review; export the
-labels before changing the id set.
+Review labels are keyed by the title plus the sorted set of ids, in both modes: labels
+survive a rebuild with new values or an added column, and a reload of changed data in
+load mode, as long as the ids are the same. Each label also keeps a fingerprint of the
+values it was made against (the configured columns of the row; for a review of
+regressed items, the compared metric values). When they differ, the item shows
+「データが変わった」 / "data changed" until it is labelled again or its note is edited.
+Adding or removing an id, or changing the title, gives a new key and an empty review;
+export the labels before changing either. Pages built before the fingerprint existed
+keyed embed-mode labels by the full data, so those saved labels are not found again.
 
 Data requirements, checked at build time and again when a file is loaded in the browser.
 For CSV:
@@ -117,8 +131,9 @@ A metric object:
 | `label` | no (default: the column name) | Display name. |
 | `unit` | no | Suffix such as `ms` or `USD`. |
 | `aggregate` | yes | `rate`: boolean column, shown as the share of true values. `mean`: average, with p50 and p95. `sum`: total, with the per-item average. |
-| `better` | yes | `higher` or `lower`. Decides the direction of deltas and of regressions. |
-| `regression_threshold` | no, numeric metrics only | Smallest change, in the metric's unit, that counts as a regression or an improvement. Not allowed on `rate`. |
+| `better` | yes | `higher` or `lower`: decides the direction of deltas and of regressions. `none`: a metric without a direction (for example the answer length), shown for reference only. Its differences are plain signed numbers without ▲▼, better/worse, or colour; it never classifies an item (a `rate` flip included); and the compare tab says it is not used to call a change better or worse. |
+| `regression_threshold` | no, numeric metrics only | Smallest change, in the metric's unit, that counts as a regression or an improvement. Not allowed on `rate` or with `better: "none"`. |
+| `format` | no | `"percent"`: a `mean` of values between 0 and 1 (for example the average score of 3 runs) is shown as % (66.7%), and its differences, threshold, and 95% interval as pt (+14pt), as a `rate` is. Only the display changes: the data, the record JSON, and the CSV exports keep 0.667, and `regression_threshold` and the criteria's bounds are written as fractions (0.2 means 20pt, `"min": 0.75` means 75%). Allowed only with `aggregate: "mean"` and without `unit`. The build does not check that the values lie between 0 and 1 (1.2 is shown as 120%). |
 
 Values: an empty cell means "no value" and is left out of n. A `rate` cell must be one
 of `true/false`, `1/0`, `yes/no`, `y/n`, `t/f` (any case). A `mean` / `sum` cell must
@@ -134,6 +149,7 @@ For each metric where both A and B have a value:
   the item regressed; better by more than T, it improved. Severity is the change
   divided by T (by A's value when T is 0).
 - `mean` / `sum` without a threshold: shown in the detail view but never classifies.
+- `better: "none"`: skipped; shown for reference only.
 
 An item that regressed on any metric is "regressed" even if it improved on others.
 The regressions list sorts flips first, then by severity. The metric tiles compare
@@ -173,9 +189,9 @@ A criterion object, by `type`:
 
 | `type` | Keys | Passes when |
 |--------|------|-------------|
-| `absolute` | `metric`, `min` and/or `max` | The candidate's aggregate of the metric is within the bounds. For a `rate` metric the bounds are fractions (0.85 means 85%). |
-| `relative` | `metric`, exactly one of `max_worse` / `max_worse_pct` | The candidate is worse than the current model by at most `max_worse` (in the metric's unit; a fraction for `rate`, so 0.02 means 2pt) or `max_worse_pct` percent of the current value. Getting better always passes. |
-| `regressions` | `max` (integer >= 0) | The number of regressed items is at most `max`. |
+| `absolute` | `metric` (not one with `better: "none"`; the same applies to `relative`), `min` and/or `max` | The candidate's aggregate of the metric is within the bounds. For a `rate` metric or one with `format: "percent"` the bounds are fractions (0.85 means 85%). |
+| `relative` | `metric`, exactly one of `max_worse` / `max_worse_pct` | The candidate is worse than the current model by at most `max_worse` (in the metric's unit; a fraction for `rate` and `format: "percent"`, so 0.02 means 2pt) or `max_worse_pct` percent of the current value. Getting better always passes. |
+| `regressions` | `max` (integer >= 0), optional `count` | The number of regressed items is at most `max`. With `count: "all"` (the default) every regressed item counts, and review never changes the result. With `count: "unaccepted"` items reviewed with any label but the last one (accepted) are not counted; unreviewed items and items with the last label are. While the count exceeds `max` only because unreviewed items are counted, the criterion is "△ awaiting review" (レビュー待ち) instead of not met, and the verdict is the middle one. Its name becomes 受け入れていない悪化した項目の数 (Regressed items not accepted). |
 | `critical_categories` | `categories` (needs `columns.category`) | No regressed item is in one of these categories. Each value must occur in the current model's data. |
 
 `metric` is a column in `columns.metrics`. Aggregates use paired items only (ids
@@ -186,8 +202,20 @@ Verdicts, per candidate, over all paired items regardless of the filter bar:
 
 1. 出さない (`no-go`): a criterion fails, or a regressed item is labelled with the last
    review label.
-2. 要レビュー (`review`): otherwise, a regressed item has no label yet.
+2. 要レビュー (`review`): otherwise, a regressed item has no label yet. A criterion
+   awaiting review (`count: "unaccepted"`) always leaves an item unreviewed, so it lands
+   here.
 3. 出してよい (`go`): otherwise.
+
+`{"type": "regressions", "max": 0, "count": "unaccepted"}` and leaving out `regressions`
+both let review decide the regressed items, and a single item labelled with the last
+label gives the worst verdict either way. The difference is what the page and the record
+show: with the criterion, the pre-written condition ("no regressed item, unless a person
+accepts it after looking") appears as a criterion row, as "△ awaiting review" while items
+are unreviewed, and in the record JSON as `"pending": true` on that criterion (its
+`value` is the number of counted items). Write it when the user's criteria say regressions
+must be accepted by review; leave `regressions` out only when they say nothing about the
+number of regressed items.
 
 The release tab also shows each metric's n and the 95% interval of the paired
 difference (mean of the per-item differences ± 1.96 standard errors, times n for `sum`
@@ -197,27 +225,41 @@ verdict.
 ### Review of regressed items
 
 Each candidate has its own review of its regressed items, stored in the browser's
-localStorage. The key is the title, the candidate label, and the current and candidate
-data (in load mode, their sorted ids), plus the embedded record's reviews when there
-is one. Reviews in `release.record` are the starting values, so a teammate opening the
-built HTML sees the reviews that the record was exported with.
+localStorage. The key is the title, the candidate label, and the sorted ids of the
+current and candidate data, plus the embedded record's reviews when there is one. As in
+the review tab, each review keeps a fingerprint of the item's metric values and is
+marked 「データが変わった」 when they changed. Reviews in `release.record` are the
+starting values, so a teammate opening the built HTML sees the reviews that the record
+was exported with.
 
 ### Record
 
 "記録を書き出す (JSON)" and "(Markdown)" on the release tab download
 `release_record_YYYYMMDD-HHMM.json` / `.md`. Neither holds reviewer names or review
 times. The JSON holds `kind` (`"eval-review/release-record"`), `version` (1),
-`title`, `exported_at`, `files.current` (label and file name), `criteria`,
+`title`, `exported_at`, `files.current` (label and file name), `criteria` (with
+`"added_after_results": true` on a criterion added after the results; see below),
 `review_labels`, and per candidate: `label`, `file`, `verdict`, the counts `paired`,
-`regressed`, `unreviewed`, `rejected`, each criterion's `value` and `pass`, each
+`regressed`, `unreviewed`, `rejected`, each criterion's `value` and `pass` (plus
+`"pending": true` for a criterion awaiting review), each
 metric's n, aggregates, difference and `ci95`, and `reviews` for every regressed item
 (label `""` when unreviewed).
 
-When `release.record` is set, the build fails unless the record's criteria,
-review labels, current file, and candidate labels and files equal the config; every
-review is for a regressed item and uses a review label; and each verdict equals the one
-recomputed from the data and the record's reviews. A changed config or data file
-therefore means exporting the record again.
+When `release.record` is set, the build fails unless the record's review labels,
+current file, and candidate labels and files equal the config; the record's criteria are
+the first criteria of the config; every review is for a regressed item and uses a review
+label; and each verdict equals the one recomputed from the data, the record's reviews
+and the record's criteria. A changed config or data file therefore means exporting the
+record again.
+
+The one exception is a criterion added after the results: appending criteria to the
+end of the config keeps the record valid. The build prints a warning, the page judges
+by every criterion and marks the added ones 「（結果を見た後に追加）」 / "(added after
+the results)", and a record exported from that page lists them with
+`"added_after_results": true`, so the mark survives later exports. Changing, removing
+or reordering a criterion that the record has is an error. Keep the added criteria
+apart in the report (see [release-report.md](release-report.md#structure) and
+[experiment-report.md](experiment-report.md)).
 
 ## `experiment`
 
@@ -366,11 +408,19 @@ is the fact-check review on `factcheck.jsonl`, using flattened names
 
 ### Experiment against a baseline
 
-`examples/experiment.config.json` (the baseline and three conditions, with the same
-`data` and `columns` as above apart from the file names and labels);
-`examples/experiment_report.config.json` adds the `report` tab with
-`"record": "experiment_record.json"` and `"report": "experiment_report.md"`. The
-experiment part:
+`examples/experiment.config.json` (the baseline and three conditions, with `data` and
+`columns` like the above apart from the file names and labels, plus `"item_label":
+"質問"`, a `correct_of_3` metric with `"format": "percent"` and an `output_chars`
+metric with `"better": "none"`); `examples/experiment_report.config.json` adds the
+`report` tab with `"record": "experiment_record.json"` and `"report":
+"experiment_report.md"`. The extra metrics:
+
+```json
+{"column": "correct_of_3", "label": "3回中の正答の割合", "aggregate": "mean", "better": "higher", "format": "percent", "regression_threshold": 0.5},
+{"column": "output_chars", "label": "出力の文字数", "unit": "文字", "aggregate": "mean", "better": "none"}
+```
+
+The experiment part:
 
 ```json
 {
@@ -380,7 +430,7 @@ experiment part:
     "criteria": [
       {"type": "absolute", "metric": "correct", "min": 0.95},
       {"type": "relative", "metric": "latency_ms", "max_worse_pct": 15},
-      {"type": "regressions", "max": 2},
+      {"type": "regressions", "max": 2, "count": "unaccepted"},
       {"type": "critical_categories", "categories": ["安全"]}
     ],
     "verdict_labels": {"pass": "仮説を支持", "review": "要レビュー", "fail": "支持しない"}

@@ -82,11 +82,16 @@ Five jobs, selected by `tabs` in the config:
    check each tab: no console errors, charts sized to their cards, numbers that match
    a quick count from the CSV (for example the number of rows and of `true` values).
    In load mode, serve the folder (`python3 -m http.server`) so the CSV loads, or drop
-   it on the page. If no browser is available, say so instead of claiming it renders.
+   it on the page. After a rebuild, reopen the page with a new query string
+   (`page.html?v=2`) or a forced reload; the browser may otherwise show the previous
+   build from its cache. If no browser is available, say so instead of claiming it
+   renders.
 7. **Hand the HTML file to the user** with a short reply covering:
    - the HTML path and size (from the build output);
    - what is in it and how to use it: which tab answers their question, keyboard keys
-     for review, where the export / download buttons are;
+     for review, where the export / download buttons are. When the page will be opened
+     in a pane where downloads do nothing (for example a browser pane inside a desktop
+     app), point the user to the copy buttons next to each export instead;
    - any build warning;
    - data anomalies noticed in step 1, one line each, without fixing them;
    - in load mode: the words in the request that led to load; the CSV file(s) the page
@@ -101,13 +106,18 @@ Five jobs, selected by `tabs` in the config:
   `aggregate` and `better`. Boolean pass/fail metrics use `aggregate: "rate"`; a
   true->false flip of a `better: "higher"` rate is a regression. For numeric metrics
   set `regression_threshold` in the metric's unit (for example 300 for latency in ms);
-  a numeric metric without a threshold is shown but does not classify items.
+  a numeric metric without a threshold is shown but does not classify items. A metric
+  with no good direction (for example answer length) takes `better: "none"`: it is shown
+  for reference only, without better/worse or colour, and cannot be a criterion.
   Put the current model in `data.csv` and each other model in `data.candidates`.
 - "Which candidate can we release?" -> `release` first, then `compare`, `overview`,
   `table`. Turn each condition the user states into a `release.criteria` entry
   (`absolute`, `relative`, `regressions`, `critical_categories`); do not invent
   criteria they did not state, and ask when a threshold is missing. The metric
-  thresholds decide which items count as regressed, so set them too.
+  thresholds decide which items count as regressed, so set them too. A condition like
+  "no regressed item, unless a person looks at it and accepts it" is
+  `{"type": "regressions", "max": 0, "count": "unaccepted"}`; plain `"max": 0` fails
+  on the first regressed item whatever the review says.
 - "Write up the decision" -> only after a human has reviewed the regressed items and
   exported the record (JSON). Read
   [references/release-report.md](references/release-report.md), write the report with
@@ -157,16 +167,21 @@ Five jobs, selected by `tabs` in the config:
   table" view. With candidates, buttons switch the overview between the data files.
 - **Compare:** with several candidates, buttons pick the one compared with A. Items
   are paired by id. Ids present on only one side are excluded and
-  listed in a banner. Regressions sort flips first, then by size relative to the
-  threshold. Selecting a row shows metrics side by side, text that is identical once,
-  and text that differs as two columns.
+  listed in a banner. A sentence at the top says what was compared and which change
+  of each metric counts as regressed or improved, and each count tile says what it
+  counted. The change column shows each deciding metric as before → after (a rate as
+  ○ → ×, a number with ▲ / ▼ for the direction of the number). Regressions sort
+  flips first, then by size relative to the threshold, which the page calls the
+  guide for better or worse (悪化・改善の目安). Selecting a row shows metrics side by
+  side, text that is identical once, and text that differs as two columns.
 - **Review:** applies to the first CSV (A). Labels and notes are stored in the
-  browser's localStorage, keyed by the title and the data (in load mode, the title and
-  the set of ids, so labels survive a data refresh), so reopening the same file
-  resumes. Picking a label moves to the next item. Keys: left/right arrows move, 1-9
+  browser's localStorage, keyed by the title and the set of ids, so reopening the file
+  or a rebuild with changed values resumes; an item whose values changed since it was
+  labelled shows 「データが変わった」. Picking a label moves to the next item. Keys: left/right arrows move, 1-9
   pick a label, N focuses the note, Esc leaves the note. "Unreviewed only" filters the
   queue. Export writes the original columns plus `human_label` and `human_note`
-  (UTF-8 with BOM so Excel opens it correctly).
+  (UTF-8 with BOM so Excel opens it correctly); "CSV をコピー" copies the same CSV
+  without the BOM.
 - **Release:** one card per candidate with its verdict, the criteria it did not meet,
   and links to its review and to the compare view; a candidate x criteria table with
   each value and ✓ / ✕ plus text; and each metric's n and 95% interval, for reference
@@ -181,7 +196,7 @@ Five jobs, selected by `tabs` in the config:
   label (default 不可), 要レビュー if a regressed item is unreviewed, otherwise 出してよい.
   The review of regressed items works like the review tab (arrows, 1-9, N, Esc) and is
   saved per candidate in localStorage. "記録を書き出す" downloads the record as JSON
-  or Markdown, without reviewer names or times.
+  or Markdown, without reviewer names or times; "記録の … をコピー" copies the same text.
 - **Experiment:** the release tab with the hypothesis on top and the verdicts in the
   words of `experiment.verdict_labels` (codes `pass` / `review` / `fail`, decided by
   the same rules), including the same detail panel. Each metric row says how to read
@@ -190,7 +205,8 @@ Five jobs, selected by `tabs` in the config:
   interval never changes a verdict. The record adds `hypothesis` and `verdict_labels`.
 - **Report:** the Markdown report from `release.report` or `experiment.report`,
   rendered as headings, paragraphs, flat lists, tables, and bold / italic only, with
-  HTML shown as text. "Markdown を書き出す" downloads the report body. If the viewer's
+  HTML shown as text. "Markdown を書き出す" downloads the report body and "Markdown
+  をコピー" copies it. If the viewer's
   reviews change a verdict from the record, a warning on top says the report is out of
   date.
 - **Table:** Tabulator with sort, header filters (drop-downs for category / status /
