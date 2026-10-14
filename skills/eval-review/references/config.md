@@ -117,12 +117,39 @@ The same checks apply after the records are turned into rows:
 | Key | Required | Meaning |
 |-----|----------|---------|
 | `id` | yes | Unique key per row. Compare pairs A and B rows by it; review stores labels by it. |
-| `text` | no | List of long-text columns in reading order (question, answer, evidence...). Shown in full in review and compare details; truncated with an expand button in the table. The first one is the preview in the compare list. |
+| `text` | no | List of long-text columns in reading order (question, answer, evidence...). Shown in full in review and compare details (closed if listed in `collapsed`); truncated with an expand button in the table. The first one is the preview in the compare list. |
 | `collapsed` | no | Subset of `text` shown closed in review and compare details, with the column name and its character count as the heading (`answer（1,275 字）`, `answer (1,275 chars)`). For long text read only now and then, such as a full answer or cited sources. Which columns the reader opened is kept per column while the page is open (not saved in the browser), so an opened column stays open on the next item; in compare details, opening A also opens B. The table is unchanged. A name not in `text`, or listed twice, is an error. |
+| `sections` | no | List of section objects that group `text` columns under headings in review and compare details, for example the original answer, then the evaluations to compare. Each section gets a heading and a rule above it. `text` columns in no section come last under その他 / Other. See below. |
 | `category` | no | Grouping dimension: filter drop-down, bars in the overview, table grouping. |
 | `status` | no | Workflow state (for example 未対応 / 対応中 / 対応済). Stacks the category bars and gets colors. |
 | `verdict` | no | A model's judgment (for example supported / contradicted). Same role as `status`; if both are set, `status` stacks the bars. |
 | `metrics` | required by `compare` | List of metric objects. |
+
+A section object:
+
+| Key | Required | Meaning |
+|-----|----------|---------|
+| `title` | yes | Heading of the section. |
+| `columns` | yes | Non-empty list of `text` columns, in the order shown. A column belongs to at most one section; a name not in `text` is an error. |
+| `layout` | no (default `"stack"`) | `"stack"`: columns one below another. `"side-by-side"`: in the review tab, the columns in one row (for example the verdicts of two methods to compare), back to one column at 600px wide or less. The compare detail always stacks, since a differing column there already shows A and B side by side. |
+
+Without `sections`, the compare detail shows the columns identical in A and B first,
+then the differing ones. With `sections`, it keeps each section's order and shows each
+column once if A and B are identical, otherwise as A and B. `collapsed` columns stay
+closed inside sections.
+
+```json
+"columns": {
+  "id": "id",
+  "text": ["question", "answer", "full_answer", "old_verdict", "new_verdict", "sources"],
+  "collapsed": ["full_answer", "sources"],
+  "sections": [
+    {"title": "質問と回答", "columns": ["question", "answer", "full_answer"]},
+    {"title": "判定の比較", "columns": ["old_verdict", "new_verdict"], "layout": "side-by-side"},
+    {"title": "引用", "columns": ["sources"]}
+  ]
+}
+```
 
 A metric object:
 
@@ -340,6 +367,10 @@ closed through `collapsed`.
   "columns": {
     "id": "id",
     "text": ["claim", "source_excerpt", "llm_rationale"],
+    "sections": [
+      {"title": "主張", "columns": ["claim"]},
+      {"title": "根拠と判定理由", "columns": ["source_excerpt", "llm_rationale"], "layout": "side-by-side"}
+    ],
     "category": "category",
     "verdict": "llm_verdict"
   },

@@ -77,7 +77,9 @@ DATA_KEYS = {"csv", "candidates", "label_a", "mode", "records_path"}
 CANDIDATE_KEYS = {"file", "label"}
 # Replaced by data.candidates; a config using them gets an error showing the rewrite.
 REMOVED_DATA_KEYS = ("csv_b", "label_b")
-COLUMN_KEYS = {"id", "text", "collapsed", "category", "status", "verdict", "metrics"}
+COLUMN_KEYS = {"id", "text", "collapsed", "sections", "category", "status", "verdict", "metrics"}
+SECTION_KEYS = {"title", "columns", "layout"}
+SECTION_LAYOUTS = ("stack", "side-by-side")
 METRIC_KEYS = {"column", "label", "unit", "aggregate", "better", "regression_threshold", "format"}
 METRIC_FORMATS = ("percent",)
 REVIEW_KEYS = {"labels"}
@@ -157,6 +159,28 @@ def text_subset(value: object, text: list[str], where: str) -> list[str]:
     return value
 
 
+def validate_sections(sections: object, text: list[str]) -> None:
+    """columns.sections: headed groups of text columns. Text columns in no section are
+    shown last under "Other" by app.js, so they are not an error."""
+    if not isinstance(sections, list):
+        fail("config.columns.sections must be a list of {title, columns, layout} objects")
+    seen: dict[str, int] = {}
+    for i, s in enumerate(sections):
+        where = f"config.columns.sections[{i}]"
+        check_keys(s, SECTION_KEYS, where)
+        require_str(s, "title", where)
+        columns = text_subset(s.get("columns"), text, f"{where}.columns")
+        if not columns:
+            fail(f"{where}.columns must not be empty")
+        for c in columns:
+            if c in seen:
+                fail(f"{where}.columns: {c!r} is already in config.columns.sections[{seen[c]}]")
+            seen[c] = i
+        layout = s.setdefault("layout", "stack")
+        if layout not in SECTION_LAYOUTS:
+            fail(f"{where}.layout must be one of {list(SECTION_LAYOUTS)}, got {layout!r}")
+
+
 def validate_config(cfg: object) -> dict:
     cfg = check_keys(cfg, TOP_KEYS, "config")
     require_str(cfg, "title", "config")
@@ -211,6 +235,8 @@ def validate_config(cfg: object) -> dict:
         fail("config.columns.text must be a list of column names")
     if "collapsed" in cols:
         text_subset(cols["collapsed"], text, "config.columns.collapsed")
+    if "sections" in cols:
+        validate_sections(cols["sections"], text)
 
     metrics = cols.setdefault("metrics", [])
     if not isinstance(metrics, list):

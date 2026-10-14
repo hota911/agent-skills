@@ -1260,6 +1260,27 @@
     return block;
   }
 
+  // columns.sections: text columns grouped under headings. Text columns in no section
+  // come last under "Other", so adding a column to columns.text never hides it.
+  const textSections = (() => {
+    if (!cols.sections || !cols.sections.length) return null;
+    const listed = new Set(cols.sections.flatMap((s) => s.columns));
+    const rest = cols.text.filter((c) => !listed.has(c));
+    return rest.length ? cols.sections.concat([{ title: T.other, columns: rest }]) : cols.sections;
+  })();
+
+  // Appends one section per entry of textSections; `block(col)` gives a column's node(s).
+  // Only the review tab lays out "side-by-side" sections in a row: in the compare detail
+  // each differing column already takes two columns.
+  function appendTextSections(card, block, sideBySide) {
+    for (const s of textSections) {
+      const blocks = s.columns.map(block);
+      const row = sideBySide && s.layout === "side-by-side";
+      card.appendChild(el("section", { class: "text-section" }, [el("h2", { class: "text-section-title", text: s.title })].concat(
+        row ? el("div", { class: "section-cols", style: "--n:" + blocks.length }, blocks) : blocks)));
+    }
+  }
+
   function renderPairDetail(p, side) {
     const labelA = sideLabel.a, labelB = sideLabel[side];
     const card = el("div", { class: "card", id: "pair-detail" });
@@ -1276,11 +1297,15 @@
     card.appendChild(el("div", { class: "scroll-x" }, el("table", { class: "list", style: "margin-bottom:12px" }, [
       el("thead", null, el("tr", null, [el("th", { text: T.metric }), el("th", { text: labelA }), el("th", { text: labelB }), el("th", { text: fmt(T.delta, { a: labelA, b: labelB }) })])),
       el("tbody", null, metricRows)])));
-    const shared = [], differing = [];
-    for (const c of cols.text) (cellText(p.a[c]) === cellText(p.b[c]) ? shared : differing).push(c);
-    for (const c of shared) card.appendChild(textBlock(c + " (" + fmt(T.shared, { a: labelA, b: labelB }) + ")", p.a[c], c));
-    for (const c of differing) {
-      card.appendChild(el("div", { class: "side-by-side" }, [textBlock(c + " — " + labelA, p.a[c], c), textBlock(c + " — " + labelB, p.b[c], c)]));
+    const isShared = (c) => cellText(p.a[c]) === cellText(p.b[c]);
+    const sharedBlock = (c) => textBlock(c + " (" + fmt(T.shared, { a: labelA, b: labelB }) + ")", p.a[c], c);
+    const pairBlock = (c) => el("div", { class: "side-by-side" }, [textBlock(c + " — " + labelA, p.a[c], c), textBlock(c + " — " + labelB, p.b[c], c)]);
+    if (textSections) {
+      // Sections keep the configured reading order, so shared and differing columns mix.
+      appendTextSections(card, (c) => (isShared(c) ? sharedBlock(c) : pairBlock(c)), false);
+    } else {
+      for (const c of cols.text.filter(isShared)) card.appendChild(sharedBlock(c));
+      for (const c of cols.text.filter((c) => !isShared(c))) card.appendChild(pairBlock(c));
     }
     return card;
   }
@@ -1481,7 +1506,8 @@
       meta.appendChild(el("span", { class: "badge" }, [c === stackCol ? el("span", { class: "swatch", style: "background:var(" + seriesVar(v) + ")" }) : null, c + ": " + v]));
     }
     card.appendChild(meta);
-    for (const c of cols.text) card.appendChild(textBlock(c, row[c], c));
+    if (textSections) appendTextSections(card, (c) => textBlock(c, row[c], c), true);
+    else for (const c of cols.text) card.appendChild(textBlock(c, row[c], c));
 
     card.appendChild(el("h3", { text: T.humanLabel }));
     card.appendChild(el("div", { class: "label-buttons" }, labels.map((l, i) =>

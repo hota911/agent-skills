@@ -182,6 +182,10 @@ button, select, input, textarea { font: inherit; color: inherit; }
 .text-block.folded > summary h3 { display: inline; margin: 0; }
 .side-by-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 @media (max-width: 600px) { .side-by-side { grid-template-columns: minmax(0, 1fr); } }
+/* columns.sections: a heading and a rule per section; "side-by-side" sets --n columns. */
+.text-section { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 4px; }
+.section-cols { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 12px; align-items: start; }
+@media (max-width: 600px) { .section-cols { grid-template-columns: minmax(0, 1fr); } }
 
 /* Review */
 .review-bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-bottom: 12px; }
