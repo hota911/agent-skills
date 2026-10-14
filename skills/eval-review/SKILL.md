@@ -240,7 +240,9 @@ Five jobs, selected by `tabs` in the config:
   load-mode file holds only the config (title, column names, labels, `order` values)
   and each CSV's path relative to the HTML, never absolute paths or rows.
 - CSV values are inserted as text, never as HTML, so markup in the data is displayed
-  literally. Extra tab scripts must keep this: data goes in only through the provided
+  literally. The only exception is that `http://` / `https://` URLs in `columns.text`
+  values become links (new tab, `rel="noopener noreferrer"`); other schemes such as
+  `javascript:` stay text. Extra tab scripts must keep this: data goes in only through the provided
   element builder or `textContent`, never `innerHTML`.
 - Review labels, including release reviews, live only in that browser's localStorage.
   Clearing site data, another browser, or another machine starts empty. Export to keep

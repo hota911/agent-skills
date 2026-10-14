@@ -1,4 +1,5 @@
-/* eval-review runtime. Data values are only ever inserted with textContent. */
+/* eval-review runtime. Data values are only ever inserted as text (textContent or text
+   nodes); http(s) URLs in text columns become <a> elements after new URL() checks them. */
 (function () {
   "use strict";
 
@@ -1232,6 +1233,49 @@
     return c.changes.map((ch) => el("span", { class: "badge reason", text: changeText(ch) }));
   }
 
+  // http(s) URLs in columns.text values become links. ASCII only, so Japanese text right
+  // after a URL (「…/libra）。」) is not part of the link.
+  const URL_RE = /https?:\/\/[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+/gi;
+
+  // Drops trailing punctuation, and a ) or ] that has no opening partner in the URL
+  // (so https://en.wikipedia.org/wiki/Foo_(bar) keeps its parenthesis).
+  function trimUrl(url) {
+    const count = (s, ch) => s.split(ch).length - 1;
+    for (;;) {
+      const last = url.slice(-1);
+      if (".,;:!?'*".includes(last)) url = url.slice(0, -1);
+      else if (last === ")" && count(url, "(") < count(url, ")")) url = url.slice(0, -1);
+      else if (last === "]" && count(url, "[") < count(url, "]")) url = url.slice(0, -1);
+      else return url;
+    }
+  }
+
+  function isWebUrl(s) {
+    try {
+      const u = new URL(s);
+      return (u.protocol === "http:" || u.protocol === "https:") && u.hostname !== "";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Text nodes and <a> elements for `text`; never parsed as HTML.
+  function linkify(text) {
+    const out = [];
+    let last = 0, m;
+    URL_RE.lastIndex = 0;
+    while ((m = URL_RE.exec(text))) {
+      const url = trimUrl(m[0]);
+      if (!isWebUrl(url)) continue;
+      if (m.index > last) out.push(document.createTextNode(text.slice(last, m.index)));
+      out.push(el("a", { href: url, text: url, target: "_blank", rel: "noopener noreferrer" }));
+      last = m.index + url.length;
+      URL_RE.lastIndex = last;
+    }
+    if (last < text.length || !out.length) out.push(document.createTextNode(text.slice(last)));
+    return out;
+  }
+
   // columns.collapsed: text columns shown as closed <details>. Which ones the reader opened
   // is kept per column for as long as the page is open (not in localStorage), so it
   // survives moving to the next item and re-renders.
@@ -1240,7 +1284,7 @@
 
   function textBlock(title, value, col) {
     const text = String(prettyText(value));
-    const body = el("pre", { class: "longtext", text: text });
+    const body = el("pre", { class: "longtext" }, linkify(text));
     if (!foldedCols.has(col)) return el("div", { class: "text-block" }, [el("h3", { text: title }), body]);
     // Code points, not UTF-16 units, so a character outside the BMP counts once.
     const n = numberFormat(0).format(Array.from(text).length);
@@ -2325,15 +2369,17 @@
 
   const TRUNCATE_AT = 140;
 
-  function textFormatter(cell) {
+  // `links` turns URLs into links (columns.text). A truncated cell gets them only once
+  // expanded, since the cut may fall inside a URL.
+  function textFormatter(cell, links) {
     const value = String(cell.getValue() ?? "");
     const span = el("span", { class: "cell-text" });
-    if (value.length <= TRUNCATE_AT) { span.textContent = value; return span; }
+    if (value.length <= TRUNCATE_AT) { appendChildren(span, links ? linkify(value) : value); return span; }
     let expanded = false;
-    const body = document.createTextNode("");
+    const body = el("span");
     const more = el("button", { class: "cell-more", type: "button" });
     const paint = () => {
-      body.textContent = expanded ? value : value.slice(0, TRUNCATE_AT) + "…";
+      body.replaceChildren(...(expanded && links ? linkify(value) : [expanded ? value : value.slice(0, TRUNCATE_AT) + "…"]));
       more.textContent = expanded ? "▲" : "▼";
       more.setAttribute("aria-label", expanded ? "collapse" : "expand");
     };
@@ -2389,7 +2435,10 @@
           }
         });
       }
-      if (longText.has(h)) Object.assign(c, { formatter: textFormatter, width: 320, variableHeight: true, cssClass: "wrap" });
+      if (longText.has(h)) {
+        const links = cols.text.includes(h);
+        Object.assign(c, { formatter: (cell) => textFormatter(cell, links), width: 320, variableHeight: true, cssClass: "wrap" });
+      }
       if (h === cols.id) c.frozen = window.innerWidth > 600;
       return c;
     });
