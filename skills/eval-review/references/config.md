@@ -118,6 +118,7 @@ The same checks apply after the records are turned into rows:
 |-----|----------|---------|
 | `id` | yes | Unique key per row. Compare pairs A and B rows by it; review stores labels by it. |
 | `text` | no | List of long-text columns in reading order (question, answer, evidence...). Shown in full in review and compare details; truncated with an expand button in the table. The first one is the preview in the compare list. |
+| `collapsed` | no | Subset of `text` shown closed in review and compare details, with the column name and its character count as the heading (`answer（1,275 字）`, `answer (1,275 chars)`). For long text read only now and then, such as a full answer or cited sources. Which columns the reader opened is kept per column while the page is open (not saved in the browser), so an opened column stays open on the next item; in compare details, opening A also opens B. The table is unchanged. A name not in `text`, or listed twice, is an error. |
 | `category` | no | Grouping dimension: filter drop-down, bars in the overview, table grouping. |
 | `status` | no | Workflow state (for example 未対応 / 対応中 / 対応済). Stacks the category bars and gets colors. |
 | `verdict` | no | A model's judgment (for example supported / contradicted). Same role as `status`; if both are set, `status` stacks the bars. |
@@ -299,7 +300,8 @@ build also fails unless the record's `hypothesis` and `verdict_labels` equal the
 `examples/` has synthetic CSVs for each job; the feedback example there also has
 an extra tab (`feedback_weekly.js`, counts per week). `examples/factcheck_jsonl.config.json`
 is the fact-check review on `factcheck.jsonl`, using flattened names
-(`llm.verdict`, `llm.confidence`) and an array column (`citations`) in `text`.
+(`llm.verdict`, `llm.confidence`) and an array column (`citations`) in `text`, shown
+closed through `collapsed`.
 
 ### Model A vs B on a golden dataset
 

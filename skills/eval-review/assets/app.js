@@ -102,7 +102,8 @@
       unacceptedCountRejected: "受け入れていない悪化した項目 {n} 件（上限 {max} 件）。悪化した {total} 件のうち、レビューで受け入れた {accepted} 件を除き、未レビューの {unreviewed} 件と「{reject}」の {rejected} 件を数えた",
       whyPending: "レビュー待ちの理由", pendingReason: "上限を超えるのは未レビューの項目を数えているため。レビューが済むまで判定は「{review}」になる。",
       countedItems: "数えた項目（未レビュー・「{reject}」）: {n} 件", notCountedItems: "数えない項目（レビューで受け入れた）: {n} 件",
-      openInReview: "レビューで開く", goTo: "移動"
+      openInReview: "レビューで開く", goTo: "移動",
+      foldedTitle: "{title}（{n} 字）"
     },
     en: {
       tabs: { overview: "Overview", compare: "Compare", review: "Review", table: "Table", release: "Release decision", experiment: "Experiment", report: "Report" },
@@ -203,7 +204,8 @@
       unacceptedCountRejected: "{n} regressed items not accepted (at most {max}). Of {total} regressed items, {accepted} accepted in review are left out, and {unreviewed} unreviewed and {rejected} \"{reject}\" are counted",
       whyPending: "Why awaiting review", pendingReason: "The maximum is exceeded only because unreviewed items are counted. Until they are reviewed, the verdict is \"{review}\".",
       countedItems: "Counted items (unreviewed or \"{reject}\"): {n}", notCountedItems: "Items not counted (accepted in review): {n}",
-      openInReview: "Open in review", goTo: "Go to"
+      openInReview: "Open in review", goTo: "Go to",
+      foldedTitle: "{title} ({n} chars)"
     }
   };
 
@@ -1230,8 +1232,32 @@
     return c.changes.map((ch) => el("span", { class: "badge reason", text: changeText(ch) }));
   }
 
-  function textBlock(title, value) {
-    return el("div", { class: "text-block" }, [el("h3", { text: title }), el("pre", { class: "longtext", text: prettyText(value) })]);
+  // columns.collapsed: text columns shown as closed <details>. Which ones the reader opened
+  // is kept per column for as long as the page is open (not in localStorage), so it
+  // survives moving to the next item and re-renders.
+  const foldedCols = new Set(cols.collapsed || []);
+  const openCols = new Set();
+
+  function textBlock(title, value, col) {
+    const text = String(prettyText(value));
+    const body = el("pre", { class: "longtext", text: text });
+    if (!foldedCols.has(col)) return el("div", { class: "text-block" }, [el("h3", { text: title }), body]);
+    // Code points, not UTF-16 units, so a character outside the BMP counts once.
+    const n = numberFormat(0).format(Array.from(text).length);
+    const block = el("details", { class: "text-block folded" },
+      [el("summary", null, el("h3", { text: fmt(T.foldedTitle, { title: title, n: n }) })), body]);
+    block.dataset.col = col;
+    block.open = openCols.has(col);
+    block.addEventListener("toggle", () => {
+      // Ignores the toggle event fired by setting `open` above or by the sync below.
+      if (block.open === openCols.has(col)) return;
+      if (block.open) openCols.add(col); else openCols.delete(col);
+      // Keeps every block of the column in step, such as A and B in the compare detail.
+      for (const other of document.querySelectorAll("details.folded")) {
+        if (other.dataset.col === col) other.open = block.open;
+      }
+    });
+    return block;
   }
 
   function renderPairDetail(p, side) {
@@ -1252,9 +1278,9 @@
       el("tbody", null, metricRows)])));
     const shared = [], differing = [];
     for (const c of cols.text) (cellText(p.a[c]) === cellText(p.b[c]) ? shared : differing).push(c);
-    for (const c of shared) card.appendChild(textBlock(c + " (" + fmt(T.shared, { a: labelA, b: labelB }) + ")", p.a[c]));
+    for (const c of shared) card.appendChild(textBlock(c + " (" + fmt(T.shared, { a: labelA, b: labelB }) + ")", p.a[c], c));
     for (const c of differing) {
-      card.appendChild(el("div", { class: "side-by-side" }, [textBlock(c + " — " + labelA, p.a[c]), textBlock(c + " — " + labelB, p.b[c])]));
+      card.appendChild(el("div", { class: "side-by-side" }, [textBlock(c + " — " + labelA, p.a[c], c), textBlock(c + " — " + labelB, p.b[c], c)]));
     }
     return card;
   }
@@ -1455,7 +1481,7 @@
       meta.appendChild(el("span", { class: "badge" }, [c === stackCol ? el("span", { class: "swatch", style: "background:var(" + seriesVar(v) + ")" }) : null, c + ": " + v]));
     }
     card.appendChild(meta);
-    for (const c of cols.text) card.appendChild(textBlock(c, row[c]));
+    for (const c of cols.text) card.appendChild(textBlock(c, row[c], c));
 
     card.appendChild(el("h3", { text: T.humanLabel }));
     card.appendChild(el("div", { class: "label-buttons" }, labels.map((l, i) =>

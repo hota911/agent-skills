@@ -177,6 +177,9 @@ button, select, input, textarea { font: inherit; color: inherit; }
 .longtext { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; font: inherit; }
 .text-block { margin-bottom: 12px; }
 .text-block .longtext { background: var(--surface-2); border-radius: 6px; padding: 8px 10px; }
+/* columns.collapsed: the summary keeps the marker and the title on one line. */
+.text-block.folded > summary { cursor: pointer; margin-bottom: 4px; }
+.text-block.folded > summary h3 { display: inline; margin: 0; }
 .side-by-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 @media (max-width: 600px) { .side-by-side { grid-template-columns: minmax(0, 1fr); } }
 

@@ -77,7 +77,7 @@ DATA_KEYS = {"csv", "candidates", "label_a", "mode", "records_path"}
 CANDIDATE_KEYS = {"file", "label"}
 # Replaced by data.candidates; a config using them gets an error showing the rewrite.
 REMOVED_DATA_KEYS = ("csv_b", "label_b")
-COLUMN_KEYS = {"id", "text", "category", "status", "verdict", "metrics"}
+COLUMN_KEYS = {"id", "text", "collapsed", "category", "status", "verdict", "metrics"}
 METRIC_KEYS = {"column", "label", "unit", "aggregate", "better", "regression_threshold", "format"}
 METRIC_FORMATS = ("percent",)
 REVIEW_KEYS = {"labels"}
@@ -144,6 +144,19 @@ def optional_str(obj: dict, key: str, where: str) -> str | None:
     return require_str(obj, key, where)
 
 
+def text_subset(value: object, text: list[str], where: str) -> list[str]:
+    """Checks a list of distinct columns.text names (a typo is an error, not ignored)."""
+    if not isinstance(value, list) or not all(isinstance(c, str) and c for c in value):
+        fail(f"{where} must be a list of column names")
+    missing = [c for c in value if c not in text]
+    if missing:
+        fail(f"{where}: {missing} not in config.columns.text {text}")
+    repeated = sorted({c for c in value if value.count(c) > 1})
+    if repeated:
+        fail(f"{where}: {repeated} listed more than once")
+    return value
+
+
 def validate_config(cfg: object) -> dict:
     cfg = check_keys(cfg, TOP_KEYS, "config")
     require_str(cfg, "title", "config")
@@ -196,6 +209,8 @@ def validate_config(cfg: object) -> dict:
     text = cols.setdefault("text", [])
     if not isinstance(text, list) or not all(isinstance(t, str) and t for t in text):
         fail("config.columns.text must be a list of column names")
+    if "collapsed" in cols:
+        text_subset(cols["collapsed"], text, "config.columns.collapsed")
 
     metrics = cols.setdefault("metrics", [])
     if not isinstance(metrics, list):
