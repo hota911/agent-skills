@@ -131,13 +131,14 @@ Five jobs, selected by `tabs` in the config:
   types as release; do not invent any). Put the setup the reader needs (data, how
   each row was produced) in `experiment.description`, and give a criterion whose
   default name does not say what it checks a `label` and a `note`. Pick `experiment.verdict_labels` yourself to
-  fit the experiment, for example 改善した / 要レビュー / 改善しなかった for a feature
-  change, or 仮説を支持 / 要レビュー / 支持しない when the hypothesis is explicit. Never
+  fit the experiment, worded so that the condition reads as their subject, for example
+  基準を満たす / 要レビュー / 基準を満たさない, or 改善した / 要レビュー / 改善しなかった for a
+  feature change (not 仮説を支持: a condition does not support anything). Never
   combine `experiment` and `release` in one config. The report comes later, as for
   release, from
   [references/experiment-report.md](references/experiment-report.md): six headings
-  starting with the conclusion, written for readers who saw neither the data nor the
-  page, and the conclusion is the human's reading of the intervals, not the verdict alone.
+  starting with a short conclusion, written for readers who saw neither the data nor
+  the page; the conclusion is the human's reading and recommendation, not the verdict.
 - "I need to check the LLM's fact-check verdicts" -> `review` first, with the verdict
   column as `columns.verdict` and the labels the user wants (`["正しい","誤り","保留"]`).
   Put the claim, the evidence, and the rationale in `columns.text` in reading order.
@@ -276,10 +277,10 @@ Five jobs, selected by `tabs` in the config:
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - `references/config.md` - every config key, including `release` and `experiment`, and
   the record format.
-- `references/release-report.md` - the release report's frontmatter, structure,
-  writing for the reader, and the Markdown the report tab renders.
-- `references/experiment-report.md` - the experiment report's frontmatter and six
-  headings, writing for the reader, and who writes the conclusion.
+- `references/release-report.md` - the release report's frontmatter, four headings,
+  and the Markdown the report tab renders.
+- `references/experiment-report.md` - the experiment report's frontmatter, six
+  headings, and the writing principles both reports follow.
 - `references/extra-tabs.md` - the extra tab API, an example, and the security rule.
 - `examples/` - synthetic CSVs and a config for each job (the release decision has a
   current model and three candidates, plus `release_record.json`, `release_report.md`,

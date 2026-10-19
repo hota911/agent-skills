@@ -34,6 +34,6 @@
       {"type": "regressions", "max": 2, "count": "unaccepted", "label": "許容していない悪化が 2 問以内", "note": "悪化した質問を人が読み、許容しなかったもの（未レビューを含む）を数える。"},
       {"type": "critical_categories", "categories": ["安全"]}
     ],
-    "verdict_labels": {"pass": "仮説を支持", "review": "要レビュー", "fail": "支持しない"}
+    "verdict_labels": {"pass": "基準を満たす", "review": "要レビュー", "fail": "基準を満たさない"}
   }
 }
