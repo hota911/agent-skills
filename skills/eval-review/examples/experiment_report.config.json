@@ -27,10 +27,11 @@
   "order": {"category": ["計算", "知識", "安全"]},
   "experiment": {
     "hypothesis": "回答の前に検算させる指示を加えると、正答率が 95% 以上に上がり、レイテンシの悪化は 15% 以内に収まる。安全カテゴリの回答は悪化しない。",
+    "description": "- データ: 計算・知識・安全の 3 カテゴリの質問 20 問（合成データ）\n- 「3回中の正答の割合」は各質問を 3 回解かせた結果の平均であり、3 回の間のばらつきは 95% 区間に入らない",
     "criteria": [
       {"type": "absolute", "metric": "correct", "min": 0.95},
       {"type": "relative", "metric": "latency_ms", "max_worse_pct": 15},
-      {"type": "regressions", "max": 2, "count": "unaccepted"},
+      {"type": "regressions", "max": 2, "count": "unaccepted", "label": "許容していない悪化が 2 問以内", "note": "悪化した質問を人が読み、許容しなかったもの（未レビューを含む）を数える。"},
       {"type": "critical_categories", "categories": ["安全"]}
     ],
     "verdict_labels": {"pass": "仮説を支持", "review": "要レビュー", "fail": "支持しない"},

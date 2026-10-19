@@ -36,13 +36,16 @@ MODES = ("embed", "load")
 
 TOP_KEYS = {"title", "lang", "item_label", "tabs", "data", "columns", "order", "histogram",
             "review", "extra_tabs", "release", "experiment"}
-RELEASE_KEYS = {"criteria", "review_labels", "record", "report"}
+RELEASE_KEYS = {"criteria", "review_labels", "record", "report", "description"}
 EXPERIMENT_KEYS = RELEASE_KEYS | {"hypothesis", "verdict_labels"}
+# Display-only keys of a criterion: a name shown instead of the default one and a short
+# explanation. They never change a verdict, so a record is checked without them.
+CRITERION_DISPLAY_KEYS = {"label", "note"}
 CRITERION_KEYS = {
-    "absolute": {"type", "metric", "min", "max"},
-    "relative": {"type", "metric", "max_worse", "max_worse_pct"},
-    "regressions": {"type", "max", "count"},
-    "critical_categories": {"type", "categories"},
+    "absolute": {"type", "metric", "min", "max"} | CRITERION_DISPLAY_KEYS,
+    "relative": {"type", "metric", "max_worse", "max_worse_pct"} | CRITERION_DISPLAY_KEYS,
+    "regressions": {"type", "max", "count"} | CRITERION_DISPLAY_KEYS,
+    "critical_categories": {"type", "categories"} | CRITERION_DISPLAY_KEYS,
 }
 # How a regressions criterion counts: every regressed item, or only those not accepted in
 # review (unreviewed or rejected). Must match evaluateCriterion() in app.js.
@@ -144,6 +147,12 @@ def optional_str(obj: dict, key: str, where: str) -> str | None:
     if key not in obj or obj[key] is None:
         return None
     return require_str(obj, key, where)
+
+
+def optional_text(obj: dict, key: str, where: str) -> None:
+    """An optional display string: when present, a string with something besides spaces."""
+    if key in obj and (not isinstance(obj[key], str) or not obj[key].strip()):
+        fail(f"{where}.{key} must be a non-empty string")
 
 
 def text_subset(value: object, text: list[str], where: str) -> list[str]:
@@ -368,6 +377,8 @@ def validate_decision(cfg: dict, decision: Decision) -> None:
         if kind not in CRITERION_KEYS:
             fail(f"{where}.type must be one of {list(CRITERION_KEYS)}")
         check_keys(c, CRITERION_KEYS[kind], where)
+        for key in sorted(CRITERION_DISPLAY_KEYS):
+            optional_text(c, key, where)
         m = None
         if kind in ("absolute", "relative"):
             if c.get("metric") not in metrics:
@@ -418,6 +429,7 @@ def validate_decision(cfg: dict, decision: Decision) -> None:
             or not all(isinstance(x, str) and x for x in labels) or len(set(labels)) != len(labels)):
         fail(f"{where_cfg}.review_labels must be 2-9 distinct non-empty strings; the last one "
              f"rejects the item ({decision.verdicts[2]}), number keys 1-9 select them")
+    optional_text(section, "description", where_cfg)
     record = optional_str(section, "record", where_cfg)
     report = optional_str(section, "report", where_cfg)
     if record and not record.lower().endswith(".json"):
@@ -788,12 +800,18 @@ def record_criteria(where: str, tab: str, rec_criteria, criteria: list[dict], ag
     the criteria added after the results.
 
     The record's criteria (without their ADDED_KEY marks) must be the first criteria of
-    the config. The config's later criteria, and those the record already marks, were
-    added after the results; they must all come after the ones written before."""
+    the config, compared without the display-only keys, so renaming or explaining a
+    criterion keeps the record valid. The config's later criteria, and those the record
+    already marks, were added after the results; they must all come after the ones
+    written before."""
     if not isinstance(rec_criteria, list) or not all(isinstance(c, dict) for c in rec_criteria):
         fail(f"{where}: criteria must be a list of objects")
-    stated = [{k: v for k, v in c.items() if k != ADDED_KEY} for c in rec_criteria]
-    if stated != criteria[:len(stated)]:
+
+    def judged(c: dict) -> dict:
+        return {k: v for k, v in c.items() if k != ADDED_KEY and k not in CRITERION_DISPLAY_KEYS}
+
+    stated = [judged(c) for c in rec_criteria]
+    if stated != [judged(c) for c in criteria[:len(stated)]]:
         fail(f"{where}: the record's criteria are not the first criteria of config.{tab}.criteria. "
              "Criteria added after the results go after the existing ones; a changed or removed "
              f"criterion needs a new record{again}")
