@@ -11,7 +11,8 @@ human has reviewed the regressed items and exported the record from the experime
 
 1. Build the page with the `experiment` tab, have a human review the regressed
    items, and export the record as JSON ("記録を書き出す (JSON)").
-2. Read the record (and the data when an item needs explaining) and draft the report.
+2. Read the record, the config's `experiment.description`, and the data (to say what
+   each condition is and to explain items) and draft the report.
    Cite every number from the record; do not recompute it from the data.
 3. Set `experiment.record` to the JSON and `experiment.report` to the Markdown, add
    `report` to `tabs`, and build again. The build fails if the frontmatter verdicts
@@ -24,8 +25,8 @@ human has reviewed the regressed items and exported the record from the experime
 
 The page computes each condition's verdict from the criteria in the config. The
 95% interval of each metric's difference is shown as a guide only and never changes a
-verdict. A human interprets the intervals and writes the conclusion. Draft the 考察
-and 結論 sections from what the experimenter said, mark anything they have not
+verdict. A human interprets the intervals and writes the conclusion. Draft the 結論,
+考察, and 次にやること sections from what the experimenter said, mark anything they have not
 confirmed, and do not present the verdict alone as the conclusion. When the verdict
 and the human's reading disagree (for example every criterion passed but the
 interval of the main metric contains 0), say so in the report.
@@ -61,32 +62,47 @@ report or of the Markdown download.
 
 ## Structure
 
-Start the body, before the first heading, with a summary of three or four lines in
-plain sentences: what was tested, each condition's verdict, and what the experimenter
-concluded (or 未決 / undecided). A reader who stops there should know the outcome.
-Then use these five headings in this order, in the language of the page:
+Use these six headings in this order, in the language of the page, and put nothing
+before the first one. A reader who stops after 結論 should know the outcome.
 
 | Heading | Content |
 |---------|---------|
-| 背景と仮説 / Background and hypothesis | What was changed and why it was expected to help. Quote `hypothesis`. |
-| 方法 / Method | The data (number of items, file names), the baseline and the conditions, the metrics, and the criteria as written in the config. When the criteria were written before the experiment, state which config criterion each of them became (for example "悪化する項目は 0 個。ただし人が見て受け入れたものは除く" → `{"type": "regressions", "max": 0, "count": "unaccepted"}`), and say so when one has no config criterion. |
+| 結論 / Conclusion | Open with one sentence that says what was changed, what was measured, and what came out, in the form "changing X made Y do Z" (for example 「回答の前に検算させる指示を加えると、正答率は上がったが、その差は誤差の範囲を超えるとは言えなかった」). Then each condition's verdict (in the words of `verdict_labels`) and whether the experimenter adopts the hypothesis, or 未決 (undecided). |
+| 背景 / Background | The problem the experiment addresses, why it matters to the readers, and the hypothesis, quoted from `hypothesis`. |
+| 方法 / Method | What each compared thing is, in plain words: the baseline, and for each condition what was done differently from the baseline. The data: what the items are, how many, and where they come from. How each metric was measured. Who reviewed the regressed items, and what each review label means. The criteria as written in the config. When the criteria were written before the experiment, state which config criterion each of them became (for example "悪化する項目は 0 個。ただし人が見て受け入れたものは除く" → `{"type": "regressions", "max": 0, "count": "unaccepted"}`), and say so when one has no config criterion. |
 | 結果 / Results | Each condition's verdict (in the words of `verdict_labels`), and each metric's value, difference, and 95% interval, copied from the record. |
 | 考察 / Discussion | The review of regressed items (labels and notes), metrics whose interval contains 0 or not, categories with few items, and how the experimenter reads them. State that the interval did not decide any verdict. |
-| 結論と次にやること / Conclusion and next steps | Whether the hypothesis is adopted, as the experimenter decided, and the next experiment or task. |
+| 次にやること / Next steps | The next experiment or task, as the experimenter decided. |
 
-Write in plain sentences for readers who did not see the data. Use the condition
-labels and the metric labels from the config, not new names.
-
-- Numbers that did not decide anything and are not in the record (cost or time from
-  another source, another evaluation) may go in 考察 with their source, for example
-  "（出典：runs.jsonl の合計）". Never put them in 結果 or mix them into the criteria.
-- When the experimenter has not decided whether to adopt the hypothesis or what to do
-  next, write 未決 (undecided) there and add no proposals of your own.
+- Cite every number from the record. Numbers that did not decide anything and are not
+  in the record (cost or time from another source, another evaluation) may go in 考察
+  with their source, for example "（出典：runs.jsonl の合計）". Never put them in 結果
+  or mix them into the criteria.
+- When the experimenter has not decided whether to adopt the hypothesis, write 未決
+  (undecided) in 結論; when they have not decided what to do next, write 未決 under
+  次にやること. Add no proposals of your own in either place.
 - A criterion that the record marks `"added_after_results": true` (the page says
   「（結果を見た後に追加）」) was added after the results were seen, so it does not
   test the hypothesis as written before. In 方法, list it apart from the criteria
-  written before and say when and why it was added; in 結果 and 考察, keep its outcome
-  apart too.
+  written before and say when and why it was added; in 結論, 結果 and 考察, keep its
+  outcome apart too.
+
+## Writing for the reader
+
+The readers did not see the data or the page. Write so that the report alone is enough.
+
+- Use the readers' vocabulary. Words that the page or this skill uses (for example
+  ペア, 突き合わせ, レビュー待ち, 許容 / 不可 as review labels, pt, 95% 区間, 悪化した項目)
+  are either replaced by plain words or explained where they first appear.
+- Every sentence states its subject: who did it (the experimenter, a reviewer, the
+  model) or what it is about.
+- Keep the condition labels and the metric labels of the config, so that the report
+  matches the page, but explain each the first time it appears (what the condition is,
+  what the metric counts). Do not invent other names for them. When neither the config
+  nor the data says what a condition is, ask the experimenter instead of guessing from
+  the label.
+- Before finishing, reread the report as a reader who saw neither the data nor the
+  page, and rewrite any sentence that needs the page to be understood.
 
 ## Markdown and staleness
 

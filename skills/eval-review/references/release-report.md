@@ -48,14 +48,12 @@ Use these four headings in this order, in the language of the page:
 
 | Heading | Content |
 |---------|---------|
-| 結論 / Conclusion | Each candidate's verdict in one or two sentences. A table of candidate, verdict, and the main reason works well with several candidates. |
-| 理由 / Reasons | Per candidate: the criteria it failed (with the record's `criteria[].value` against the threshold), and the regressed items labelled with the rejecting label, with the reviewer's note. For a passing candidate, the values that matter. |
+| 結論 / Conclusion | Open with one sentence that says what is being released compared to what, and the outcome (for example 「現行モデルを置き換える候補 3 つのうち、候補B は出してよい」). Then each candidate's verdict in one or two sentences. A table of candidate, verdict, and the main reason works well with several candidates. |
+| 理由 / Reasons | First, in a short paragraph, what the current model and each candidate are (what changed from the current model), the data the decision used (what the items are and how many), and who reviewed the regressed items and what the review labels mean. Leave out what every reader already knows, but never leave a candidate unexplained. Then per candidate: the criteria it failed (with the record's `criteria[].value` against the threshold), and the regressed items labelled with the rejecting label, with the reviewer's note. For a passing candidate, the values that matter. |
 | 注意点 / Caveats | Metric differences whose `ci95` contains 0 (not distinguishable from noise), categories with few items, unreviewed items, and anything else that limits the decision. State that the 95% interval did not decide any verdict. |
 | 次にやること / Next steps | Concrete actions: review the remaining items, re-export, fix and compare again. |
 
-Write in plain sentences for readers who did not see the data. Use the candidate labels
-and the metric labels from the config, not new names. The 結論 section is the summary,
-so put nothing before it.
+The 結論 section is the summary, so put nothing before it.
 
 - Numbers that did not decide anything and are not in the record (cost or time from
   another source, another evaluation) may go in 注意点 with their source. Never put
@@ -66,6 +64,24 @@ so put nothing before it.
   「（結果を見た後に追加）」) was added after the results were seen. In 理由, write it
   after the other criteria and say that it was added after the results, for example
   "結果を見た後に追加した基準：…". Never present it as a criterion written before.
+
+## Writing for the reader
+
+The readers did not do the review and did not see the page. Write so that the report
+alone is enough.
+
+- Use the readers' vocabulary. Words that the page or this skill uses (for example
+  ペア, 突き合わせ, 回帰, レビュー待ち, 許容 / 不可 as review labels, pt, 95% 区間, フィルタ)
+  are either replaced by plain words or explained where they first appear.
+- Every sentence states its subject: who did it (a reviewer, the model) or what it is
+  about.
+- Keep the candidate labels and the metric labels of the config, so that the report
+  matches the page, but explain each the first time it appears (what the candidate is,
+  what the metric counts). Do not invent other names for them. When neither the config
+  nor the data says what a candidate is, ask the person who asked for the decision
+  instead of guessing from the label.
+- Before finishing, reread the report as a reader who saw neither the data nor the
+  page, and rewrite any sentence that needs the page to be understood.
 
 ## Markdown that the report tab renders
 
