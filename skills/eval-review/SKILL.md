@@ -138,6 +138,9 @@ Five jobs, selected by `tabs` in the config:
 - "I need to check the LLM's fact-check verdicts" -> `review` first, with the verdict
   column as `columns.verdict` and the labels the user wants (`["正しい","誤り","保留"]`).
   Put the claim, the evidence, and the rationale in `columns.text` in reading order.
+  When there are many text columns, group them with `columns.sections` (put the
+  columns to compare in a `side-by-side` section) and list long text read only now and
+  then (a full answer, cited sources) in `columns.collapsed`.
 - "Show me where the feedback stands" -> `overview` + `table` with `category` and
   `status`. Use `order` to put workflow states in their natural order instead of
   first-seen order.
@@ -237,7 +240,9 @@ Five jobs, selected by `tabs` in the config:
   load-mode file holds only the config (title, column names, labels, `order` values)
   and each CSV's path relative to the HTML, never absolute paths or rows.
 - CSV values are inserted as text, never as HTML, so markup in the data is displayed
-  literally. Extra tab scripts must keep this: data goes in only through the provided
+  literally. The only exception is that `http://` / `https://` URLs in `columns.text`
+  values become links (new tab, `rel="noopener noreferrer"`); other schemes such as
+  `javascript:` stay text. Extra tab scripts must keep this: data goes in only through the provided
   element builder or `textContent`, never `innerHTML`.
 - Review labels, including release reviews, live only in that browser's localStorage.
   Clearing site data, another browser, or another machine starts empty. Export to keep

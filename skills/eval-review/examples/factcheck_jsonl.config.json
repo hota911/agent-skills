@@ -8,6 +8,7 @@
   "columns": {
     "id": "id",
     "text": ["claim", "source.excerpt", "llm.rationale", "citations"],
+    "collapsed": ["citations"],
     "category": "category",
     "verdict": "llm.verdict",
     "metrics": [

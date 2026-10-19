@@ -8,6 +8,10 @@
   "columns": {
     "id": "id",
     "text": ["claim", "source_excerpt", "llm_rationale"],
+    "sections": [
+      {"title": "主張", "columns": ["claim"]},
+      {"title": "根拠と判定理由", "columns": ["source_excerpt", "llm_rationale"], "layout": "side-by-side"}
+    ],
     "category": "category",
     "verdict": "llm_verdict"
   },
