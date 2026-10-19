@@ -67,12 +67,18 @@ before the first one. A reader who stops after 結論 should know the outcome.
 
 | Heading | Content |
 |---------|---------|
-| 結論 / Conclusion | Open with one sentence that says what was changed, what was measured, and what came out, in the form "changing X made Y do Z" (for example 「回答の前に検算させる指示を加えると、正答率は上がったが、その差は誤差の範囲を超えるとは言えなかった」). Then each condition's verdict (in the words of `verdict_labels`) and whether the experimenter adopts the hypothesis, or 未決 (undecided). |
+| 結論 / Conclusion | The point the reader acts on, not a summary of the whole report. Open with one sentence that says what the reader is asked to decide (for example 「現行プロンプトに検算の指示を加えるかどうかを決めるための報告である」). Then one sentence that says what was changed, what was measured, and what came out, in the form "changing X made Y do Z" (for example 「回答の前に検算させる指示を加えると、正答率は上がったが、その差はこのデータでは偶然のばらつきと区別できなかった」). Then each condition's verdict (in the words of `verdict_labels`) and the recommendation for each condition, chosen from 採用する / 直して再度試す / 採用しない, with who decided it (a role such as 実験者, never a person's name; the record holds no reviewer names). When two options are close, say what each one gains and loses. When the experimenter has not decided, write 未決 (undecided). |
 | 背景 / Background | The problem the experiment addresses, why it matters to the readers, and the hypothesis, quoted from `hypothesis`. |
-| 方法 / Method | What each compared thing is, in plain words: the baseline, and for each condition what was done differently from the baseline. The data: what the items are, how many, and where they come from. How each metric was measured. Who reviewed the regressed items, and what each review label means. The criteria as written in the config. When the criteria were written before the experiment, state which config criterion each of them became (for example "悪化する項目は 0 個。ただし人が見て受け入れたものは除く" → `{"type": "regressions", "max": 0, "count": "unaccepted"}`), and say so when one has no config criterion. |
-| 結果 / Results | Each condition's verdict (in the words of `verdict_labels`), and each metric's value, difference, and 95% interval, copied from the record. |
-| 考察 / Discussion | The review of regressed items (labels and notes), metrics whose interval contains 0 or not, categories with few items, and how the experimenter reads them. State that the interval did not decide any verdict. |
+| 方法 / Method | What each compared thing is, in plain words: the baseline, and for each condition what was done differently from the baseline. The data: what the items are, how many, and where they come from, and whether they represent what the decision is about (period, kinds of items, users). How each metric was measured, and what the 95% interval means (see "Writing for the reader"). Who reviewed the regressed items, and what each review label means. The criteria as written in the config. When the criteria were written before the experiment, state which config criterion each of them became (for example "悪化する項目は 0 個。ただし人が見て受け入れたものは除く" → `{"type": "regressions", "max": 0, "count": "unaccepted"}`), and say so when one has no config criterion. |
+| 結果 / Results | Each condition's verdict (in the words of `verdict_labels`), and each metric's value, difference, and 95% interval, copied from the record. Report every metric, including those that got worse and those whose interval contains 0, not only those that support the hypothesis. |
+| 考察 / Discussion | The review of regressed items (labels and notes), metrics whose interval contains 0 or not, categories with few items, and how the experimenter reads them. Say how far the result carries: that it holds in this sample, and whether it is expected to hold for every kind of item or only some. State that the interval did not decide any verdict. |
 | 次にやること / Next steps | The next experiment or task, as the experimenter decided. |
+
+結論 follows the "bottom line up front" rule of writing the point the reader acts on
+first ([Matt Strom, Bottom Line Up Front](https://mattstromawn.com/writing/bluf), citing
+US Army Regulation 25-50). How to report intervals, unfavourable results, and how far a
+result carries follows [Statsig, How to report test results](https://statsig.com/blog/how-to-report-test-results)
+and Kohavi, Tang and Xu, *Trustworthy Online Controlled Experiments* (2020).
 
 - Cite every number from the record. Numbers that did not decide anything and are not
   in the record (cost or time from another source, another evaluation) may go in 考察
@@ -101,6 +107,16 @@ The readers did not see the data or the page. Write so that the report alone is 
   what the metric counts). Do not invent other names for them. When neither the config
   nor the data says what a condition is, ask the experimenter instead of guessing from
   the label.
+- Write 背景, 考察 and 結論 in connected sentences that carry the reasoning, not as
+  bullet fragments. Lists and tables are fine for data, criteria and next steps
+  (see [Amazon's six-page narrative memos](https://www.anecdote.com/2018/05/amazons-six-page-narrative-structure/),
+  after Jeff Bezos's 2017 shareholder letter).
+- Describe the 95% interval as a property of how it is computed: an interval computed
+  this way contains the true difference in 95% of repeated experiments. Never write
+  that the true value lies in this interval with 95% probability.
+- A difference whose interval contains 0 is "not distinguishable from noise with this
+  data" (このデータでは偶然のばらつきと区別できない), never "no effect" (効果がない).
+- Say that results hold "in this sample" (この 20 問では) rather than in general.
 - Before finishing, reread the report as a reader who saw neither the data nor the
   page, and rewrite any sentence that needs the page to be understood.
 

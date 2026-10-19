@@ -48,10 +48,16 @@ Use these four headings in this order, in the language of the page:
 
 | Heading | Content |
 |---------|---------|
-| 結論 / Conclusion | Open with one sentence that says what is being released compared to what, and the outcome (for example 「現行モデルを置き換える候補 3 つのうち、候補B は出してよい」). Then each candidate's verdict in one or two sentences. A table of candidate, verdict, and the main reason works well with several candidates. |
-| 理由 / Reasons | First, in a short paragraph, what the current model and each candidate are (what changed from the current model), the data the decision used (what the items are and how many), and who reviewed the regressed items and what the review labels mean. Leave out what every reader already knows, but never leave a candidate unexplained. Then per candidate: the criteria it failed (with the record's `criteria[].value` against the threshold), and the regressed items labelled with the rejecting label, with the reviewer's note. For a passing candidate, the values that matter. |
-| 注意点 / Caveats | Metric differences whose `ci95` contains 0 (not distinguishable from noise), categories with few items, unreviewed items, and anything else that limits the decision. State that the 95% interval did not decide any verdict. |
+| 結論 / Conclusion | The point the reader acts on, not a summary of the whole report. Open with one sentence that says what the reader is asked to decide: which candidate to release in place of what (for example 「現行モデルを置き換える候補 3 つのうち、どれを出すかを決めるための報告である」). Then the outcome: each candidate's verdict (出してよい / 要レビュー / 出さない) in one or two sentences, with the human's decision on it and who decided (a role such as レビュー担当者, never a person's name; the record holds no reviewer names). When two candidates are close, say what each one gains and loses. A table of candidate, verdict, and the main reason works well with several candidates. |
+| 理由 / Reasons | First, in a short paragraph, what the current model and each candidate are (what changed from the current model), the data the decision used (what the items are and how many), and who reviewed the regressed items and what the review labels mean. Leave out what every reader already knows, but never leave a candidate unexplained. Then per candidate: the criteria it failed (with the record's `criteria[].value` against the threshold), and the regressed items labelled with the rejecting label, with the reviewer's note. For a passing candidate, the values that matter, including the metrics that got worse. |
+| 注意点 / Caveats | Metric differences whose `ci95` contains 0 (not distinguishable from noise), categories with few items, unreviewed items, and anything else that limits the decision. Say how far the result carries: whether the items represent what the model will be used for (period, kinds of items, users), and that the result holds in this sample. State that the 95% interval did not decide any verdict. |
 | 次にやること / Next steps | Concrete actions: review the remaining items, re-export, fix and compare again. |
+
+結論 follows the "bottom line up front" rule of writing the point the reader acts on
+first ([Matt Strom, Bottom Line Up Front](https://mattstromawn.com/writing/bluf), citing
+US Army Regulation 25-50). How to report intervals, unfavourable results, and how far a
+result carries follows [Statsig, How to report test results](https://statsig.com/blog/how-to-report-test-results)
+and Kohavi, Tang and Xu, *Trustworthy Online Controlled Experiments* (2020).
 
 The 結論 section is the summary, so put nothing before it.
 
@@ -80,6 +86,15 @@ alone is enough.
   what the metric counts). Do not invent other names for them. When neither the config
   nor the data says what a candidate is, ask the person who asked for the decision
   instead of guessing from the label.
+- Write 結論 and 注意点 in connected sentences that carry the reasoning, not as bullet
+  fragments. Lists and tables are fine for data, criteria and next steps
+  (see [Amazon's six-page narrative memos](https://www.anecdote.com/2018/05/amazons-six-page-narrative-structure/),
+  after Jeff Bezos's 2017 shareholder letter).
+- Describe the 95% interval as a property of how it is computed: an interval computed
+  this way contains the true difference in 95% of repeated comparisons. Never write
+  that the true value lies in this interval with 95% probability.
+- A difference whose interval contains 0 is "not distinguishable from noise with this
+  data" (このデータでは偶然のばらつきと区別できない), never "no effect" (効果がない).
 - Before finishing, reread the report as a reader who saw neither the data nor the
   page, and rewrite any sentence that needs the page to be understood.
 
