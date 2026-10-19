@@ -567,7 +567,7 @@
       return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
     });
     const lum = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
-    return lum > 0.3 ? "#0b0b0b" : "#ffffff";
+    return lum > 0.3 ? "#0b0f14" : "#ffffff";
   }
 
   // ---------- data model ----------
