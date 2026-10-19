@@ -71,9 +71,10 @@
       addedAfter: "（結果を見た後に追加）",
       addedAfterNote: "「結果を見た後に追加」の基準は、記録を書き出した後で設定に加えたもの。判定には含めるが、報告では前からある基準と分けて書く。",
       critCritical: "重要カテゴリ（{cats}）で悪化した項目",
+      worseOnly: "悪化がないことだけを確かめた。改善したかは判定していない。",
       worsePos: "（悪化）", worseNeg: "（改善）", nItems: "{n} 件",
       metricsTitle: "指標ごとの差と 95% 区間（参考）",
-      metricsNote: "差は {b} − {a}（同じ id どうしの対応のある差）。95% 区間は差の平均 ± 1.96 × 標準偏差 / √n による正規近似で、合計の指標は n 倍する。n が 2 未満では表示しない。判定には使わず、差が誤差の範囲かどうかの目安にする。",
+      metricsNote: "差は {b} − {a}（同じ id どうしの対応のある差）。95% 区間は差の平均 ± t × 標準偏差 / √n で、t は自由度 n − 1 の t 分布の両側 95% 点（n = 7 なら 2.447、n が大きいと 1.96 に近づく）。合計の指標は n 倍する。n が 2 未満では表示しない。各行の値が複数回の平均のとき、その中のばらつきは区間に入らない（区間は項目の間のばらつきだけを見る）。判定には使わず、差が誤差の範囲かどうかの目安にする。",
       ci: "95% 区間", containsZero: "0 を含む", czYes: "はい（誤差の範囲）", czNo: "いいえ",
       exportMd: "記録を Markdown で書き出す", exportJson: "記録を JSON で書き出す",
       backToVerdicts: "← 判定に戻る", reviewTitle: "{label} の悪化項目のレビュー",
@@ -97,10 +98,10 @@
       failMin: "下限 {v} を下回る", failMax: "上限 {v} を上回る", noValue: "両方に値がある項目がないため満たさない",
       whyFail: "満たさない理由", direction: "良い方向", higherBetter: "高いほど良い", lowerBetter: "低いほど良い",
       comparedValue: "基準値と比べる値", regCount: "悪化した項目 {n} 件（上限 {max} 件）",
-      pending: "△ レビュー待ち", pendingCriteria: "レビュー待ちの基準", critUnaccepted: "受け入れていない悪化した項目の数",
+      pending: "△ レビュー待ち", pendingCriteria: "レビュー待ちの基準", critUnaccepted: "人が確認して許容していない悪化した項目の数",
       unacceptedRule: "「{name}」は、レビューで「{reject}」以外のラベルを付けた項目を数えず、未レビューの項目は数える。未レビューの項目を数えたために上限を超えるときは、その基準をレビュー待ちとし、判定は「{review}」にする。",
-      unacceptedCount: "受け入れていない悪化した項目 {n} 件（上限 {max} 件）。悪化した {total} 件のうち、レビューで受け入れた {accepted} 件を除き、未レビューの {unreviewed} 件を数えた",
-      unacceptedCountRejected: "受け入れていない悪化した項目 {n} 件（上限 {max} 件）。悪化した {total} 件のうち、レビューで受け入れた {accepted} 件を除き、未レビューの {unreviewed} 件と「{reject}」の {rejected} 件を数えた",
+      unacceptedCount: "人が確認して許容していない悪化した項目 {n} 件（上限 {max} 件）。悪化した {total} 件のうち、レビューで受け入れた {accepted} 件を除き、未レビューの {unreviewed} 件を数えた",
+      unacceptedCountRejected: "人が確認して許容していない悪化した項目 {n} 件（上限 {max} 件）。悪化した {total} 件のうち、レビューで受け入れた {accepted} 件を除き、未レビューの {unreviewed} 件と「{reject}」の {rejected} 件を数えた",
       whyPending: "レビュー待ちの理由", pendingReason: "上限を超えるのは未レビューの項目を数えているため。レビューが済むまで判定は「{review}」になる。",
       countedItems: "数えた項目（未レビュー・「{reject}」）: {n} 件", notCountedItems: "数えない項目（レビューで受け入れた）: {n} 件",
       openInReview: "レビューで開く", goTo: "移動",
@@ -173,9 +174,10 @@
       addedAfter: " (added after the results)",
       addedAfterNote: "Criteria marked \"added after the results\" were added to the config after the record was exported. They count toward the verdict, but the report keeps them apart from the criteria written before.",
       critCritical: "Regressed items in critical categories ({cats})",
+      worseOnly: "Only checked that nothing got worse; whether anything improved is not judged.",
       worsePos: " (worse)", worseNeg: " (better)", nItems: "{n}",
       metricsTitle: "Difference per metric with 95% interval (reference)",
-      metricsNote: "The difference is {b} − {a} over items present in both (paired). The 95% interval is the mean paired difference ± 1.96 × standard deviation / √n (normal approximation), multiplied by n for sum metrics; not shown when n < 2. It is not used in the verdict; it hints whether a difference is within noise.",
+      metricsNote: "The difference is {b} − {a} over items present in both (paired). The 95% interval is the mean paired difference ± t × standard deviation / √n, where t is the two-sided 95% point of the t distribution with n − 1 degrees of freedom (2.447 for n = 7, approaching 1.96 as n grows), multiplied by n for sum metrics; not shown when n < 2. When each row's value is itself an average of several runs, the spread within it is not in the interval (the interval only sees the spread between items). It is not used in the verdict; it hints whether a difference is within noise.",
       ci: "95% interval", containsZero: "Contains 0", czYes: "yes (within noise)", czNo: "no",
       exportMd: "Export record (Markdown)", exportJson: "Export record (JSON)",
       backToVerdicts: "← Back to verdicts", reviewTitle: "Review regressed items of {label}",
@@ -199,10 +201,10 @@
       failMin: "below the minimum {v}", failMax: "above the maximum {v}", noValue: "not met: no item has a value on both sides",
       whyFail: "Why not met", direction: "Better when", higherBetter: "higher", lowerBetter: "lower",
       comparedValue: "Compared with the threshold", regCount: "{n} regressed items (at most {max})",
-      pending: "△ awaiting review", pendingCriteria: "Criteria awaiting review", critUnaccepted: "Regressed items not accepted",
+      pending: "△ awaiting review", pendingCriteria: "Criteria awaiting review", critUnaccepted: "Regressed items a reviewer has not accepted",
       unacceptedRule: "\"{name}\" does not count items reviewed with a label other than \"{reject}\", and counts unreviewed items. When it exceeds the maximum only because unreviewed items are counted, the criterion awaits review and the verdict is \"{review}\".",
-      unacceptedCount: "{n} regressed items not accepted (at most {max}). Of {total} regressed items, {accepted} accepted in review are left out and {unreviewed} unreviewed are counted",
-      unacceptedCountRejected: "{n} regressed items not accepted (at most {max}). Of {total} regressed items, {accepted} accepted in review are left out, and {unreviewed} unreviewed and {rejected} \"{reject}\" are counted",
+      unacceptedCount: "{n} regressed items a reviewer has not accepted (at most {max}). Of {total} regressed items, {accepted} accepted in review are left out and {unreviewed} unreviewed are counted",
+      unacceptedCountRejected: "{n} regressed items a reviewer has not accepted (at most {max}). Of {total} regressed items, {accepted} accepted in review are left out, and {unreviewed} unreviewed and {rejected} \"{reject}\" are counted",
       whyPending: "Why awaiting review", pendingReason: "The maximum is exceeded only because unreviewed items are counted. Until they are reviewed, the verdict is \"{review}\".",
       countedItems: "Counted items (unreviewed or \"{reject}\"): {n}", notCountedItems: "Items not counted (accepted in review): {n}",
       openInReview: "Open in review", goTo: "Go to",
@@ -228,10 +230,10 @@
       reviewTitle: "{label} の悪化した{unit}のレビュー", allRegressed: "悪化した{unit}の一覧",
       noRegressedItems: "この候補に悪化した{unit}はありません", reviewsH: "悪化した{unit}のレビュー",
       pairedN: "n（両方に値がある同じ id の{unit}）", regCount: "悪化した{unit} {n}（上限 {max}）",
-      critUnaccepted: "受け入れていない悪化した{unit}の数",
+      critUnaccepted: "人が確認して許容していない悪化した{unit}の数",
       unacceptedRule: "「{name}」は、レビューで「{reject}」以外のラベルを付けた{unit}を数えず、未レビューの{unit}は数える。未レビューの{unit}を数えたために上限を超えるときは、その基準をレビュー待ちとし、判定は「{review}」にする。",
-      unacceptedCount: "受け入れていない悪化した{unit} {n}（上限 {max}）。悪化した {total} {unit}のうち、レビューで受け入れた {accepted} {unit}を除き、未レビューの {unreviewed} {unit}を数えた",
-      unacceptedCountRejected: "受け入れていない悪化した{unit} {n}（上限 {max}）。悪化した {total} {unit}のうち、レビューで受け入れた {accepted} {unit}を除き、未レビューの {unreviewed} {unit}と「{reject}」の {rejected} {unit}を数えた",
+      unacceptedCount: "人が確認して許容していない悪化した{unit} {n}（上限 {max}）。悪化した {total} {unit}のうち、レビューで受け入れた {accepted} {unit}を除き、未レビューの {unreviewed} {unit}を数えた",
+      unacceptedCountRejected: "人が確認して許容していない悪化した{unit} {n}（上限 {max}）。悪化した {total} {unit}のうち、レビューで受け入れた {accepted} {unit}を除き、未レビューの {unreviewed} {unit}と「{reject}」の {rejected} {unit}を数えた",
       pendingReason: "上限を超えるのは未レビューの{unit}を数えているため。レビューが済むまで判定は「{review}」になる。",
       countedItems: "数えた{unit}（未レビュー・「{reject}」）: {n}", notCountedItems: "数えない{unit}（レビューで受け入れた）: {n}",
       compareSummary: "{a} と {b} を、同じ{unit}どうし（{n} {unit}）で比べた。",
@@ -253,10 +255,10 @@
       reviewTitle: "Review regressed {unit} of {label}", allRegressed: "All regressed {unit}",
       noRegressedItems: "This candidate has no regressed {unit}", reviewsH: "Reviews of regressed {unit}",
       pairedN: "n ({unit} with the same id and a value on both sides)", regCount: "{n} regressed {unit} (at most {max})",
-      critUnaccepted: "Regressed {unit} not accepted",
+      critUnaccepted: "Regressed {unit} a reviewer has not accepted",
       unacceptedRule: "\"{name}\" does not count {unit} reviewed with a label other than \"{reject}\", and counts unreviewed {unit}. When it exceeds the maximum only because unreviewed {unit} are counted, the criterion awaits review and the verdict is \"{review}\".",
-      unacceptedCount: "{n} regressed {unit} not accepted (at most {max}). Of {total} regressed {unit}, {accepted} accepted in review are left out and {unreviewed} unreviewed are counted",
-      unacceptedCountRejected: "{n} regressed {unit} not accepted (at most {max}). Of {total} regressed {unit}, {accepted} accepted in review are left out, and {unreviewed} unreviewed and {rejected} \"{reject}\" are counted",
+      unacceptedCount: "{n} regressed {unit} a reviewer has not accepted (at most {max}). Of {total} regressed {unit}, {accepted} accepted in review are left out and {unreviewed} unreviewed are counted",
+      unacceptedCountRejected: "{n} regressed {unit} a reviewer has not accepted (at most {max}). Of {total} regressed {unit}, {accepted} accepted in review are left out, and {unreviewed} unreviewed and {rejected} \"{reject}\" are counted",
       pendingReason: "The maximum is exceeded only because unreviewed {unit} are counted. Until they are reviewed, the verdict is \"{review}\".",
       countedItems: "Counted {unit} (unreviewed or \"{reject}\"): {n}", notCountedItems: "{unit} not counted (accepted in review): {n}"
     }
@@ -565,7 +567,7 @@
       return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
     });
     const lum = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
-    return lum > 0.3 ? "#0b0b0b" : "#ffffff";
+    return lum > 0.3 ? "#0b0f14" : "#ffffff";
   }
 
   // ---------- data model ----------
@@ -1715,8 +1717,21 @@
       pending: pending, rejected: rejected, unreviewed: unreviewed, verdict: verdict };
   }
 
-  // Paired difference (candidate − A) per metric with a normal-approximation 95% interval:
-  // mean difference ± 1.96·sd/√n, scaled by n for sum metrics. Reference only.
+  // Two-sided 95% points of Student's t distribution for 1-30 degrees of freedom.
+  const T95 = [12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262, 2.228,
+    2.201, 2.179, 2.160, 2.145, 2.131, 2.120, 2.110, 2.101, 2.093, 2.086,
+    2.080, 2.074, 2.069, 2.064, 2.060, 2.056, 2.052, 2.048, 2.045, 2.042];
+
+  // Beyond the table, the first two terms of the Cornish-Fisher expansion around
+  // z = 1.96; they give 2.0394 at df 31 (exact 2.0395), so there is no step after df 30.
+  function t95(df) {
+    if (df <= T95.length) return T95[df - 1];
+    const z = 1.96;
+    return z + (z ** 3 + z) / (4 * df) + (5 * z ** 5 + 16 * z ** 3 + 3 * z) / (96 * df * df);
+  }
+
+  // Paired difference (candidate − A) per metric with a 95% interval from the t
+  // distribution: mean difference ± t(n−1)·sd/√n, scaled by n for sum metrics. Reference only.
   function diffStats(ps, m) {
     const both = pairedValues(ps, m);
     const n = both.length;
@@ -1726,14 +1741,16 @@
     const diffs = both.map(([x, y]) => y - x);
     const mu = mean(diffs);
     const sd = Math.sqrt(diffs.reduce((s, x) => s + (x - mu) * (x - mu), 0) / (n - 1));
-    const half = 1.96 * sd / Math.sqrt(n);
+    const half = t95(n - 1) * sd / Math.sqrt(n);
     const k = m.aggregate === "sum" ? n : 1;
     return { n: n, cur: cur, cand: cand, d: d, ci: [(mu - half) * k, (mu + half) * k] };
   }
 
   // c is an element of decision.criteria; a criterion added after the results says so.
+  // Its label, when set, replaces the default name.
   function criterionName(c) {
     const added = addedAfter.has(decision.criteria.indexOf(c)) ? T.addedAfter : "";
+    if (c.label) return c.label + added;
     if (c.type === "regressions") return (c.count === "unaccepted" ? T.critUnaccepted : T.critRegressions) + added;
     if (c.type === "critical_categories") return fmt(T.critCritical, { cats: c.categories.join(", ") }) + added;
     const m = metricByColumn.get(c.metric);
@@ -1807,7 +1824,10 @@
       el("span", { class: "small muted", text: state.decisionStorageOk ? "✓ " + T.storageOk : "⚠ " + T.storageNo })
     ]));
 
-    if (isExperiment) root.appendChild(el("div", { class: "card" }, [el("h2", { text: T.hypothesis }), el("p", { class: "hypothesis", text: decision.hypothesis })]));
+    // config.<tab>.description (Markdown) goes below the hypothesis; a release has its own card in the same place.
+    const description = decision.description ? el("div", { class: "report" }, renderMarkdown(decision.description)) : null;
+    if (isExperiment) root.appendChild(el("div", { class: "card" }, [el("h2", { text: T.hypothesis }), el("p", { class: "hypothesis", text: decision.hypothesis }), description]));
+    else if (description) root.appendChild(el("div", { class: "card" }, description));
     root.appendChild(el("h2", { text: T.verdictTitle }));
     root.appendChild(el("p", { class: "small muted", text: isExperiment
       ? fmt(T.experimentRule, { reject: REJECT, pass: decision.verdict_labels.pass, review: decision.verdict_labels.review, fail: decision.verdict_labels.fail })
@@ -1841,13 +1861,14 @@
         ])
       ]);
     })));
+    if (worseOnly()) root.appendChild(el("p", { class: "small muted", text: T.worseOnly }));
 
     const card = el("div", { class: "card" }, [el("h2", { text: T.criteriaTitle }), el("p", { class: "small muted", text: T.detailHint }),
       addedAfter.size ? el("p", { class: "small muted", text: T.addedAfterNote }) : null]);
     root.appendChild(card);
     const head = [el("th", { text: T.criterion }), el("th", { text: T.thresholdCol })].concat(results.map((r) => el("th", { class: "num", text: r.label })));
     const body = decision.criteria.map((c, i) => el("tr", { style: "cursor:default" }, [
-      el("td", { text: criterionName(c), style: "min-width:10em" }),
+      el("td", { style: "min-width:10em" }, [criterionName(c), c.note ? el("div", { class: "small muted", text: c.note }) : null]),
       el("td", { class: "num", text: criterionThreshold(c) })
     ].concat(results.map((r) => el("td", { class: "num" }, detailButton({ side: r.side, kind: "criterion", index: i }, "cell-btn",
       [el("span", { class: "cell-value", text: criterionValue(c, r.results[i]) }), passNode(r.results[i])]))))));
@@ -1975,6 +1996,11 @@
     return (v > 0 ? "+" : v < 0 ? "−" : "±") + fmtNum(Math.abs(v)) + "%";
   }
 
+  // Only `absolute` checks a target level; relative, regressions and critical_categories
+  // only bound how much worse a candidate may get, so without an absolute criterion a
+  // passing verdict says nothing about improvement.
+  function worseOnly() { return !decision.criteria.some((c) => c.type === "absolute"); }
+
   // Shows the values evaluateCriterion() computed for the verdict, never a recomputation.
   function criterionDetail(c, res, r) {
     if (c.type === "regressions") {
@@ -2044,7 +2070,7 @@
     if (d.kind === "criterion") {
       const c = decision.criteria[d.index];
       title = criterionName(c);
-      body = criterionDetail(c, r.results[d.index], r);
+      body = [c.note ? el("p", { class: "small muted", text: c.note }) : null].concat(criterionDetail(c, r.results[d.index], r));
     } else if (d.kind === "verdict") {
       title = T.verdictReasons;
       body = [el("p", null, verdictBadge(r.verdict))].concat(verdictDetail(r));
@@ -2216,11 +2242,15 @@
     const out = ["# " + cfg.title + " — " + (isExperiment ? T.experimentRecordTitle : T.recordTitle), "",
       "- " + T.exportedAt + ": " + new Date().toLocaleString(cfg.lang)];
     if (isExperiment) out.push("", "## " + T.hypothesis, "", decision.hypothesis);
+    if (decision.description) out.push("", decision.description.trim());
     out.push("", "## " + T.dataFiles, "",
       "- " + sideLabel.a + ": " + state.data.a.name);
     for (const r of results) out.push("- " + r.label + ": " + state.data[r.side].name);
     out.push("", "## " + T.criteriaH, "");
-    decision.criteria.forEach((c) => out.push("- " + criterionName(c) + ": " + criterionThreshold(c)));
+    decision.criteria.forEach((c) => {
+      out.push("- " + criterionName(c) + ": " + criterionThreshold(c));
+      if (c.note) out.push("  " + c.note.replace(/\s*\n\s*/g, " "));
+    });
     if (addedAfter.size) out.push("", T.addedAfterNote);
     out.push("", "## " + T.summaryH, "");
     const rows = decision.criteria.map((c, i) => [criterionName(c), criterionThreshold(c)]
@@ -2232,6 +2262,7 @@
       out.push("- " + r.label + ": " + verdictText(r.verdict) + " · " + fmt(T.unreviewedItems, { n: r.unreviewed, total: r.regressed.length }) +
         (r.rejected ? " · " + fmt(T.rejectedItems, { reject: REJECT, n: r.rejected }) : ""));
     }
+    if (worseOnly()) out.push("", T.worseOnly);
     if (metrics.length) {
       out.push("", "## " + T.metricsTitle, "", fmt(T.metricsNote, { a: sideLabel.a, b: T.candidateCol }), "");
       const mrows = [];

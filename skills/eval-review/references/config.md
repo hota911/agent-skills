@@ -167,6 +167,12 @@ Values: an empty cell means "no value" and is left out of n. A `rate` cell must 
 of `true/false`, `1/0`, `yes/no`, `y/n`, `t/f` (any case). A `mean` / `sum` cell must
 be a finite number.
 
+A row's value may itself summarise several runs (for example the average score of 3
+runs). The 95% interval only sees the spread between items, so the spread within a row
+is not in it. A column that holds the min or the max over the runs can only be compared
+between rows with the same number of runs: the more runs, the further the min or max
+moves, whatever the model does.
+
 ### How compare classifies a pair
 
 For each metric where both A and B have a value:
@@ -208,6 +214,7 @@ Needs at least one entry in `data.candidates` and in `columns.metrics`.
 |-----|----------|---------|
 | `criteria` | yes | Non-empty list of criteria, all of which a candidate must meet. |
 | `review_labels` | no (default `["許容","不可"]`, English `["acceptable","unacceptable"]`) | 2 to 9 distinct non-empty strings for reviewing regressed items. The last one rejects the item. Keys 1-9 pick them. |
+| `description` | no | Non-empty Markdown string (the subset of the `report` tab), for what the reader needs before the verdicts, such as the setup. Shown in a card on top of the release tab and in the record Markdown, not in the record JSON. |
 | `record` | needed by `report` | A `.json` record exported from the release tab. Checked against the config and the data at build time. |
 | `report` | only with the `report` tab | A `.md` report whose frontmatter verdicts are checked against the record. See [release-report.md](release-report.md). |
 
@@ -219,8 +226,16 @@ A criterion object, by `type`:
 |--------|------|-------------|
 | `absolute` | `metric` (not one with `better: "none"`; the same applies to `relative`), `min` and/or `max` | The candidate's aggregate of the metric is within the bounds. For a `rate` metric or one with `format: "percent"` the bounds are fractions (0.85 means 85%). |
 | `relative` | `metric`, exactly one of `max_worse` / `max_worse_pct` | The candidate is worse than the current model by at most `max_worse` (in the metric's unit; a fraction for `rate` and `format: "percent"`, so 0.02 means 2pt) or `max_worse_pct` percent of the current value. Getting better always passes. |
-| `regressions` | `max` (integer >= 0), optional `count` | The number of regressed items is at most `max`. With `count: "all"` (the default) every regressed item counts, and review never changes the result. With `count: "unaccepted"` items reviewed with any label but the last one (accepted) are not counted; unreviewed items and items with the last label are. While the count exceeds `max` only because unreviewed items are counted, the criterion is "△ awaiting review" (レビュー待ち) instead of not met, and the verdict is the middle one. Its name becomes 受け入れていない悪化した項目の数 (Regressed items not accepted). |
+| `regressions` | `max` (integer >= 0), optional `count` | The number of regressed items is at most `max`. With `count: "all"` (the default) every regressed item counts, and review never changes the result. With `count: "unaccepted"` items reviewed with any label but the last one (accepted) are not counted; unreviewed items and items with the last label are. While the count exceeds `max` only because unreviewed items are counted, the criterion is "△ awaiting review" (レビュー待ち) instead of not met, and the verdict is the middle one. Its name becomes 人が確認して許容していない悪化した項目の数 (Regressed items a reviewer has not accepted). |
 | `critical_categories` | `categories` (needs `columns.category`) | No regressed item is in one of these categories. Each value must occur in the current model's data. |
+
+Every criterion also takes two optional display keys, each a non-empty string. `label`
+replaces the name the page gives the criterion (by default the metric's label, or for
+example 悪化した項目の数). `note` is a sentence or two explaining the criterion, shown under
+its name in the criteria table, in the criterion's detail view and in the record
+Markdown. They only change the display: the record JSON keeps them, but the build leaves
+them out when it compares the record's criteria with the config, so adding or editing
+them keeps a record valid.
 
 `metric` is a column in `columns.metrics`. Aggregates use paired items only (ids
 present on both sides with a value on both), the same as the compare view. An
@@ -245,10 +260,19 @@ are unreviewed, and in the record JSON as `"pending": true` on that criterion (i
 must be accepted by review; leave `regressions` out only when they say nothing about the
 number of regressed items.
 
+When no criterion is `absolute`, the tab says under the verdicts, and the record
+Markdown under its summary, 「悪化がないことだけを確かめた。改善したかは判定していない。」
+("Only checked that nothing got worse; whether anything improved is not judged."):
+`relative`, `regressions` and `critical_categories` only bound how much worse a
+candidate may get, and only an `absolute` criterion checks that a target is reached.
+
 The release tab also shows each metric's n and the 95% interval of the paired
-difference (mean of the per-item differences ± 1.96 standard errors, times n for `sum`
-metrics; shown when n >= 2). The interval is for reference only and never changes a
-verdict.
+difference: the mean of the per-item differences ± t standard errors, where t is the
+two-sided 95% point of the t distribution with n − 1 degrees of freedom (2.571 for
+n = 6, 2.447 for n = 7; a table up to 30 degrees of freedom and an approximation beyond
+it, approaching 1.96 as n grows), times n for `sum` metrics; shown when n >= 2. The
+interval is for reference only and never changes a verdict. It leaves out the spread
+within a row (see "Values" under `columns.metrics`).
 
 ### Review of regressed items
 
@@ -304,6 +328,7 @@ that a later change shows in the config's history.
 | `criteria` | yes | Same as `release.criteria`. |
 | `verdict_labels` | yes | `{"pass": "...", "review": "...", "fail": "..."}` - 3 distinct non-empty strings shown for the verdicts, chosen for the experiment, for example `{"pass": "改善した", "review": "要レビュー", "fail": "改善しなかった"}` or `{"pass": "仮説を支持", "review": "要レビュー", "fail": "支持しない"}`. |
 | `review_labels` | no | Same as `release.review_labels`. |
+| `description` | no | Non-empty Markdown string (the subset of the `report` tab), for the setup or background of the experiment. Shown below the hypothesis on the experiment tab and in the record Markdown, not in the record JSON. |
 | `record` | needed by `report` | A `.json` record exported from the experiment tab. Checked like `release.record`. |
 | `report` | only with the `report` tab | A `.md` report. See [experiment-report.md](experiment-report.md). |
 
@@ -460,10 +485,11 @@ The experiment part:
   "tabs": ["experiment", "compare", "overview", "table"],
   "experiment": {
     "hypothesis": "回答の前に検算させる指示を加えると、正答率が 95% 以上に上がり、レイテンシの悪化は 15% 以内に収まる。安全カテゴリの回答は悪化しない。",
+    "description": "- データ: 計算・知識・安全の 3 カテゴリの質問 20 問（合成データ）\n- 「3回中の正答の割合」は各質問を 3 回解かせた結果の平均であり、3 回の間のばらつきは 95% 区間に入らない",
     "criteria": [
       {"type": "absolute", "metric": "correct", "min": 0.95},
       {"type": "relative", "metric": "latency_ms", "max_worse_pct": 15},
-      {"type": "regressions", "max": 2, "count": "unaccepted"},
+      {"type": "regressions", "max": 2, "count": "unaccepted", "label": "許容していない悪化が 2 問以内", "note": "悪化した質問を人が読み、許容しなかったもの（未レビューを含む）を数える。"},
       {"type": "critical_categories", "categories": ["安全"]}
     ],
     "verdict_labels": {"pass": "仮説を支持", "review": "要レビュー", "fail": "支持しない"}

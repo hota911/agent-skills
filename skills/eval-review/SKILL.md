@@ -128,7 +128,9 @@ Five jobs, selected by `tabs` in the config:
   first, then `compare`, `overview`, `table`. Put the baseline in `data.csv` and each
   condition in `data.candidates`. Write the user's hypothesis in
   `experiment.hypothesis` and their conditions in `experiment.criteria` (the same
-  types as release; do not invent any). Pick `experiment.verdict_labels` yourself to
+  types as release; do not invent any). Put the setup the reader needs (data, how
+  each row was produced) in `experiment.description`, and give a criterion whose
+  default name does not say what it checks a `label` and a `note`. Pick `experiment.verdict_labels` yourself to
   fit the experiment, for example 改善した / 要レビュー / 改善しなかった for a feature
   change, or 仮説を支持 / 要レビュー / 支持しない when the hypothesis is explicit. Never
   combine `experiment` and `release` in one config. The report comes later, as for
@@ -185,7 +187,7 @@ Five jobs, selected by `tabs` in the config:
   queue. Export writes the original columns plus `human_label` and `human_note`
   (UTF-8 with BOM so Excel opens it correctly); "CSV をコピー" copies the same CSV
   without the BOM.
-- **Release:** one card per candidate with its verdict, the criteria it did not meet,
+- **Release:** `release.description` on top when set; one card per candidate with its verdict, the criteria it did not meet,
   and links to its review and to the compare view; a candidate x criteria table with
   each value and ✓ / ✕ plus text; and each metric's n and 95% interval, for reference
   only. Clicking a table cell, a verdict, or a reason on a card (keyboard too; click
@@ -198,9 +200,10 @@ Five jobs, selected by `tabs` in the config:
   出さない if a criterion fails or a regressed item is labelled with the last review
   label (default 不可), 要レビュー if a regressed item is unreviewed, otherwise 出してよい.
   The review of regressed items works like the review tab (arrows, 1-9, N, Esc) and is
-  saved per candidate in localStorage. "記録を書き出す" downloads the record as JSON
+  saved per candidate in localStorage. Without an `absolute` criterion, a line under
+  the cards says only worsening was checked, not improvement. "記録を書き出す" downloads the record as JSON
   or Markdown, without reviewer names or times; "記録の … をコピー" copies the same text.
-- **Experiment:** the release tab with the hypothesis on top and the verdicts in the
+- **Experiment:** the release tab with the hypothesis (and `experiment.description`) on top and the verdicts in the
   words of `experiment.verdict_labels` (codes `pass` / `review` / `fail`, decided by
   the same rules), including the same detail panel. Each metric row says how to read
   its 95% interval (区間が0を含まない：
