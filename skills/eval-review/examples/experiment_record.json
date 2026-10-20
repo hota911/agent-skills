@@ -38,9 +38,9 @@
     "不可"
   ],
   "verdict_labels": {
-    "pass": "仮説を支持",
+    "pass": "基準を満たす",
     "review": "要レビュー",
-    "fail": "支持しない"
+    "fail": "基準を満たさない"
   },
   "candidates": [
     {

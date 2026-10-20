@@ -326,7 +326,7 @@ that a later change shows in the config's history.
 |-----|----------|---------|
 | `hypothesis` | yes | Non-empty string. Shown on top of the experiment tab and in the record. |
 | `criteria` | yes | Same as `release.criteria`. |
-| `verdict_labels` | yes | `{"pass": "...", "review": "...", "fail": "..."}` - 3 distinct non-empty strings shown for the verdicts, chosen for the experiment, for example `{"pass": "改善した", "review": "要レビュー", "fail": "改善しなかった"}` or `{"pass": "仮説を支持", "review": "要レビュー", "fail": "支持しない"}`. |
+| `verdict_labels` | yes | `{"pass": "...", "review": "...", "fail": "..."}` - 3 distinct non-empty strings shown for the verdicts, chosen for the experiment. Each is a value in a 判定 column, so word it as the state of the result against the criteria, for example `{"pass": "基準を満たす", "review": "要レビュー", "fail": "基準を満たさない"}` or `{"pass": "改善した", "review": "要レビュー", "fail": "改善しなかった"}`. Avoid words whose subject is not the condition, such as 仮説を支持 (a condition does not support anything). |
 | `review_labels` | no | Same as `release.review_labels`. |
 | `description` | no | Non-empty Markdown string (the subset of the `report` tab), for the setup or background of the experiment. Shown below the hypothesis on the experiment tab and in the record Markdown, not in the record JSON. |
 | `record` | needed by `report` | A `.json` record exported from the experiment tab. Checked like `release.record`. |
@@ -492,7 +492,7 @@ The experiment part:
       {"type": "regressions", "max": 2, "count": "unaccepted", "label": "許容していない悪化が 2 問以内", "note": "悪化した質問を人が読み、許容しなかったもの（未レビューを含む）を数える。"},
       {"type": "critical_categories", "categories": ["安全"]}
     ],
-    "verdict_labels": {"pass": "仮説を支持", "review": "要レビュー", "fail": "支持しない"}
+    "verdict_labels": {"pass": "基準を満たす", "review": "要レビュー", "fail": "基準を満たさない"}
   }
 }
 ```
