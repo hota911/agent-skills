@@ -9,10 +9,18 @@ downloads it for pasting into Google Docs or Notion.
 
 1. Build the page with the `experiment` tab, have a human review the regressed
    items, and export the record as JSON ("記録を書き出す (JSON)").
-2. Read the record, the config's `experiment.description`, and the data, and write the
+2. Ask the requester what the reader is asked to decide, who decides, and why the
+   comparison is being done (the problem or trigger behind it). Write 背景 from that
+   answer, not from general knowledge; without an answer, write that it is unconfirmed.
+3. Read the record, the config's `experiment.description`, and the data, and write the
    report. Copy every number from the record; do not recompute it from the data.
-3. Set `experiment.record` to the JSON and `experiment.report` to the Markdown, add
+4. Set `experiment.record` to the JSON and `experiment.report` to the Markdown, add
    `report` to `tabs`, and build again.
+5. Reread the report as the reader and fix what fails these questions: What am I asked
+   to decide, and by whom? Why was this compared at all? What exactly was compared, and
+   how was it scored? What do the numbers say, and how sure are they? What does the
+   decision still need that was not measured? Also check every factual sentence against
+   the data or the record, and remove anything the requester did not say (a guess).
 
 `examples/experiment_record.json`, `examples/experiment_report.md`, and
 `examples/experiment_report.config.json` are a complete example.
@@ -52,7 +60,7 @@ the first.
 | 方法 / Method | What was compared, the data, how it was measured and scored, and the criteria. |
 | 結果 / Results | Each condition's verdict and each metric's value, difference, and 95% interval. |
 | 考察 / Discussion | How to read the results, how far they carry, and what the decision needs that was not measured. |
-| 次にやること / Next steps | What is planned. |
+| 次にやること / Next steps | Only what someone has decided to do, each with who does it. Put your (the agent's) own suggestions in a separate list labelled 提案 / Suggestions. |
 
 ## Principles
 

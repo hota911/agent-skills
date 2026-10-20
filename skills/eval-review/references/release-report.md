@@ -10,11 +10,17 @@ report body. For an experiment that tests a hypothesis, see
 
 1. Build the page with the `release` tab, have a human review the regressed items,
    and export the record as JSON ("記録を書き出す (JSON)").
-2. Read the record (and the data when an item needs explaining) and write the report.
+2. Ask the requester what the reader is asked to decide, who decides, and why the
+   candidates are being compared (the problem or trigger behind it). Write that reason
+   from the answer, not from general knowledge; without an answer, write that it is
+   unconfirmed.
+3. Read the record (and the data when an item needs explaining) and write the report.
    Copy every number from the record; do not recompute it from the data.
-3. Set `release.record` to the JSON and `release.report` to the Markdown, add `report`
+4. Set `release.record` to the JSON and `release.report` to the Markdown, add `report`
    to `tabs`, and build again. The HTML then carries the reviews too, so one file shows
    the same verdicts to everyone.
+5. Reread the report as the reader against the questions in
+   [experiment-report.md](experiment-report.md#flow) step 5, and fix what fails.
 
 `examples/release_record.json`, `examples/release_report.md`, and
 `examples/release_report.config.json` are a complete example.
@@ -49,7 +55,7 @@ before the first.
 | 結論 / Conclusion | In a few sentences: what the reader is asked to decide, which candidates can be released and why in plain words, and the decision with who decides, or 未決. |
 | 理由 / Reasons | What the current model and each candidate are, the data, the criteria, and per candidate the values and reviewed items that decided its verdict. |
 | 注意点 / Caveats | What limits the decision, including what it needs that was not measured. |
-| 次にやること / Next steps | What is planned. |
+| 次にやること / Next steps | Only what someone has decided to do, each with who does it. Put your (the agent's) own suggestions in a separate list labelled 提案 / Suggestions. |
 
 ## Principles
 
