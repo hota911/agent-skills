@@ -46,15 +46,6 @@
       ]
     },
     {
-      "name": "japanese-tech-writing",
-      "description": "日本語の技術文書・書籍原稿の文章規範（整形・パラグラフライティング・論証の厳密さ・冗長の排除など）。日本語で技術書や記事を書く/推敲するときに使用。Derived from k16shikano's gist (used with permission).",
-      "source": "./",
-      "strict": false,
-      "skills": [
-        "./skills/japanese-tech-writing"
-      ]
-    },
-    {
       "name": "delegated-work",
       "description": "Own substantial tasks through early clarification, bounded parallel preparation, independent execution, and verified delivery.",
       "source": "./",
@@ -70,6 +61,15 @@
       "strict": false,
       "skills": [
         "./skills/eval-review"
+      ]
+    },
+    {
+      "name": "shared-doc-writing",
+      "description": "他人に読ませて反応を得るための共有文書（検討案・設計案・提案・調査結果・PR 説明・Notion / Google Docs・README・仕様・参照資料）を書く・直すときの考え方。言語に依らず、書き始める前に決めること、冒頭に置くもの、指摘が返る形、確かさの書き分け、一覧と文の使い分け、推敲、共有メッセージを定める。場面に応じて references/logic.md、references/japanese-prose.md、references/updating.md、references/pull-request.md、references/sources.md を読む。単体で入れても壊れる参照は無い。Partly derived from k16shikano's gist (used with permission).",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/shared-doc-writing"
       ]
     }
   ]
