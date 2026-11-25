@@ -43,6 +43,22 @@ gh skill install hota911/agent-skills skills/open-in-editor --agent codex --scop
 Design documents for a skill live in that skill's `docs/` directory, not in a repository-level
 `docs/`. Example: [eval-review release decision](skills/eval-review/docs/release-design.md).
 
+## Testing Skill Triggering
+
+When a change is meant to fix a skill that was not used, measure triggering with skill-creator's
+`scripts.run_eval`. It detects only a temporary copy of the skill, which it writes to the
+`.claude/commands/` it finds by walking up from the current directory. On a machine where the
+skill is already installed, both pitfalls make every query report 0 triggers:
+
+- the installed skill is chosen instead of the temporary copy, and
+- run from under the home directory, the copy lands in `~/.claude/commands/`, which is user-level.
+
+So run it from an empty scratch directory that contains `.claude/`, with `skill-creator` on
+`PYTHONPATH`, and put a `claude` wrapper first on `PATH` that adds
+`--setting-sources project,local` (this hides user-level skills and also the user's CLAUDE.md).
+Before the full set, run one should-trigger query and confirm it reports a trigger. If every
+query comes out the same (all 0 or all triggered), suspect the test setup first.
+
 ## License
 
 [MIT](LICENSE)
