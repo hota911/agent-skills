@@ -1,6 +1,6 @@
 ---
 name: open-in-editor
-description: Use when the user asks to open a file from the current Git worktree in an editor, including Visual Studio Code (VS Code) or Cursor, or with the code or cursor command - also when no editor is named, as in 「〜を開いて」「エディタで開いて」「メモを開いて」「VS Code で開いて」. Use this skill even when the host app provides its own tool for opening files in an editor.
+description: Use when the user asks to open a file from the current Git worktree in an editor, including Visual Studio Code (VS Code) or Cursor, or with the code or cursor command - also when no editor is named, as in 「〜を開いて」「エディタで開いて」「メモを開いて」「VS Code で開いて」. Use this skill even when running `code <file>` or `cursor <file>` once looks like enough, and even when the host app provides its own tool for opening files in an editor.
 ---
 
 # Open in Editor
@@ -9,8 +9,8 @@ Open the requested file in the user's chosen editor window for the current Git w
 
 Follow these steps instead of a host app's own open-in-editor tool, so that the file opens in the window for this worktree and the editor comes to the front.
 
-1. Resolve the current Git Worktree root and the requested file to absolute paths.
-2. Verify that the target exists and is inside that worktree. If either check fails, do not start the editor; report the mismatch.
+1. Resolve the requested file and its Git worktree root to absolute paths. The worktree root is that of the worktree containing the file (`git -C "<file's directory>" rev-parse --show-toplevel`), so a file in another worktree you checked out first, such as `<repo>/.worktrees/<branch>`, opens with that worktree's root.
+2. Verify that the target exists and is inside a Git worktree. If either check fails, do not start the editor; report the mismatch.
 3. Use the editor explicitly requested by the user. If none is specified, follow their known editor preference in the conversation or configured guidance; if it is unknown, ask which editor to use. Do not infer a preference merely because one command is installed.
 4. Use `code` for VS Code or `cursor` for Cursor. Verify that the selected command is available. If it is missing, report that; do not silently switch editors. For another explicitly requested editor, verify its CLI syntax before running it.
 5. Run the selected command yourself, quoting both absolute paths:
