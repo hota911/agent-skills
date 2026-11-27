@@ -45,19 +45,26 @@ Design documents for a skill live in that skill's `docs/` directory, not in a re
 
 ## Testing Skill Triggering
 
-When a change is meant to fix a skill that was not used, measure triggering with skill-creator's
-`scripts.run_eval`. It detects only a temporary copy of the skill, which it writes to the
-`.claude/commands/` it finds by walking up from the current directory. On a machine where the
-skill is already installed, both pitfalls make every query report 0 triggers:
+When a change is meant to fix a skill that was not used, measure triggering under the user's
+normal settings: put the version under test in the installed skill directory (back up the
+installed `SKILL.md` and restore it afterwards), run each query with
+`claude -p --output-format stream-json --verbose` from a scratch Git repository, and count the
+`Skill` tool calls for that skill. Deny the commands the skill would run (for example
+`--disallowedTools "Bash(code:*)"`) so the test has no side effects. Before the full set, run
+one should-trigger query and confirm it is detected. If every query comes out the same (all 0
+or all triggered), suspect the test setup first.
 
-- the installed skill is chosen instead of the temporary copy, and
-- run from under the home directory, the copy lands in `~/.claude/commands/`, which is user-level.
+skill-creator's `scripts.run_eval` does not measure this on a machine where the skill is
+installed. It detects only a temporary copy, written as a command to the `.claude/commands/`
+it finds by walking up from the current directory, so the installed skill is chosen instead,
+and from under the home directory the copy lands in the user-level `~/.claude/commands/`.
+Hiding user-level settings (`--setting-sources project,local`) avoids both, but in
+open-in-editor's test (2026-11-26) the copy then triggered on only 1 to 3 of 24 should-trigger
+runs, against 24 of 24 for the installed skill under normal settings.
 
-So run it from an empty scratch directory that contains `.claude/`, with `skill-creator` on
-`PYTHONPATH`, and put a `claude` wrapper first on `PATH` that adds
-`--setting-sources project,local` (this hides user-level skills and also the user's CLAUDE.md).
-Before the full set, run one should-trigger query and confirm it reports a trigger. If every
-query comes out the same (all 0 or all triggered), suspect the test setup first.
+A single prompt does not reproduce a skill skipped in the middle of a longer task. In that
+open-in-editor test, both the old and the new description triggered on every should-trigger
+query, while the failure being fixed happened after `git worktree add` in a running session.
 
 ## License
 
